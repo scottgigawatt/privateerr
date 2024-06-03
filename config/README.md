@@ -4,7 +4,7 @@ Ahoy, matey! This be the config directory for Privataarr, yer trusty Docker Comp
 
 ## Purpose
 
-This directory contains a default configuration file, `pia-wireguard.conf`. When ye run Privataarr and weigh anchor, this file will be updated with the PIA WireGuard configuration.
+This directory contains a default configuration file, [`pia-wireguard.conf`](./pia-wireguard.conf). When ye run Privataarr and weigh anchor, this file will be updated with the PIA WireGuard configuration.
 
 ## Instructions
 
