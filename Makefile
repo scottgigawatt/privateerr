@@ -106,9 +106,8 @@ $(HELP):
 	@echo "  $(CLEAN)           - Alias for $(DOWN)."
 	@echo "  $(BUILD)           - Builds the service stack."
 	@echo "  $(UP)              - Builds, (re)creates, and starts containers for services."
-	@echo "  $(START)           - Alias for $(UP)."
+	@echo "  $(RUN)             - Alias for $(UP)."
 	@echo "  $(LOGS)            - Shows logs for the service."
-	@echo "  $(RUN)             - Alias for $(UP), $(OPEN), $(LOGS)."
 	@echo "  $(HELP)            - Displays this help message."
 
 #
