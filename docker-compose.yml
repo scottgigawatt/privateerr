@@ -26,12 +26,12 @@ services:
         TZ: ${TZ}                                     # Specify build arguement for time zone
         PIA_APP_HOME: ${PIA_APP_HOME}                 # Specify build arguement for PIA scripts path
     container_name: privataarr-${PRIVATAARR_TAG}      # Append Docker image tag to container name
-    labels:                                           # Add container labels
-      - "com.centurylinklabs.watchtower.enable=false" # Exclude from Watchtower as this image is local
     restart: no                                       # Do not restart the container once it exits
     network_mode: bridge                              # Use the default bridge network
     hostname: privataarr                              # Set the container hostname
     privileged: true                                  # Run in privileged mode
+    labels:                                           # Add container labels
+      - "com.centurylinklabs.watchtower.enable=false" # Exclude from Watchtower as this image is local
 
     # Define the container environment
     environment:
