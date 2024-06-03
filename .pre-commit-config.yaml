@@ -1,0 +1,15 @@
+repos:
+-   repo: https://github.com/Yelp/detect-secrets
+    rev: v1.5.0
+    hooks:
+    -   id: detect-secrets
+        args: ['--baseline', '.secrets.baseline']
+        exclude: package.lock.json
+-   repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.6.0
+    hooks:
+    -   id: check-yaml
+        args: ['--unsafe']
+    -   id: end-of-file-fixer
+    -   id: trailing-whitespace
+        args: ['--markdown-linebreak-ext=md']

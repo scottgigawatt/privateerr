@@ -1,0 +1,51 @@
+#
+# docker-compose.yml: Docker Compose configuration for building an image with
+# Private Internet Access manual connection scripts and required WireGuard tools.
+# This image can then be used to create configuration file for PIA VPN WireGuard connections.
+#
+# For more information about Manual PIA VPN Connections, visit: https://github.com/pia-foss/manual-connections
+#
+
+---
+
+#
+# Define the services section
+#
+services:
+  #
+  # Define the 'privataarr' service
+  #
+  privataarr:
+    # Docker image build and container information
+    image: ${PRIVATAARR_IMAGE}:${PRIVATAARR_TAG}      # Set build image name and tag
+    build:                                            # Build to install required packages
+      context: docker                                 # Docker build context
+      dockerfile: Dockerfile                          # Dockerfile to use for the build
+      args:                                           # Build arguments passed to Dockerfile
+        UBUNTU_TAG: ${UBUNTU_TAG}                     # Specify build argument for FROM base image tag
+        TZ: ${TZ}                                     # Specify build arguement for time zone
+        PIA_APP_HOME: ${PIA_APP_HOME}                 # Specify build arguement for PIA scripts path
+    container_name: privataarr-${PRIVATAARR_TAG}      # Append Docker image tag to container name
+    labels:                                           # Add container labels
+      - "com.centurylinklabs.watchtower.enable=false" # Exclude from Watchtower as this image is local
+    restart: no                                       # Do not restart the container once it exits
+    network_mode: bridge                              # Use the default bridge network
+    hostname: privataarr                              # Set the container hostname
+    privileged: true                                  # Run in privileged mode
+
+    # Define the container environment
+    environment:
+      VPN_PROTOCOL: ${PIA_VPN_PROTOCOL} # VPN configuration, wireguard or openvpn
+      DISABLE_IPV6: ${PIA_DISABLE_IPV6} # Toggle using IPV6, yes or no
+      DIP_TOKEN: ${PIA_DIP_TOKEN}       # Optional PIA dedicated IP token, token or no
+      AUTOCONNECT: ${PIA_AUTOCONNECT}   # Test and select server with the lowest latency, true or false
+      PIA_CONF_PATH: ${PIA_CONF_PATH}   # Path of wireguard config file to be written
+      PIA_CONNECT: ${PIA_CONNECT}       # Connect to VPN after config has been created, true or false
+      PIA_PF: ${PIA_PF}                 # Configure port forwarding, true or false
+      PIA_DNS: ${PIA_DNS}               # Configure DNS, true or false
+      PIA_USER: ${PIA_USER}             # Set PIA username
+      PIA_PASS: ${PIA_PASS}             # Set PIA password
+
+    # Mount host directories into the container
+    volumes:
+      - ${HOST_CONF_PATH}:/${PIA_CONF_PATH}:rw # Mount the wireguard configuration file

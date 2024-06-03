@@ -1,0 +1,3 @@
+[submodule "docker/pia"]
+	path = docker/pia
+	url = git@github.com:pia-foss/manual-connections.git
