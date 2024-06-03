@@ -16,7 +16,7 @@ git clone git@github.com:scottgigawatt/privataarr.git
 cd privataarr
 
 # Weigh anchor and start the container
-PIA_USER=<pia_username> PIA_PASS=<pia_password> make make
+PIA_USER=<pia_username> PIA_PASS=<pia_password> make
 ```
 
 The treasure map to yer WireGuard configuration file will be buried in the [`config`](./config/) directory. This directory contains a default configuration file, [`pia-wireguard.conf`](./config/pia-wireguard.conf). When ye run Privataarr, this file will be updated with the PIA WireGuard configuration. Ye can then use this configuration file to configure a VPN client like Gluetun for secure connections.
