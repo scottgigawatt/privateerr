@@ -35,13 +35,11 @@ COPY pia ${PIA_APP_HOME}
 #
 RUN echo "resolvconf resolvconf/linkify-resolvconf boolean false" | debconf-set-selections && \
     # Update package lists
-    apt update && \
-    # Upgrade packages
-    apt -y upgrade && \
+    apt update -q && \
     # Install required packages
-    apt -y install curl jq wireguard-tools resolvconf && \
-    # Clean cache
-    apt -y clean && \
+    apt -yq install curl jq wireguard-tools resolvconf && \
+    # Clean cache and remove all downloaded package files
+    apt -yq clean && apt-get autoclean && apt-get autoremove && \
     # Remove package lists loaded by apt update
     rm -rf /var/lib/apt/lists/*
 
