@@ -4,15 +4,19 @@ Ahoy, matey! Welcome to Privataarr, where we sail the digital seas with Private 
 
 ## Overview 🦜⚓️
 
-Ahoy there! Privataarr be a Docker Compose configuration for buildin' Private Internet Access manual connection scripts into a Docker image with the required WireGuard tools. It also be generatin' a configuration file for native WireGuard connections. Hoist the sails and set yer course for secure VPN connections, me hearties! Ye can use the output WireGuard configuration file to configure a VPN client like Gluetun for secure connections.
+Ahoy there! Privataarr be a Docker Compose configuration for buildin' Private Internet Access manual connection scripts into a Docker image with the required WireGuard tools. It also be generatin' a configuration file for native WireGuard connections. Hoist the sails and set yer course for secure VPN connections, me hearties!
+
+This repo includes the [PIA manual-connections](https://github.com/pia-foss/manual-connections) repository as a submodule at [`docker/pia`](./docker/pia), so it be included in the image build.
+
+Ye can use the output WireGuard configuration file to configure a VPN client like Gluetun for secure connections.
 
 ## Usage 🗺️🔧
 
 To set sail and embark on yer VPN journey, follow these steps:
 
 ```bash
-# Hoist the Jolly Roger and clone the repository
-git clone git@github.com:scottgigawatt/privataarr.git
+# Hoist the Jolly Roger and clone the repository with submodules
+git clone --recurse-submodules git@github.com:scottgigawatt/privataarr.git
 cd privataarr
 
 # Weigh anchor and start the container
