@@ -21,7 +21,7 @@ RUN=run
 #
 # Docker Compose options
 #
-COMPOSE_SERVICE_NAME  ?= privataarr
+COMPOSE_SERVICE_NAME  ?= privateerr
 COMPOSE_DOWN_TIMEOUT  ?= 30
 COMPOSE_DOWN_OPTIONS  ?= --timeout $(COMPOSE_DOWN_TIMEOUT) --rmi all --volumes
 COMPOSE_BUILD_OPTIONS ?= --pull --no-cache

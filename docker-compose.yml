@@ -13,11 +13,11 @@
 #
 services:
   #
-  # Define the 'privataarr' service
+  # Define the 'privateerr' service
   #
-  privataarr:
+  privateerr:
     # Docker image build and container information
-    image: ${PRIVATAARR_IMAGE}:${PRIVATAARR_TAG}      # Set build image name and tag
+    image: ${PRIVATEERR_IMAGE}:${PRIVATEERR_TAG}      # Set build image name and tag
     build:                                            # Build to install required packages
       context: docker                                 # Docker build context
       dockerfile: Dockerfile                          # Dockerfile to use for the build
@@ -25,10 +25,10 @@ services:
         UBUNTU_TAG: ${UBUNTU_TAG}                     # Specify build argument for FROM base image tag
         TZ: ${TZ}                                     # Specify build arguement for time zone
         PIA_APP_HOME: ${PIA_APP_HOME}                 # Specify build arguement for PIA scripts path
-    container_name: privataarr-${PRIVATAARR_TAG}      # Append Docker image tag to container name
+    container_name: privateerr-${PRIVATEERR_TAG}      # Append Docker image tag to container name
     restart: no                                       # Do not restart the container once it exits
     network_mode: bridge                              # Use the default bridge network
-    hostname: privataarr                              # Set the container hostname
+    hostname: privateerr                              # Set the container hostname
     privileged: true                                  # Run in privileged mode
     labels:                                           # Add container labels
       - "com.centurylinklabs.watchtower.enable=false" # Exclude from Watchtower as this image is local
