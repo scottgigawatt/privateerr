@@ -27,7 +27,7 @@ The treasure map to yer WireGuard configuration file will be buried in the [`con
 
 ## Environment Details 🏝️🔍
 
-Privateerr has been tested on macOS Sonoma 14.5. But fear not, me hearties! It should work on other lands as well.
+Privateerr has been tested on Synology DS916+ running DSM 7.2.1-69057 Update 5, with Docker Compose version v2.9.0-6413-g38f6acd as well as macOS Sonoma 14.5. But fear not, me hearties! It should work on other lands as well.
 
 ## License ⚖️📜
 
