@@ -8,4 +8,4 @@ jobs:
       - name: Install Docker Compose
         uses: ndeloof/install-compose-action@v0.0.1
       - name: Validate Docker Compose
-        run: docker-compose config
+        run: docker-compose config --no-interpolate
