@@ -1,10 +1,10 @@
 # Privateerr ☠️🏴‍☠️
 
-Ahoy, matey! Welcome to Privateerr, where we sail the digital seas with Private Internet Access and WireGuard!
+Ahoy there! Welcome to Privateerr, where we sail the digital seas with Private Internet Access and WireGuard!
 
 ## Overview 🦜⚓️
 
-Ahoy there! Privateerr be a Docker Compose configuration for buildin' Private Internet Access manual connection scripts into a Docker image with the required WireGuard tools. It also be generatin' a configuration file for native WireGuard connections. Hoist the sails and set yer course for secure VPN connections, me hearties!
+Privateerr be a Docker Compose configuration for buildin' Private Internet Access manual connection scripts into a Docker image with the required WireGuard tools. It also be generatin' a configuration file for native WireGuard connections. Hoist the sails and set yer course for secure VPN connections, me hearties!
 
 This repo includes the [PIA manual-connections](https://github.com/pia-foss/manual-connections) repository as a submodule at [`docker/pia`](./docker/pia), so it be included in the image build.
 
