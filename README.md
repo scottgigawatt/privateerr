@@ -19,8 +19,13 @@ To set sail and embark on yer VPN journey, follow these steps:
 git clone --recurse-submodules git@github.com:scottgigawatt/privateerr.git
 cd privateerr
 
+# Copy the example environment file
+cp example.env .env
+
+# Open .env file and adjust the values to yer requirements
+
 # Weigh anchor and start the container
-PIA_USER=<pia_username> PIA_PASS=<pia_password> make
+make
 ```
 
 The treasure map to yer WireGuard configuration file will be buried in the [`config`](./config/) directory. This directory contains a default configuration file, [`wg0.conf`](./config/wg0.conf). When ye run Privateerr, this file will be updated with the PIA WireGuard configuration. Ye can then use this configuration file to configure a VPN client like Gluetun for secure connections.
