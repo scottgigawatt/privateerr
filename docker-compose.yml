@@ -1,3 +1,4 @@
+---
 #
 # docker-compose.yml: Docker Compose configuration for building an image with
 # Private Internet Access manual connection scripts and required WireGuard tools.
@@ -5,8 +6,6 @@
 #
 # For more information about Manual PIA VPN Connections, visit: https://github.com/pia-foss/manual-connections
 #
-
----
 
 #
 # Define the services section
