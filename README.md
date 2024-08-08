@@ -4,19 +4,31 @@ Ahoy there! Welcome to Privateerr, where we sail the digital seas with Private I
 
 Here's the updated GitHub README overview section:
 
+Here’s a more concise version while keeping the pirate theme:
+
 ## Overview 🦜⚓️
 
-Privateerr be a Docker Compose configuration for buildin' Private Internet Access manual connection scripts into a Docker image with the required WireGuard tools. It also be generatin' a configuration file for native WireGuard connections. Hoist the sails and set yer course for secure VPN connections, me hearties!
+Privateerr be a Docker Compose setup for buildin' PIA manual connection scripts into a Docker image with WireGuard tools. It also generates a configuration file for native WireGuard connections. Set sail for secure VPN connections, mateys!
 
-The main Docker Compose configuration can be found in the [docker-compose.yml](./docker-compose.yml) file in the root of the repository. This file contains all the details needed to build an image that includes the necessary WireGuard tools to use the PIA manual connection scripts for creatin' a WireGuard configuration.
+### Docker Compose Configuration ⚙️
 
-Ye can customize the Docker Compose setup by updatin' the `.env` file. Start by copyin' the [example.env](./example.env) file to `.env` in the root of the repo and adjust the settings to yer needs.
+The main configuration be in [docker-compose.yml](./docker-compose.yml). It builds an image with the necessary WireGuard tools for PIA scripts.
 
-The current image build is based off of Ubuntu Focal, and the Dockerfile can be found at [docker/Dockerfile](./docker/Dockerfile).
+#### Customizing 🛠️
 
-This repo includes the [PIA manual-connections](https://github.com/pia-foss/manual-connections) repository as a submodule at `docker/pia`, so it be included in the image build.
+Copy [example.env](./example.env) to `.env` and tweak it to fit yer needs.
 
-Ye can use the output WireGuard configuration file at [`config/wg0.conf`](config/wg0.conf) to configure a VPN client like Gluetun for secure connections.
+### Image Build 🏗️
+
+The image be built on Ubuntu Focal. The Dockerfile is at [docker/Dockerfile](./docker/Dockerfile).
+
+### PIA Manual Connections 📜
+
+This repo includes the [PIA manual-connections](https://github.com/pia-foss/manual-connections) as a submodule at `docker/pia`.
+
+### WireGuard Configuration 📄
+
+Use the generated WireGuard config at [`config/wg0.conf`](config/wg0.conf) to set up a VPN client like Gluetun.
 
 ## Usage 🗺️🔧
 
