@@ -34,7 +34,7 @@ The treasure map to yer WireGuard configuration file will be buried in the [`con
 
 ## Navigatin' Troubled Waters ‍️☠️🌊
 
-The included `Makefile` contains targets t' help ye navigate these treacherous waters. Usin' these commands will provide ye with a clearer view o' the environment an' configuration details without the additional comments. Set sail with confidence, ye scurvy dogs! 🏴‍☠️
+The included `Makefile` contains targets t' help ye navigate these treacherous waters.
 
 ```sh
 ❯ make help
