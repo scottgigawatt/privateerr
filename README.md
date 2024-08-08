@@ -2,33 +2,15 @@
 
 Ahoy there! Welcome to Privateerr, where we sail the digital seas with Private Internet Access and WireGuard!
 
-Here's the updated GitHub README overview section:
-
-Here’s a more concise version while keeping the pirate theme:
-
 ## Overview 🦜⚓️
 
-Privateerr be a Docker Compose setup for buildin' PIA manual connection scripts into a Docker image with WireGuard tools. It also generates a configuration file for native WireGuard connections. Set sail for secure VPN connections, mateys!
+Privateerr be a Docker Compose setup designed to build PIA manual connection scripts into a Docker image with the necessary WireGuard tools, generating a configuration file for native WireGuard connections. This setup ensures ye have a secure VPN connection as ye navigate the digital seas.
 
-### Docker Compose Configuration ⚙️
+The main configuration lives in the [docker-compose.yml](./docker-compose.yml) file. This file handles building the image based on Ubuntu Focal, using the [Dockerfile](./docker/Dockerfile) found in the `docker` directory. The Docker Compose setup can be customized by copyin' the [example.env](./example.env) file to `.env` and adjustin' it to suit yer needs.
 
-The main configuration be in [docker-compose.yml](./docker-compose.yml). It builds an image with the necessary WireGuard tools for PIA scripts.
+Included in this repo is the [PIA manual-connections](https://github.com/pia-foss/manual-connections) repository as a submodule at `docker/pia`, so it's part of the image build. Once the build is complete, ye can use the generated WireGuard configuration file at [`config/wg0.conf`](config/wg0.conf) to set up a VPN client like Gluetun.
 
-#### Customizing 🛠️
-
-Copy [example.env](./example.env) to `.env` and tweak it to fit yer needs.
-
-### Image Build 🏗️
-
-The image be built on Ubuntu Focal. The Dockerfile is at [docker/Dockerfile](./docker/Dockerfile).
-
-### PIA Manual Connections 📜
-
-This repo includes the [PIA manual-connections](https://github.com/pia-foss/manual-connections) as a submodule at `docker/pia`.
-
-### WireGuard Configuration 📄
-
-Use the generated WireGuard config at [`config/wg0.conf`](config/wg0.conf) to set up a VPN client like Gluetun.
+Set sail with Privateerr, and enjoy secure connections across the seven seas! 🌊🏴‍☠️
 
 ## Usage 🗺️🔧
 
