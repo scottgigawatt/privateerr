@@ -1,8 +1,8 @@
-# Privateerr ☠️🏴‍☠️
+# ⚓️ Privateerr ☠️🏴‍☠️
 
 Ahoy there! Welcome to Privateerr, where we sail the digital seas with Private Internet Access and WireGuard!
 
-## Overview 🦜⚓️
+## 🦜 Captain's Log ⚓️
 
 Privateerr be a Docker Compose setup designed to build PIA manual connection scripts into a Docker image with the necessary WireGuard tools, generating a configuration file for native WireGuard connections. This setup ensures ye have a secure VPN connection as ye navigate the digital seas.
 
@@ -12,7 +12,7 @@ Included in this repo is the [PIA manual-connections](https://github.com/pia-fos
 
 Set sail with Privateerr, and enjoy secure connections across the seven seas! 🌊🏴‍☠️
 
-## Usage 🗺️🔧
+## 🗺️ Chartin' Yer Course 🔧
 
 To set sail and embark on yer VPN journey, follow these steps:
 
@@ -32,11 +32,11 @@ make
 
 The treasure map to yer WireGuard configuration file will be buried in the [`config`](./config/) directory. This directory contains a default configuration file, [`wg0.conf`](./config/wg0.conf). When ye run Privateerr, this file will be updated with the PIA WireGuard configuration. Ye can then use this configuration file to configure a VPN client like Gluetun for secure connections.
 
-## Navigatin' Troubled Waters ‍️☠️🌊
+## ☠️ Navigatin' Troubled Waters 🌊
 
-The included `Makefile` contains targets t' help ye navigate these treacherous waters.
+The included `Makefile` be yer trusty map to help ye navigate these treacherous waters. Use these commands to steer yer ship with ease and gain a clearer view of the environment and configuration details. Set sail with confidence, ye scurvy dogs! 🏴‍☠️
 
-```sh
+```console
 ❯ make help
 Usage: make [TARGET]
 
@@ -53,11 +53,11 @@ Targets:
   help            - Displays this help message.
 ```
 
-## Environment Details 🏝️🔍
+## 🏝️ Know Yer Waters 🔍
 
 Privateerr has been tested on Synology DS916+ running DSM 7.2.1-69057 Update 5, with Docker Compose version v2.9.0-6413-g38f6acd as well as macOS Sonoma 14.6. But fear not, me hearties! It should work on other lands as well.
 
-## License ⚖️📜
+## ⚖️ Keep to the Code 📜
 
 This project be licensed under the Apache 2 License - see the [LICENSE](LICENSE) scroll for details.
 
