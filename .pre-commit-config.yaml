@@ -10,7 +10,7 @@ repos:
         args: ["--baseline", ".secrets.baseline"]
         exclude: package.lock.json
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v4.6.0
+    rev: v5.0.0
     hooks:
       - id: check-yaml
         args: ["--unsafe"]

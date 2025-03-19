@@ -1,3 +1,5 @@
+_🦜 Parrot says: Smash that ⭐️ or walk the plank, ye landlubber!_
+
 # ⚓️ Privateerr ☠️🏴‍☠️
 
 Ahoy there! Welcome to Privateerr, where we sail the digital seas with Private Internet Access and WireGuard!
@@ -5,6 +7,9 @@ Ahoy there! Welcome to Privateerr, where we sail the digital seas with Private I
 ## 🦜 Captain's Log ⚓️
 
 Privateerr be a Docker Compose setup designed to build PIA manual connection scripts into a Docker image with the necessary WireGuard tools, generating a configuration file for native WireGuard connections. This setup ensures ye have a secure VPN connection as ye navigate the digital seas.
+
+> [!NOTE]
+> 🏴‍☠️ This here be fer seasoned pirates wantin' to automate PIA and WireGuard with Docker! New deckhands might want to learn the ropes first.
 
 The main configuration lives in the [docker-compose.yml](./docker-compose.yml) file. This file handles building the image based on Ubuntu Focal, using the [Dockerfile](./docker/Dockerfile) found in the `docker` directory. The Docker Compose setup can be customized by copyin' the [example.env](./example.env) file to `.env` and adjustin' it to suit yer needs.
 
@@ -30,9 +35,20 @@ cp example.env .env
 make
 ```
 
-The treasure map to yer WireGuard configuration file will be buried in the [`config`](./config/) directory. This directory contains a default configuration file, [`wg0.conf`](./config/wg0.conf). When ye run Privateerr, this file will be updated with the PIA WireGuard configuration. Ye can then use this configuration file to configure a VPN client like Gluetun for secure connections.
+> [!TIP]
+> 🦜 Pro tip: Adjust yer `.env` like a savvy navigator before hoisting anchor.
+
+The treasure map to yer WireGuard configuration file will be buried in the [`config`](./config/) directory. This directory contains a default configuration file, [`wg0.conf`](./config/wg0.conf).
+
+> [!IMPORTANT]
+> ⚓️ Yer precious `wg0.conf` be the map to yer VPN treasure—keep it safe or risk scurvy.
+
+When ye run Privateerr, this file will be updated with the PIA WireGuard configuration. Ye can then use this configuration file to configure a VPN client like Gluetun for secure connections.
 
 ## ☠️ Navigatin' Troubled Waters 🌊
+
+> [!WARNING]
+> ☠️ One wrong command an' ye could sink the whole ship! Mind yer `make` targets, matey.
 
 The included `Makefile` be yer trusty map to help ye navigate these treacherous waters. Use these commands to steer yer ship with ease and gain a clearer view of the environment and configuration details. Set sail with confidence, ye scurvy dogs! 🏴‍☠️
 
@@ -55,7 +71,10 @@ Targets:
 
 ## 🏝️ Know Yer Waters 🔍
 
-Privateerr has been tested on Synology DS916+ running DSM 7.2.1-69057 Update 5, with Docker Compose version v2.9.0-6413-g38f6acd as well as macOS Sonoma 14.6. But fear not, me hearties! It should work on other lands as well.
+> [!CAUTION]
+> 🏴‍☠️⚠️ While tested on Synology an' macOS, other waters may be stormier than expected.
+
+Privateerr has been tested on Synology DS916+ running DSM 7.2, with Docker Compose version v2.9 as well as macOS Sequoia 15.3. But fear not, me hearties! It should work on other lands as well.
 
 ## ⚖️ Keep to the Code 📜
 

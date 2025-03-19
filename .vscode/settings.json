@@ -2,6 +2,7 @@
     "cSpell.words": [
         "adjustin",
         "buildin",
+        "centurylinklabs",
         "Chartin",
         "copyin",
         "creatin",
@@ -16,5 +17,6 @@
         "Sonoma",
         "updatin",
         "Usin"
-    ]
+    ],
+    "makefile.configureOnOpen": false
 }
