@@ -13,7 +13,7 @@ repos:
     rev: v5.0.0
     hooks:
       - id: check-yaml
-        args: ["--unsafe"]
+        exclude: config/homepage
       - id: end-of-file-fixer
       - id: trailing-whitespace
         args: ["--markdown-linebreak-ext=md"]
