@@ -1,6 +1,6 @@
 _🦜 Parrot says: Smash that ⭐️ or walk the plank, ye landlubber!_
 
-![Docker](https://img.shields.io/badge/docker-ready-blue?logo=docker) ![VPN](https://img.shields.io/badge/VPN-PIA%20%7C%20WireGuard-green?logo=protonvpn) ![License](https://img.shields.io/github/license/scottgigawatt/privateerr?color=blue) ![Last Commit](https://img.shields.io/github/last-commit/scottgigawatt/privateerr?logo=git) ![Repo Size](https://img.shields.io/github/repo-size/scottgigawatt/privateerr) ![Parrot Approved](https://img.shields.io/badge/parrot-approved-brightgreen?logo=gnome) ![Jolly Roger](https://img.shields.io/badge/Jolly--Roger-Certified-black)
+![Dockerized Brig](https://img.shields.io/badge/Dockerized-Brig-blue?logo=docker) ![VPN Cloak](https://img.shields.io/badge/Cloaked-by%20PIA%20%26%20WireGuard-green?logo=protonvpn) ![Code o' Conduct](https://img.shields.io/github/license/scottgigawatt/privateerr?label=Code%20o'%20Conduct&color=blue) ![Last Raid](https://img.shields.io/github/last-commit/scottgigawatt/privateerr?label=Last%20Raid&logo=git) ![Hold Capacity](https://img.shields.io/github/repo-size/scottgigawatt/privateerr?label=Hold%20Capacity) ![Battle-Tested](https://img.shields.io/badge/Battle--Tested-Synology%20%26%20macOS-blue) ![Rum Rations](https://img.shields.io/badge/Rum%20Rations-Plentiful-orange)
 
 # ⚓️ Privateerr ☠️🏴‍☠️
 
