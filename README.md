@@ -1,5 +1,7 @@
 _🦜 Parrot says: Smash that ⭐️ or walk the plank, ye landlubber!_
 
+![Docker](https://img.shields.io/badge/docker-ready-blue?logo=docker) ![VPN](https://img.shields.io/badge/VPN-PIA%20%7C%20WireGuard-green?logo=protonvpn) ![License](https://img.shields.io/github/license/scottgigawatt/privateerr?color=blue) ![Last Commit](https://img.shields.io/github/last-commit/scottgigawatt/privateerr?logo=git) ![Repo Size](https://img.shields.io/github/repo-size/scottgigawatt/privateerr) ![Parrot Approved](https://img.shields.io/badge/parrot-approved-brightgreen?logo=gnome) ![Jolly Roger](https://img.shields.io/badge/Jolly--Roger-Certified-black)
+
 # ⚓️ Privateerr ☠️🏴‍☠️
 
 Ahoy there! Welcome to Privateerr, where we sail the digital seas with Private Internet Access and WireGuard!
