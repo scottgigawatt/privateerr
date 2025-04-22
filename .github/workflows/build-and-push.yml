@@ -1,6 +1,6 @@
 
 
-name: Build and Publish Docker Image
+name: "Shipshape: Build & Push ⚓"
 
 on:
   push:

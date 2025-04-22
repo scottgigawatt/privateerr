@@ -6,7 +6,8 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/Dockerized-Brig-blue?logo=docker" alt="Dockerized Brig" />
-  <img src="https://img.shields.io/badge/Cloaked-by%20PIA%20%7C%20WireGuard-green?logo=protonvpn" alt="VPN Cloak" />
+    <img src="https://github.com/scottgigawatt/privateerr/actions/workflows/build-and-push.yml/badge.svg" alt="🏴‍☠️ Build: Shipshape" />
+  <img src="https://img.shields.io/badge/WireGuard-green?logo=protonvpn" alt="VPN Cloak" />
   <img src="https://img.shields.io/github/license/scottgigawatt/privateerr?label=Code%20o'%20Conduct&color=blue" alt="Code o' Conduct" />
   <img src="https://img.shields.io/github/last-commit/scottgigawatt/privateerr?label=Last%20Raid&logo=git" alt="Last Raid" />
   <img src="https://img.shields.io/github/repo-size/scottgigawatt/privateerr?label=Hold%20Capacity" alt="Hold Capacity" />
