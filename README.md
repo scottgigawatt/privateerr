@@ -90,11 +90,11 @@ Targets:
 > [!CAUTION]
 > 🏴‍☠️⚠️ While tested on Synology an' macOS, other waters may be stormier than expected.
 
-Privateerr has been tested on Synology DS916+ running DSM 7.2, with Docker Compose version v2.9 as well as macOS Sequoia 15.3. But fear not, me hearties! It should work on other lands as well.
+Privateerr has been tested on Synology DS1522+ and DS916+ running DSM 7.2, with Docker Compose version v2.9 as well as macOS Sequoia 15.3. But fear not, me hearties! It should work on other lands as well.
 
 ## ⚖️ Keep to the Code 📜
 
-This project be licensed under the Apache 2 License - see the [LICENSE](LICENSE) scroll for details.
+This project be licensed under the Apache 2 License—see the [LICENSE](LICENSE) scroll for details.
 
 The PIA manual connection scripts used in this repository be licensed under the [MIT license](https://choosealicense.com/licenses/mit/), 🪏 buried [here](https://github.com/pia-foss/manual-connections/blob/master/LICENSE).
 
