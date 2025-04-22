@@ -117,4 +117,6 @@ The PIA manual connection scripts used in this repository be licensed under the 
   Adventure Awaits, Treasure Beckons!
 ```
 
-Ye scurvy dogs be welcome to join the crew and improve Privateerr. Feel free to submit pull requests or share yer thoughts. The sea calls, the code answers. Fair winds and full containers, matey! 🌊🏴‍☠️
+Ye scurvy dogs be welcome to join the crew and improve Privateerr. Feel free to submit pull requests or share yer thoughts.
+
+_The sea calls, the code answers. Fair winds and full containers, matey! 🌊🏴‍☠️_
