@@ -42,5 +42,5 @@ jobs:
       - name: Build and push Docker image
         run: |
           make build
-          docker tag privateerr ghcr.io/${{ github.repository_owner }}/privateerr:latest
+          docker tag scottgigawatt/privateerr:latest ghcr.io/${{ github.repository_owner }}/privateerr:latest
           docker push ghcr.io/${{ github.repository_owner }}/privateerr:latest
