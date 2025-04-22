@@ -101,19 +101,19 @@ The PIA manual connection scripts used in this repository be licensed under the 
 ---
 
 ```
-      ______
-   .-'      `-.
-  /            \
- |              |
- |,  .-.  .-.  ,|
- | )(_o/  \o_)( |
- |/     /\     \|
- (_     ^^     _)
-  \__|IIIIII|__/
-   | \IIIIII/ |
-   \          /
-    `--------`
-     ☠️ Privateerr ☠️
+               ______
+            .-'      `-.
+           /            \
+          |              |
+          |,  .-.  .-.  ,|
+          | )(_o/  \o_)( |
+          |/     /\     \|
+          (_     ^^     _)
+           \__|IIIIII|__/
+            | \IIIIII/ |
+            \          /
+             `--------`
+          ☠️ Privateerr ☠️
   Adventure Awaits, Treasure Beckons!
 ```
 
