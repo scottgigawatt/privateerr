@@ -1,6 +1,20 @@
-_🦜 Parrot says: Smash that ⭐️ or walk the plank, ye landlubber!_
+<hr />
 
-![Dockerized Brig](https://img.shields.io/badge/Dockerized-Brig-blue?logo=docker) ![VPN Cloak](https://img.shields.io/badge/Cloaked-by%20PIA%20%26%20WireGuard-green?logo=protonvpn) ![Code o' Conduct](https://img.shields.io/github/license/scottgigawatt/privateerr?label=Code%20o'%20Conduct&color=blue) ![Last Raid](https://img.shields.io/github/last-commit/scottgigawatt/privateerr?label=Last%20Raid&logo=git) ![Hold Capacity](https://img.shields.io/github/repo-size/scottgigawatt/privateerr?label=Hold%20Capacity) ![Battle-Tested](https://img.shields.io/badge/Battle--Tested-Synology%20%26%20macOS-blue) ![Rum Rations](https://img.shields.io/badge/Rum%20Rations-Plentiful-orange)
+<p align="center">
+  <em>🦜 Parrot says: Smash that ⭐️ or walk the plank, ye landlubber!</em>
+</p>
+
+<p align="center">
+  <img src="https://img.shields.io/badge/Dockerized-Brig-blue?logo=docker" alt="Dockerized Brig" />
+  <img src="https://img.shields.io/badge/Cloaked-by%20PIA%20%7C%20WireGuard-green?logo=protonvpn" alt="VPN Cloak" />
+  <img src="https://img.shields.io/github/license/scottgigawatt/privateerr?label=Code%20o'%20Conduct&color=blue" alt="Code o' Conduct" />
+  <img src="https://img.shields.io/github/last-commit/scottgigawatt/privateerr?label=Last%20Raid&logo=git" alt="Last Raid" />
+  <img src="https://img.shields.io/github/repo-size/scottgigawatt/privateerr?label=Hold%20Capacity" alt="Hold Capacity" />
+  <img src="https://img.shields.io/badge/Battle--Tested-Synology%20%7C%20macOS-blue" alt="Battle-Tested" />
+  <img src="https://img.shields.io/badge/Rum%20Rations-Plentiful-orange" alt="Rum Rations" />
+</p>
+
+<hr />
 
 # ⚓️ Privateerr ☠️🏴‍☠️
 
@@ -86,4 +100,21 @@ The PIA manual connection scripts used in this repository be licensed under the 
 
 ---
 
-Ye scurvy dogs be welcome to join the crew and improve Privateerr. Feel free to submit pull requests or share yer thoughts. Fair winds and following seas, me mateys! 🌊🏴‍☠️
+```
+      ______
+   .-'      `-.
+  /            \
+ |              |
+ |,  .-.  .-.  ,|
+ | )(_o/  \o_)( |
+ |/     /\     \|
+ (_     ^^     _)
+  \__|IIIIII|__/
+   | \IIIIII/ |
+   \          /
+    `--------`
+     ☠️ Privateerr ☠️
+  Adventure Awaits, Treasure Beckons!
+```
+
+Ye scurvy dogs be welcome to join the crew and improve Privateerr. Feel free to submit pull requests or share yer thoughts. The sea calls, the code answers. Fair winds and full containers, matey! 🌊🏴‍☠️
