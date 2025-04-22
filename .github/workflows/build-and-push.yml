@@ -1,6 +1,6 @@
 
 
-name: "Shipshape: Build & Push ⚓"
+name: "Heave to the Registry ⚓"
 
 on:
   push:
