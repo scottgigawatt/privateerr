@@ -33,6 +33,9 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Install Docker Compose
+        uses: ndeloof/install-compose-action@v0.0.1
+
       - name: Prepare environment file
         run: cp example.env .env
 
