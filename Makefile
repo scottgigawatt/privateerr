@@ -88,9 +88,8 @@ $(DOWN): $(BUILD_DEPENDS)
 # $(BUILD): Builds the service stack.
 #
 # Dependencies: $(BUILD_DEPENDS) - Ensure build dependencies are installed.
-#               $(PIA_CREDS) - Ensure Private Internet Access credentials are set.
 #
-$(BUILD): $(BUILD_DEPENDS) $(PIA_CREDS)
+$(BUILD): $(BUILD_DEPENDS)
 	@echo "\nBuilding service $(COMPOSE_SERVICE_NAME)"
 	docker-compose build $(COMPOSE_BUILD_OPTIONS) $(COMPOSE_SERVICE_NAME)
 
