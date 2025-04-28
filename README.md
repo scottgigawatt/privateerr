@@ -97,7 +97,7 @@ Privateerr has been tested on Synology DS1522+ and DS916+ running DSM 7.2, with 
 
 This project be licensed under the Apache 2 License—see the [LICENSE](LICENSE) scroll for details.
 
-The PIA manual connection scripts used in this repository be licensed under the [MIT license](https://choosealicense.com/licenses/mit/), 🪏 buried [here](https://github.com/pia-foss/manual-connections/blob/master/LICENSE).
+The PIA manual connection scripts used in this repository be licensed under the [MIT license](https://choosealicense.com/licenses/mit/), 🪏❌ buried [here](https://github.com/pia-foss/manual-connections/blob/master/LICENSE).
 
 ---
 
