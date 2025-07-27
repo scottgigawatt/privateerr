@@ -7,7 +7,7 @@
 <p align="center">
   <img src="https://img.shields.io/badge/Dockerized-Brig-blue?logo=docker" alt="Dockerized Brig" />
   <img src="https://github.com/scottgigawatt/privateerr/actions/workflows/build-and-push.yml/badge.svg" alt="🏴‍☠️ Build: Shipshape" />
-  <img src="https://img.shields.io/badge/WireGuard-green?logo=protonvpn" alt="VPN Cloak" />
+  <img src="https://img.shields.io/badge/Cloaked-by%20PIA%20%26%20WireGuard-green?logo=protonvpn" alt="Cloaked" />
   <img src="https://img.shields.io/github/license/scottgigawatt/privateerr?label=Code%20o'%20Conduct&color=blue" alt="Code o' Conduct" />
   <img src="https://img.shields.io/github/last-commit/scottgigawatt/privateerr?label=Last%20Raid&logo=git" alt="Last Raid" />
   <img src="https://img.shields.io/github/repo-size/scottgigawatt/privateerr?label=Hold%20Capacity" alt="Hold Capacity" />
@@ -23,16 +23,21 @@ Ahoy there! Welcome to Privateerr, where we sail the digital seas with Private I
 
 ## 🦜 Captain's Log ⚓️
 
-Privateerr be a Docker Compose setup designed to build PIA manual connection scripts into a Docker image with the necessary WireGuard tools, generating a configuration file for native WireGuard connections. This setup ensures ye have a secure VPN connection as ye navigate the digital seas.
+Privateerr be a tool fer generatin' a native WireGuard config file fer Private Internet Access (PIA). She takes the official PIA manual connection scripts, bundles 'em into a Docker image, and adds all the tools needed to craft a proper WireGuard chart to guide yer VPN voyage.
 
 > [!NOTE]
-> 🏴‍☠️ This here be fer seasoned pirates wantin' to automate PIA and WireGuard with Docker! New deckhands might want to learn the ropes first.
+> ☠️ Privateerr don't set sail on the VPN seas herself—she just scribbles the map. The config file she leaves behind can be handed off to a proper first mate like [Gluetun](https://github.com/qdm12/gluetun) to hoist the sails and make the actual connection.
 
-The main configuration lives in the [docker-compose.yml](./docker-compose.yml) file. This file handles building the image based on Ubuntu Focal, using the [Dockerfile](./docker/Dockerfile) found in the `docker` directory. The Docker Compose setup can be customized by copyin' the [example.env](./example.env) file to `.env` and adjustin' it to suit yer needs.
+The main configuration lives in the [docker-compose.yml](./docker-compose.yml) manifest. This handles buildin' the image from an Ubuntu Focal base, usin' the [Dockerfile](./docker/Dockerfile) found in the `docker` directory. Customize yer voyage by copyin' [example.env](./example.env) to `.env` and adjustin' the knobs to yer likin'.
 
-Included in this repo is the [PIA manual-connections](https://github.com/pia-foss/manual-connections) repository as a submodule at `docker/pia`, so it's part of the image build. Once the build is complete, ye can use the generated WireGuard configuration file at [`config/wg0.conf`](config/wg0.conf) to set up a VPN client like Gluetun.
+A copy of the [Manual PIA VPN Connections](https://github.com/pia-foss/manual-connections) repo be included as a submodule in `docker/pia`, so it's baked into the build. When she's done, ye'll find yer precious WireGuard config at [`config/wg0.conf`](config/wg0.conf), ready to be hoisted aboard a client like [Gluetun](https://github.com/qdm12/gluetun).
 
-Set sail with Privateerr, and enjoy secure connections across the seven seas! 🌊🏴‍☠️
+> [!TIP]
+> ⚓ If ye be wonderin' how to use Privateerr alongside a proper VPN client like Gluetun, take a gander at the [Plundarr README](https://github.com/scottgigawatt/plundarr#readme) and the [docker-compose file](https://github.com/scottgigawatt/plundarr/blob/main/docker-compose.yml#L91-L179). There ye'll find a battle-tested setup where Privateerr scrawls the WireGuard map, and Gluetun sets sail with it.
+>
+> 🧭 This setup be mighty handy, as PIA server latency can shift like the tides. With this rig, ye can simply restart the stack and let Privateerr chart a new course to the lowest-latency port before Gluetun embarks. Smooth sailin' guaranteed!
+
+Chart yer course with Privateerr and roam the open seas with stealth and style! 🏴‍☠️
 
 ## 🗺️ Chartin' Yer Course 🔧
 
@@ -50,6 +55,9 @@ cp example.env .env
 
 # Weigh anchor and start the container
 make
+
+# 🏴‍☠️ Spy yer WireGuard treasure map at config/wg0.conf
+vim config/wg0.conf
 ```
 
 > [!TIP]
@@ -60,7 +68,7 @@ The treasure map to yer WireGuard configuration file will be buried in the [`con
 > [!IMPORTANT]
 > ⚓️ Yer precious `wg0.conf` be the map to yer VPN treasure—keep it safe or risk scurvy.
 
-When ye run Privateerr, this file will be updated with the PIA WireGuard configuration. Ye can then use this configuration file to configure a VPN client like Gluetun for secure connections.
+When ye run Privateerr, this file will be updated with the PIA WireGuard configuration. Ye can then use this configuration file to configure a VPN client like [Gluetun](https://github.com/qdm12/gluetun) for secure connections.
 
 ## ☠️ Navigatin' Troubled Waters 🌊
 
@@ -76,7 +84,6 @@ Usage: make [TARGET]
 Targets:
   all             - Builds and starts the service stack.
   build-depends   - Ensures build dependencies are installed.
-  pia-creds       - Ensures Private Internet Access credentials are set.
   down            - Stops and removes containers, networks, volumes, and images.
   clean           - Alias for down.
   build           - Builds the service stack.
@@ -91,7 +98,7 @@ Targets:
 > [!CAUTION]
 > 🏴‍☠️⚠️ While tested on Synology an' macOS, other waters may be stormier than expected.
 
-Privateerr has been tested on Synology DS1522+ and DS916+ running DSM 7.2, with Docker Compose version v2.9 as well as macOS Sequoia 15.3. But fear not, me hearties! It should work on other lands as well.
+Privateerr has been tested on Synology DS1522+ and DS916+ running DSM 7.2 as well as macOS Sequoia. But fear not, me hearties! It should work on other lands as well.
 
 ## ⚖️ Keep to the Code 📜
 
