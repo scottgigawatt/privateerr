@@ -43,6 +43,9 @@ Chart yer course with Privateerr and roam the open seas with stealth and style! 
 
 To set sail and embark on yer VPN journey, follow these steps:
 
+> [!IMPORTANT]
+> 🦜 Adjust yer `.env` like a savvy navigator before hoisting anchor.
+
 ```bash
 # Hoist the Jolly Roger and clone the repository with submodules
 git clone --recurse-submodules git@github.com:scottgigawatt/privateerr.git
@@ -56,24 +59,17 @@ cp example.env .env
 # Weigh anchor and start the container
 make
 
-# 🏴‍☠️ Spy yer WireGuard treasure map at config/wg0.conf
-vim config/wg0.conf
+# Spy yer WireGuard treasure map at config/wg0.conf
 ```
-
-> [!TIP]
-> 🦜 Pro tip: Adjust yer `.env` like a savvy navigator before hoisting anchor.
 
 The treasure map to yer WireGuard configuration file will be buried in the [`config`](./config/) directory. This directory contains a default configuration file, [`wg0.conf`](./config/wg0.conf).
 
-> [!IMPORTANT]
-> ⚓️ Yer precious `wg0.conf` be the map to yer VPN treasure—keep it safe or risk scurvy.
-
 When ye run Privateerr, this file will be updated with the PIA WireGuard configuration. Ye can then use this configuration file to configure a VPN client like [Gluetun](https://github.com/qdm12/gluetun) for secure connections.
 
-## ☠️ Navigatin' Troubled Waters 🌊
-
 > [!WARNING]
-> ☠️ One wrong command an' ye could sink the whole ship! Mind yer `make` targets, matey.
+> ⚓️ Yer precious `wg0.conf` be the map to yer VPN treasure—keep it safe or risk scurvy.
+
+## ☠️ Navigatin' Troubled Waters 🌊
 
 The included `Makefile` be yer trusty map to help ye navigate these treacherous waters. Use these commands to steer yer ship with ease and gain a clearer view of the environment and configuration details. Set sail with confidence, ye scurvy dogs! 🏴‍☠️
 
