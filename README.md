@@ -33,7 +33,7 @@ The main configuration lives in the [docker-compose.yml](./docker-compose.yml) m
 A copy of the [Manual PIA VPN Connections](https://github.com/pia-foss/manual-connections) repo be included as a submodule in `docker/pia`, so it's baked into the build. When she's done, ye'll find yer precious WireGuard config at [`config/wg0.conf`](config/wg0.conf), ready to be hoisted aboard a client like [Gluetun](https://github.com/qdm12/gluetun).
 
 > [!TIP]
-> ⚓ If ye be wonderin' how to use Privateerr alongside a proper VPN client like Gluetun, take a gander at the [Plundarr README](https://github.com/scottgigawatt/plundarr#readme) and the [docker-compose file](https://github.com/scottgigawatt/plundarr/blob/main/docker-compose.yml#L91-L179). There ye'll find a battle-tested setup where Privateerr scrawls the WireGuard map, and Gluetun sets sail with it.
+> ⚓ If ye be wonderin' how to use Privateerr alongside a proper VPN client like Gluetun, take a gander at the [Plundarr README](https://github.com/scottgigawatt/plundarr#readme) and the [docker-compose file](https://github.com/scottgigawatt/plundarr/blob/main/docker-compose.yml#L82-L171). There ye'll find a battle-tested setup where Privateerr scrawls the WireGuard map, and Gluetun sets sail with it.
 >
 > 🧭 This setup be mighty handy, as PIA server latency can shift like the tides. With this rig, ye can simply restart the stack and let Privateerr chart a new course to the lowest-latency port before Gluetun embarks. Smooth sailin' guaranteed!
 
