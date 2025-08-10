@@ -15,6 +15,19 @@
   <img src="https://img.shields.io/badge/Rum%20Rations-Plentiful-orange" alt="Rum Rations" />
 </p>
 
+<p align="center">─── ⛧ ───</p>
+
+<p align="center">
+  <em>💀 Need help with this project? Or just want to trade cursed tech tips over a lake of lava?
+  Step forward, mortal… and <strong>Enter 🔥HADES🔥</strong>.</em>
+</p>
+
+<p align="center">
+  <a href="https://discord.gg/BpEGzWwGYf">
+    <img src="https://img.shields.io/discord/1403601106315116626?label=%F0%9F%94%A5HADES%F0%9F%94%A5&logo=discord&logoColor=white&color=5865F2" alt="🔥HADES🔥 Discord" />
+  </a>
+</p>
+
 <hr />
 
 # ⚓️ Privateerr ☠️🏴‍☠️
