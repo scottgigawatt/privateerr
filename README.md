@@ -18,8 +18,7 @@
 <p align="center">─── ⛧ ───</p>
 
 <p align="center">
-  <em>💀 Need help with this project? Or just want to trade cursed tech tips over a lake of lava?
-  Step forward, mortal… and <strong>Enter 🔥HADES🔥</strong>.</em>
+    <em>💀 Need help or wanna trade cursed tech tips over lava? Step forward… <strong>Enter 🔥HADES🔥</strong>.</em>
 </p>
 
 <p align="center">
