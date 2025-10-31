@@ -28,9 +28,18 @@ COMPOSE_UP_OPTIONS    ?= --build --force-recreate --pull always
 COMPOSE_LOGS_OPTIONS  ?= --follow
 
 #
+# Docker Compose command compatible with 'docker compose' (v2) and 'docker-compose' (v1).
+#
+DOCKER_COMPOSE := $(shell if docker compose version >/dev/null 2>&1; then echo "docker compose"; elif command -v docker-compose >/dev/null 2>&1; then echo "docker-compose"; else echo ""; fi)
+
+ifeq ($(DOCKER_COMPOSE),)
+  $(error "Neither 'docker compose' nor 'docker-compose' is available. Please install Docker Compose.")
+endif
+
+#
 # Build dependencies
 #
-DEPENDENCIES=docker docker-compose
+DEPENDENCIES=docker
 
 #
 # Path to Dockerfile
@@ -59,13 +68,15 @@ $(ALL): $(UP)
 $(BUILD_DEPENDS):
 	$(foreach exe,$(DEPENDENCIES), \
 		$(if $(shell which $(exe) 2> /dev/null),,$(error "No $(exe) in PATH")))
+	@# Verify Docker Compose availability (supports both 'docker compose' and 'docker-compose')
+	@$(DOCKER_COMPOSE) version >/dev/null 2>&1 || (echo "Docker Compose not found. Install 'docker compose' or 'docker-compose'." && exit 1)
 
 #
 # $(DOWN): Stops containers and removes containers, networks, volumes, and images created by up.
 #
 $(DOWN): $(BUILD_DEPENDS)
 	@echo "\nStopping service $(COMPOSE_SERVICE_NAME)"
-	docker-compose down $(COMPOSE_DOWN_OPTIONS)
+	$(DOCKER_COMPOSE) down $(COMPOSE_DOWN_OPTIONS)
 
 	@echo "\nRemoving images based on $(FROM_IMAGE)"
 	@docker images -q "$(FROM_IMAGE)" | xargs -r docker rmi -f || true
@@ -77,7 +88,7 @@ $(DOWN): $(BUILD_DEPENDS)
 #
 $(BUILD): $(BUILD_DEPENDS)
 	@echo "\nBuilding service $(COMPOSE_SERVICE_NAME)"
-	docker-compose build $(COMPOSE_BUILD_OPTIONS) $(COMPOSE_SERVICE_NAME)
+	$(DOCKER_COMPOSE) build $(COMPOSE_BUILD_OPTIONS) $(COMPOSE_SERVICE_NAME)
 
 #
 # $(UP): Builds, (re)creates, and starts containers for services.
@@ -86,14 +97,14 @@ $(BUILD): $(BUILD_DEPENDS)
 #
 $(UP): $(BUILD_DEPENDS)
 	@echo "\nStarting service $(COMPOSE_SERVICE_NAME)"
-	docker-compose up $(COMPOSE_UP_OPTIONS)
+	$(DOCKER_COMPOSE) up $(COMPOSE_UP_OPTIONS)
 
 #
 # $(LOGS): View output from containers.
 #
 $(LOGS):
 	@echo "\nGetting logs for service $(COMPOSE_SERVICE_NAME)"
-	docker-compose logs $(COMPOSE_LOGS_OPTIONS)
+	$(DOCKER_COMPOSE) logs $(COMPOSE_LOGS_OPTIONS)
 
 #
 # $(HELP): Print help information.
