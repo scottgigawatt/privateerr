@@ -5,9 +5,16 @@
 </p>
 
 <p align="center">
+  <img src="https://img.shields.io/github/stars/scottgigawatt/privateerr?label=Treasure%20Hunters&logo=github" alt="Treasure Hunters" />
+  <img src="https://img.shields.io/github/forks/scottgigawatt/privateerr?label=Mutinous%20Forks&logo=github" alt="Mutinous Forks" />
+  <img src="https://img.shields.io/github/watchers/scottgigawatt/privateerr?label=Crow's%20Nest%20Lookouts&logo=github" alt="Crow's Nest Lookouts" />
   <img src="https://img.shields.io/badge/Dockerized-Brig-blue?logo=docker" alt="Dockerized Brig" />
   <img src="https://github.com/scottgigawatt/privateerr/actions/workflows/build-and-push.yml/badge.svg" alt="🏴‍☠️ Build: Shipshape" />
+  <img src="https://img.shields.io/badge/GHCR-Privateerr%20Captain-blue?logo=github" alt="GHCR Privateerr Captain" />
+  <img src="https://img.shields.io/badge/GHCR-Buccaneerr%20Scout-purple?logo=github" alt="GHCR Buccaneerr Scout" />
   <img src="https://img.shields.io/badge/Cloaked-by%20PIA%20%26%20WireGuard-green?logo=protonvpn" alt="Cloaked" />
+  <img src="https://img.shields.io/badge/Base-Alpine%20Latest-0D597F?logo=alpinelinux" alt="Alpine Latest" />
+  <img src="https://img.shields.io/badge/Scanned-Trivy%20Bilge%20Check-teal?logo=aqua" alt="Trivy Bilge Check" />
   <img src="https://img.shields.io/github/license/scottgigawatt/privateerr?label=Code%20o'%20Conduct&color=blue" alt="Code o' Conduct" />
   <img src="https://img.shields.io/github/last-commit/scottgigawatt/privateerr?label=Last%20Raid&logo=git" alt="Last Raid" />
   <img src="https://img.shields.io/github/repo-size/scottgigawatt/privateerr?label=Hold%20Capacity" alt="Hold Capacity" />
@@ -167,7 +174,7 @@ Privateerr has been tested on Synology DS1522+ and DS916+ running DSM 7.2 as wel
 
 This project be licensed under the Apache 2 License—see the [LICENSE](LICENSE) scroll for details.
 
-The PIA manual connection scripts used in this repository be licensed under the [MIT license](https://choosealicense.com/licenses/mit/), 🪏❌ buried [in the PIA manual-connections repository](https://github.com/pia-foss/manual-connections/blob/master/LICENSE). Privateerr's own code be Apache-2.0; the upstream PIA code keeps its own MIT scroll aboard.
+The PIA manual connection scripts used in this repository be licensed under the [MIT license](https://choosealicense.com/licenses/mit/), 🪏❌ buried [in the PIA manual-connections repository](https://github.com/pia-foss/manual-connections/blob/master/LICENSE).
 
 ---
 

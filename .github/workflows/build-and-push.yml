@@ -61,10 +61,9 @@ jobs:
                   make build-buccaneerr
 
             - name: "Send the Test Ship to Sea 🌊"
-              env:
-                  PIA_USER: ${{ secrets.PIA_USER }}
-                  PIA_PASS: ${{ secrets.PIA_PASS }}
               run: |
+                  PIA_USER="${{ secrets.PIA_USER }}"
+                  PIA_PASS="${{ secrets.PIA_PASS }}"
                   if [ -z "${PIA_USER}" ] || [ -z "${PIA_PASS}" ]; then
                     echo "PIA secrets missing; skipping live e2e voyage."
                     exit 0
