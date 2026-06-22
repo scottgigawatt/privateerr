@@ -14,7 +14,7 @@ config/gluetun/wireguard/wg0.conf
 config/gluetun/wireguard/privateerr.env
 ```
 
-Privateerr overwrites both files when it runs. The checked-in versions are dummy maps only, safe for the ship's log. If ye run a live test, `make test-down` or `make reset-config` restores the dummy copies from `test/examples/example-wg0.conf` and `test/examples/example-privateerr.env`.
+Privateerr overwrites both files when it runs. The checked-in versions are example maps only, safe for the ship's log. If ye run a live test, `make test-down` or `make reset-config` restores the example copies from `test/examples/example-wg0.conf` and `test/examples/example-privateerr.env`.
 
 `privateerr.env` carries the Gluetun metadata scroll. The shiniest coin in that scroll be `PIA_WG_SERVER_NAME`; the Gluetun wrapper reads it, exports `SERVER_NAMES`, and then starts Gluetun proper.
 
@@ -30,6 +30,6 @@ To use this directory:
 3. Run `make reset-config` before committing, lest live secrets sneak aboard.
 
 > [!IMPORTANT]
-> ⚓️ The dummy files are boring on purpose. Real VPN treasure belongs in yer runtime hold, not in git.
+> ⚓️ The example files are boring on purpose. Real VPN treasure belongs in yer runtime hold, not in git.
 
 Fair winds and following seas, me mateys! 🌊🏴‍☠️

@@ -1,0 +1,49 @@
+version: 2
+updates:
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "07:00"
+      timezone: "America/New_York"
+    reviewers:
+      - "scottgigawatt"
+    labels:
+      - "dependencies"
+
+  - package-ecosystem: "docker"
+    directory: "/docker"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "07:15"
+      timezone: "America/New_York"
+    reviewers:
+      - "scottgigawatt"
+    labels:
+      - "dependencies"
+
+  - package-ecosystem: "docker"
+    directory: "/test"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "07:30"
+      timezone: "America/New_York"
+    reviewers:
+      - "scottgigawatt"
+    labels:
+      - "dependencies"
+
+  - package-ecosystem: "gitsubmodule"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "07:45"
+      timezone: "America/New_York"
+    reviewers:
+      - "scottgigawatt"
+    labels:
+      - "dependencies"

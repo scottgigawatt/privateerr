@@ -1,0 +1,78 @@
+# Contributing to Privateerr 🏴‍☠️
+
+Ahoy, improbable contributor. Since this project will likely be maintained by one caffeine-powered captain yelling at Docker Compose in the moonlight, contributions be welcome but should arrive shipshape.
+
+## Before Ye Start ⚓
+
+- Read the [README](../README.md).
+- Read the [security policy](SECURITY.md) before sharing logs or generated config.
+- Keep to the [Code](CODE_OF_CONDUCT.md).
+- Check existing issues before opening a duplicate treasure map.
+
+## What Belongs Here 🧭
+
+Good contributions include:
+
+- Clear bug fixes.
+- Dockerfile or Compose improvements that keep Synology and macOS in mind.
+- Documentation that helps real humans avoid cursed setup mistakes.
+- Test improvements for Privateerr, Gluetun, or Buccaneerr.
+- Security hardening that stays free, open, and maintainable.
+
+Questionable cargo includes:
+
+- Huge rewrites without an issue first.
+- Paid-only services, subscription gates, or magic hosted scanners.
+- Changes to upstream PIA scripts inside `docker/pia-manual-connections`.
+- Anything that requires committing secrets, live `wg0.conf`, or real `privateerr.env` data.
+
+## Local Setup 🛠️
+
+```bash
+git clone --recurse-submodules git@github.com:scottgigawatt/privateerr.git
+cd privateerr
+cp example.env .env
+```
+
+Edit `.env` with yer own values. Keep that file private.
+
+Useful commands:
+
+```bash
+make build
+make build-buccaneerr
+make test-e2e
+make test-down
+pre-commit run --all-files
+```
+
+> [!IMPORTANT]
+> 🧪 `make test-e2e` uses real PIA credentials from `.env`. That voyage should happen locally, not with secrets flung into random public waters.
+
+## Style Rules 📜
+
+- Public Markdown and user-facing command output may speak fluent pirate.
+- Code comments should use plain English.
+- Shell scripts written for host use should use `#!/bin/sh` where possible.
+- Shell scripts should use four spaces for indentation.
+- Docker Compose values should come from `.env` defaults instead of inline fallback soup.
+- Keep service config directories aligned with service names.
+- Leave upstream PIA scripts untouched so users can verify the treasure scrolls were not tampered with.
+
+## Pull Requests 🪝
+
+Before opening a pull request:
+
+- Run relevant `make` targets.
+- Run `pre-commit run --all-files`.
+- Restore example config with `make test-down` or `make nuke`.
+- Confirm no secrets, live VPN configs, or logs slipped into the hold.
+- Explain what changed and why.
+
+Tiny pull requests be easier to review than a kraken-sized rewrite with six unrelated tentacles.
+
+## Security Reports 🛡️
+
+Do not report security problems in public issues or pull requests. Use the [security policy](SECURITY.md), or hail the captain in [🔥HADES🔥 Discord](https://discord.gg/BpEGzWwGYf) for a safer channel.
+
+Fair winds, clean diffs, and may yer YAML indent on the first try. ☠️

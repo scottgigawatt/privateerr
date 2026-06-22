@@ -22,23 +22,23 @@
 set -eu
 
 #
-# Name of this wrapper script for logging purposes.
-#
-wrapper_script_name="gluetun-entrypoint-wrapper.sh"
-elapsed_seconds=0
-
-#
-# Default wrapper settings.
+# Default script settings.
 #
 : "${PRIVATEERR_METADATA_PATH:=/gluetun/wireguard/privateerr.env}"
 : "${GLUETUN_DEFAULT_ENTRYPOINT:=/gluetun-entrypoint}"
 : "${PRIVATEERR_GLUETUN_METADATA_WAIT_SECONDS:=120}"
 
 #
+# Script state used for consistent log output and wait tracking.
+#
+gluetun_script_name="gluetun-entrypoint-wrapper.sh"
+elapsed_seconds=0
+
+#
 # Prefix wrapper log lines so they are distinct from Gluetun output.
 #
 log() {
-    printf '[%s] %s\n' "${wrapper_script_name}" "$*"
+    printf '[%s] %s\n' "${gluetun_script_name}" "$*"
 }
 
 #
@@ -59,7 +59,7 @@ done
 #
 # shellcheck disable=SC1090
 #
-. "${PRIVATEERR_METADATA_PATH}"
+. "${PRIVATEERR_METADATA_PATH}" # Load the metadata file to access PIA_WG_SERVER_NAME.
 
 #
 # Validate that the expected PIA_WG_SERVER_NAME variable is set in the metadata.

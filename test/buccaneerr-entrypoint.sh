@@ -21,18 +21,18 @@
 set -euo pipefail
 
 #
-# Script name for consistent log output.
-#
-buccaneerr_script_name="buccaneerr-entrypoint.sh"
-
-#
-# Default validation settings.
+# Default script settings.
 #
 : "${BUCCANEERR_CONFIG_PATH:=/config}"
 : "${BUCCANEERR_GLUETUN_PATH:=/gluetun}"
 : "${BUCCANEERR_HEALTH_URL:=http://127.0.0.1:9999}"
 : "${BUCCANEERR_REQUIRE_PORT_FORWARD:=true}"
 : "${BUCCANEERR_LOG_PATH:=/buccaneerr-config/logs/buccaneerr.log}"
+
+#
+# Script state used for consistent log output.
+#
+buccaneerr_script_name="buccaneerr-entrypoint.sh"
 
 #
 # Ensure the log directory exists before writing validation output.

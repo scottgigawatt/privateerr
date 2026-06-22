@@ -26,13 +26,6 @@
 set -euo pipefail
 
 #
-# Script name for consistent log output.
-#
-privateerr_script_name="privateerr-entrypoint.sh"
-run_log_path="/tmp/privateerr-run.log"
-keepalive_child_pid=""
-
-#
 # Default file locations.
 #
 : "${PIA_BIN_HOME:=/pia}"
@@ -42,6 +35,14 @@ keepalive_child_pid=""
 : "${PRIVATEERR_KEEPALIVE:=true}"
 : "${PRIVATEERR_LOG_PATH:=/privateerr-config/logs/privateerr.log}"
 : "${PRIVATEERR_SERVERLIST_URL:=https://serverlist.piaservers.net/vpninfo/servers/v6}"
+
+#
+# Script state used for consistent log output and graceful shutdown.
+#
+privateerr_script_name="privateerr-entrypoint.sh"
+privateerr_keepalive_sleep_seconds=86400
+privateerr_run_log_path="/tmp/privateerr-run.log"
+keepalive_child_pid=""
 
 #
 # Write a log line to both stdout and the configured log file.
@@ -65,7 +66,7 @@ log_pia() {
     pia_log_line="$2"
 
     printf '[%s] %s\n' "${pia_script_name}" "${pia_log_line}" \
-        | tee -a "${run_log_path}" "${PRIVATEERR_LOG_PATH}"
+        | tee -a "${privateerr_run_log_path}" "${PRIVATEERR_LOG_PATH}"
 }
 
 #
@@ -95,7 +96,10 @@ mkdir -p \
     "$(dirname "${PRIVATEERR_HEALTHCHECK_MARKER}")" \
     "$(dirname "${PRIVATEERR_LOG_PATH}")"
 
-: > "${run_log_path}"
+#
+# Clear any existing logs or config to ensure a clean run.
+#
+: > "${privateerr_run_log_path}"
 : > "${PRIVATEERR_LOG_PATH}"
 
 #
@@ -106,6 +110,7 @@ mkdir -p \
 cd "${PIA_BIN_HOME}"
 ./run_setup.sh 2>&1 | sed -E \
     -e 's/(PIA_TOKEN=)[^[:space:]\\]+/\1[redacted]/g' \
+    -e 's/(PIA_USER=)[^[:space:]\\]+/\1[redacted]/g' \
     -e 's/(Using existing token )[[:alnum:]]+/\1[redacted]/g' \
     | while IFS= read -r pia_log_line; do
         log_pia "run_setup.sh" "${pia_log_line}"
@@ -137,7 +142,7 @@ fi
 #
 endpoint_ip="${endpoint_line%:*}"
 endpoint_port="${endpoint_line##*:}"
-wg_server_name="$(grep -Eo 'WG_HOSTNAME=[^[:space:]]+' "${run_log_path}" | tail -n 1 | cut -d '=' -f 2- || true)"
+wg_server_name="$(grep -Eo 'WG_HOSTNAME=[^[:space:]]+' "${privateerr_run_log_path}" | tail -n 1 | cut -d '=' -f 2- || true)"
 
 #
 # Start with useful fallbacks from the run itself. The server-list lookup below
@@ -243,13 +248,13 @@ if [[ "${PRIVATEERR_KEEPALIVE}" == "true" ]]; then
     log_privateerr "Privateerr charted the course and will keep watch for Synology. 🏴‍☠️"
 
     #
-    # Keep the container alive with a long, repeatable sleep instead of a
-    # single infinite command. The background child process can be killed by
-    # the signal trap above, which lets Docker stop the container cleanly with
-    # exit code 0.
+    # Keep the container alive with a repeatable sleep instead of a single
+    # infinite command. The default sleep value is 86400 seconds, which is 24
+    # hours. The background child process can be killed by the signal trap
+    # above, which lets Docker stop the container cleanly with exit code 0.
     #
     while true; do
-        sleep 86400 &
+        sleep "${privateerr_keepalive_sleep_seconds}" &
         keepalive_child_pid="$!"
         wait "${keepalive_child_pid}" || true
     done

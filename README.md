@@ -1,3 +1,5 @@
+<!-- markdownlint-disable MD033 MD041 -->
+
 <hr />
 
 <p align="center">
@@ -8,17 +10,21 @@
   <img src="https://img.shields.io/github/stars/scottgigawatt/privateerr?label=Treasure%20Hunters&logo=github" alt="Treasure Hunters" />
   <img src="https://img.shields.io/github/forks/scottgigawatt/privateerr?label=Mutinous%20Forks&logo=github" alt="Mutinous Forks" />
   <img src="https://img.shields.io/github/watchers/scottgigawatt/privateerr?label=Crow's%20Nest%20Lookouts&logo=github" alt="Crow's Nest Lookouts" />
-  <img src="https://img.shields.io/badge/Dockerized-Brig-blue?logo=docker" alt="Dockerized Brig" />
+</p>
+
+<p align="center">
+  <img src="https://img.shields.io/github/v/release/scottgigawatt/privateerr?label=Latest%20Treasure%20Map&logo=github" alt="Latest Treasure Map" />
   <img src="https://github.com/scottgigawatt/privateerr/actions/workflows/build-and-push.yml/badge.svg" alt="🏴‍☠️ Build: Shipshape" />
+  <img src="https://img.shields.io/badge/Scanned-Trivy%20Bilge%20Check-teal?logo=aqua" alt="Trivy Bilge Check" />
+  <img src="https://img.shields.io/github/license/scottgigawatt/privateerr?label=Legal%20Scroll&color=blue" alt="Legal Scroll" />
   <img src="https://img.shields.io/badge/GHCR-Privateerr%20Captain-blue?logo=github" alt="GHCR Privateerr Captain" />
   <img src="https://img.shields.io/badge/GHCR-Buccaneerr%20Scout-purple?logo=github" alt="GHCR Buccaneerr Scout" />
+  <img src="https://img.shields.io/badge/Dockerized-Brig-blue?logo=docker" alt="Dockerized Brig" />
   <img src="https://img.shields.io/badge/Cloaked-by%20PIA%20%26%20WireGuard-green?logo=protonvpn" alt="Cloaked" />
   <img src="https://img.shields.io/badge/Base-Alpine%20Latest-0D597F?logo=alpinelinux" alt="Alpine Latest" />
-  <img src="https://img.shields.io/badge/Scanned-Trivy%20Bilge%20Check-teal?logo=aqua" alt="Trivy Bilge Check" />
-  <img src="https://img.shields.io/github/license/scottgigawatt/privateerr?label=Code%20o'%20Conduct&color=blue" alt="Code o' Conduct" />
+  <img src="https://img.shields.io/badge/Battle--Tested-Synology%20%7C%20macOS-blue" alt="Battle-Tested" />
   <img src="https://img.shields.io/github/last-commit/scottgigawatt/privateerr?label=Last%20Raid&logo=git" alt="Last Raid" />
   <img src="https://img.shields.io/github/repo-size/scottgigawatt/privateerr?label=Hold%20Capacity" alt="Hold Capacity" />
-  <img src="https://img.shields.io/badge/Battle--Tested-Synology%20%7C%20macOS-blue" alt="Battle-Tested" />
   <img src="https://img.shields.io/badge/Rum%20Rations-Plentiful-orange" alt="Rum Rations" />
 </p>
 
@@ -35,6 +41,8 @@
 </p>
 
 <hr />
+
+<!-- markdownlint-enable MD033 -->
 
 # ⚓️ Privateerr ☠️🏴‍☠️
 
@@ -55,6 +63,8 @@ A copy of the [Manual PIA VPN Connections](https://github.com/pia-foss/manual-co
 
 > [!NOTE]
 > 🧪 Alpine be a smaller test voyage, not a distro PIA lists as officially confirmed for these scripts. Privateerr builds from Alpine's `latest` tag by default so fresh security patches climb aboard each rebuild, and the e2e stack below inspects the plank before the image ships.
+
+<!-- -->
 
 > [!TIP]
 > ⚓ If ye be wonderin' how to use Privateerr alongside a proper VPN client like Gluetun, take a gander at the [Plundarr README](https://github.com/scottgigawatt/plundarr#readme) and the [docker-compose file](https://github.com/scottgigawatt/plundarr/blob/main/docker-compose.yml#L82-L171). There ye'll find a battle-tested setup where Privateerr scrawls the WireGuard map, and Gluetun sets sail with it.
@@ -87,7 +97,7 @@ make
 # Spy Gluetun metadata at config/gluetun/wireguard/privateerr.env
 ```
 
-The treasure map to yer WireGuard configuration file will be buried in the [`config/gluetun/wireguard`](./config/gluetun/wireguard/) directory. This directory contains a dummy configuration file, [`wg0.conf`](./config/gluetun/wireguard/wg0.conf), so the repo stays shipshape before live credentials overwrite it.
+The treasure map to yer WireGuard configuration file will be buried in the [`config/gluetun/wireguard`](./config/gluetun/wireguard/) directory. This directory contains an example configuration file, [`wg0.conf`](./config/gluetun/wireguard/wg0.conf), so the repo stays shipshape before live credentials overwrite it.
 
 When ye run Privateerr, this file will be updated with the PIA WireGuard configuration. Ye can then use this configuration file to configure a VPN client like [Gluetun](https://github.com/qdm12/gluetun) for secure connections.
 
@@ -126,7 +136,7 @@ If ye only want Privateerr to generate config and metadata:
 make run-privateerr
 ```
 
-If the test voyage gets rowdy and ye need to clear the deck, this also restores the dummy `wg0.conf` and `privateerr.env` files:
+If the test voyage gets rowdy and ye need to clear the deck, this also restores the example `wg0.conf` and `privateerr.env` files:
 
 ```bash
 make test-down
@@ -144,23 +154,23 @@ The included `Makefile` be yer trusty map to help ye navigate these treacherous 
 Usage: make [TARGET]
 
 Targets:
-  all               :  Builds and starts the full service stack.
-  build-depends     :  Ensures build dependencies are installed.
-  down              :  Stops and removes the full service stack.
-  clean             :  Stops the stack and restores dummy config files.
-  nuke              :  Removes containers, images, generated files, and restores dummy config.
-  build             :  Builds only the Privateerr image.
-  build-buccaneerr  :  Builds only the Buccaneerr image.
-  run-privateerr    :  Runs only Privateerr to generate config and metadata.
-  reset-config      :  Restores dummy wg0.conf and privateerr.env files.
-  test-e2e          :  Runs the full one-shot Privateerr + Gluetun validation voyage.
-  test-down         :  Stops the stack and restores dummy config files.
-  test-logs         :  Shows logs for the service stack.
-  up                :  Builds, (re)creates, and starts every service.
-  start             :  Alias for up.
-  stop              :  Alias for down.
-  logs              :  Shows logs for the service stack.
-  help              :  Displays this help message.
+  all                Builds and starts the full service stack.
+  build-depends      Ensures build dependencies are installed.
+  down               Stops and removes the full service stack.
+  clean              Stops the stack and restores example config files.
+  nuke               Removes containers, images, generated files, and restores example config.
+  build              Builds only the Privateerr image.
+  build-buccaneerr   Builds only the Buccaneerr image.
+  run-privateerr     Runs only Privateerr to generate config and metadata.
+  reset-config       Restores example wg0.conf and privateerr.env files.
+  test-e2e           Runs the full one-shot Privateerr + Gluetun validation voyage.
+  test-down          Stops the stack and restores example config files.
+  test-logs          Shows logs for the service stack.
+  up                 Builds, (re)creates, and starts every service.
+  start              Alias for up.
+  stop               Alias for down.
+  logs               Shows logs for the service stack.
+  help               Displays this help message.
 ```
 
 ## 🏝️ Know Yer Waters 🔍
@@ -175,6 +185,12 @@ Privateerr has been tested on Synology DS1522+ and DS916+ running DSM 7.2 as wel
 This project be licensed under the Apache 2 License—see the [LICENSE](LICENSE) scroll for details.
 
 The PIA manual connection scripts used in this repository be licensed under the [MIT license](https://choosealicense.com/licenses/mit/), 🪏❌ buried [in the PIA manual-connections repository](https://github.com/pia-foss/manual-connections/blob/master/LICENSE).
+
+Community scrolls fer brave souls who wander aboard:
+
+- [Contributing](docs/CONTRIBUTING.md) — how to offer treasure without sinkin' the dinghy.
+- [Keep to the Code](docs/CODE_OF_CONDUCT.md) — pirate manners, but make 'em useful.
+- [Security Policy](docs/SECURITY.md) — where to report leaky hulls without shoutin' secrets across the harbor.
 
 ---
 
@@ -197,4 +213,5 @@ The PIA manual connection scripts used in this repository be licensed under the 
 
 🏝️ Cast yer pull requests ashore, or send a message in a bottle.
 
+<!-- markdownlint-disable-next-line MD036 -->
 _The sea calls, the code answers. Fair winds and full containers, matey! 🌊🏴‍☠️_

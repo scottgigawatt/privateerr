@@ -154,10 +154,10 @@ $(RUN_PRIVATEERR): $(BUILD_DEPENDS)
 		$(PRIVATEERR_SERVICE)
 
 #
-# $(RESET_CONFIG): Restores checked-in dummy config files after live tests.
+# $(RESET_CONFIG): Restores checked-in example config files after live tests.
 #
 $(RESET_CONFIG):
-	@echo "\nRestorin' dummy maps for safe check-in. 🧭"
+	@echo "\nRestorin' example maps for safe check-in. 🧭"
 	cp $(PRIVATEERR_EXAMPLE_WG_CONFIG) $(PRIVATEERR_GENERATED_WG_CONFIG)
 	cp $(PRIVATEERR_EXAMPLE_METADATA) $(PRIVATEERR_GENERATED_METADATA)
 
@@ -171,14 +171,14 @@ $(TEST_E2E): $(BUILD_DEPENDS)
 	$(DOCKER_COMPOSE) up $(COMPOSE_TEST_OPTIONS)
 
 #
-# $(TEST_DOWN): Stops and removes containers, then restores dummy config files.
+# $(TEST_DOWN): Stops and removes containers, then restores example config files.
 #
 # Dependencies: $(DOWN) - Stop and remove the stack.
 #
 $(TEST_DOWN): $(DOWN) $(RESET_CONFIG)
 
 #
-# $(NUKE): Removes containers, local images, generated files, and resets dummy config.
+# $(NUKE): Removes containers, local images, generated files, and resets example config.
 #
 # Dependencies: $(BUILD_DEPENDS) - Ensure build dependencies are installed.
 #
@@ -234,23 +234,23 @@ $(HELP):
 	@echo "Usage: make [TARGET]"
 	@echo ""
 	@echo "Targets:"
-	@echo "  $(ALL)               :  Builds and starts the full service stack."
-	@echo "  $(BUILD_DEPENDS)     :  Ensures build dependencies are installed."
-	@echo "  $(DOWN)              :  Stops and removes the full service stack."
-	@echo "  $(CLEAN)             :  Stops the stack and restores dummy config files."
-	@echo "  $(NUKE)              :  Removes containers, images, generated files, and restores dummy config."
-	@echo "  $(BUILD)             :  Builds only the Privateerr image."
-	@echo "  $(BUILD_BUCCANEERR)  :  Builds only the Buccaneerr image."
-	@echo "  $(RUN_PRIVATEERR)    :  Runs only Privateerr to generate config and metadata."
-	@echo "  $(RESET_CONFIG)      :  Restores dummy wg0.conf and privateerr.env files."
-	@echo "  $(TEST_E2E)          :  Runs the full one-shot Privateerr + Gluetun validation voyage."
-	@echo "  $(TEST_DOWN)         :  Stops the stack and restores dummy config files."
-	@echo "  $(TEST_LOGS)         :  Shows logs for the service stack."
-	@echo "  $(UP)                :  Builds, (re)creates, and starts every service."
-	@echo "  $(START)             :  Alias for $(UP)."
-	@echo "  $(STOP)              :  Alias for $(DOWN)."
-	@echo "  $(LOGS)              :  Shows logs for the service stack."
-	@echo "  $(HELP)              :  Displays this help message."
+	@echo "  $(ALL)                Builds and starts the full service stack."
+	@echo "  $(BUILD_DEPENDS)      Ensures build dependencies are installed."
+	@echo "  $(DOWN)               Stops and removes the full service stack."
+	@echo "  $(CLEAN)              Stops the stack and restores example config files."
+	@echo "  $(NUKE)               Removes containers, images, generated files, and restores example config."
+	@echo "  $(BUILD)              Builds only the Privateerr image."
+	@echo "  $(BUILD_BUCCANEERR)   Builds only the Buccaneerr image."
+	@echo "  $(RUN_PRIVATEERR)     Runs only Privateerr to generate config and metadata."
+	@echo "  $(RESET_CONFIG)       Restores example wg0.conf and privateerr.env files."
+	@echo "  $(TEST_E2E)           Runs the full one-shot Privateerr + Gluetun validation voyage."
+	@echo "  $(TEST_DOWN)          Stops the stack and restores example config files."
+	@echo "  $(TEST_LOGS)          Shows logs for the service stack."
+	@echo "  $(UP)                 Builds, (re)creates, and starts every service."
+	@echo "  $(START)              Alias for $(UP)."
+	@echo "  $(STOP)               Alias for $(DOWN)."
+	@echo "  $(LOGS)               Shows logs for the service stack."
+	@echo "  $(HELP)               Displays this help message."
 
 #
 # Alias for test-down

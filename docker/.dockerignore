@@ -1,0 +1,4 @@
+.DS_Store
+*.log
+logs/
+pia-manual-connections/.git
