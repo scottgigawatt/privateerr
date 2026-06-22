@@ -1,0 +1,70 @@
+name: "Inspect the Boarding Pass 🧪🏴‍☠️"
+
+on:
+    pull_request:
+        branches:
+            - main
+        paths:
+            - "**"
+
+jobs:
+    validate-pr:
+        name: "Validate the Boarding Pass 🧪"
+        runs-on: ubuntu-latest
+        permissions:
+            contents: read
+
+        env:
+            IMAGE_NAME: ${{ github.event.repository.name }}
+            BUCCANEERR_IMAGE_NAME: buccaneerr
+
+        steps:
+            - name: "Grab the Treasure Map 🗺️"
+              uses: actions/checkout@v7
+              with:
+                  submodules: recursive
+                  persist-credentials: false
+
+            - name: "Sharpen the Build Axe 🪓"
+              uses: docker/setup-buildx-action@v4.1.0
+
+            - name: "Load the Example Cargo 📦"
+              run: |
+                  cp example.env .env
+                  {
+                    echo "PRIVATEERR_IMAGE=${IMAGE_NAME}"
+                    echo "BUCCANEERR_IMAGE=${BUCCANEERR_IMAGE_NAME}"
+                    echo "IMAGE_CREATED=$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+                    echo "IMAGE_REVISION=${GITHUB_SHA}"
+                  } >> .env
+
+            - name: "Read the Compose Charts 🔎"
+              run: docker compose config --quiet
+
+            - name: "Scrub the Deck with Pre-Commit 🧽"
+              uses: pre-commit/action@v3.0.1
+
+            - name: "Hammer the Docker Hulls ⚒️"
+              run: |
+                  make build
+                  make build-buccaneerr
+
+            - name: "Inspect Privateerr for Bilge Rot 🔍"
+              uses: aquasecurity/trivy-action@v0.36.0
+              with:
+                  image-ref: ${{ env.IMAGE_NAME }}:latest
+                  format: table
+                  vuln-type: os,library
+                  severity: CRITICAL,HIGH
+                  ignore-unfixed: true
+                  exit-code: 1
+
+            - name: "Inspect Buccaneerr for Bilge Rot 🔍"
+              uses: aquasecurity/trivy-action@v0.36.0
+              with:
+                  image-ref: ${{ env.BUCCANEERR_IMAGE_NAME }}:latest
+                  format: table
+                  vuln-type: os,library
+                  severity: CRITICAL,HIGH
+                  ignore-unfixed: true
+                  exit-code: 1
