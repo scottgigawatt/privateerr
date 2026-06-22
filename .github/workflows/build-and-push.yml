@@ -1,46 +1,107 @@
-name: "Heave to the Registry ⚓ "
+name: "Hoist the Registry Sails 🏴‍☠️"
 
 on:
-  push:
-    branches:
-      - main
-    paths:
-      - 'docker/**'
-      - 'Makefile'
-      - 'example.env'
-      - '.github/workflows/build-and-push.yml'
+    push:
+        branches:
+            - main
+        paths:
+            - "docker/**"
+            - "test/**"
+            - "config/**"
+            - "docker-compose.yml"
+            - "Makefile"
+            - "example.env"
+            - ".github/workflows/build-and-push.yml"
+    schedule:
+        - cron: "17 7 * * 1"
+    workflow_dispatch:
 
 jobs:
-  build-and-push:
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write
+    build-and-push:
+        name: "Pack the Cargo Hold 🧰"
+        runs-on: ubuntu-latest
+        permissions:
+            contents: read
+            packages: write
+        env:
+            REGISTRY: ghcr.io
+            IMAGE_NAME: ${{ github.event.repository.name }}
+            BUCCANEERR_IMAGE_NAME: buccaneerr
+            IMAGE_NAMESPACE: ${{ github.repository_owner }}
 
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          submodules: recursive
+        steps:
+            - name: "Grab the Treasure Map 🗺️"
+              uses: actions/checkout@v7
+              with:
+                  submodules: recursive
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+            - name: "Sharpen the Build Axe 🪓"
+              uses: docker/setup-buildx-action@v4.1.0
 
-      - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+            - name: "Board the GHCR Galleon 🔐"
+              uses: docker/login-action@v4.2.0
+              with:
+                  registry: ${{ env.REGISTRY }}
+                  username: ${{ github.actor }}
+                  password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Install Docker Compose
-        uses: ndeloof/install-compose-action@v0.0.1
+            - name: "Ink the Build Scroll 📜"
+              run: |
+                  cp example.env .env
+                  {
+                    echo "PRIVATEERR_IMAGE=${IMAGE_NAME}"
+                    echo "BUCCANEERR_IMAGE=${BUCCANEERR_IMAGE_NAME}"
+                    echo "IMAGE_CREATED=$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+                    echo "IMAGE_REVISION=${GITHUB_SHA}"
+                  } >> .env
 
-      - name: Prepare environment file
-        run: cp example.env .env
+            - name: "Hammer the Docker Hulls ⚒️"
+              run: |
+                  make build
+                  make build-buccaneerr
 
-      - name: Build and push Docker image
-        run: |
-          make build
-          docker tag scottgigawatt/privateerr:latest ghcr.io/${{ github.repository_owner }}/privateerr:latest
-          docker push ghcr.io/${{ github.repository_owner }}/privateerr:latest
+            - name: "Send the Test Ship to Sea 🌊"
+              env:
+                  PIA_USER: ${{ secrets.PIA_USER }}
+                  PIA_PASS: ${{ secrets.PIA_PASS }}
+              run: |
+                  if [ -z "${PIA_USER}" ] || [ -z "${PIA_PASS}" ]; then
+                    echo "PIA secrets missing; skipping live e2e voyage."
+                    exit 0
+                  fi
+                  {
+                    echo "PIA_USER=${PIA_USER}"
+                    echo "PIA_PASS=${PIA_PASS}"
+                  } >> .env
+                  make test-e2e
+
+            - name: "Swab the Test Deck 🧽"
+              if: always()
+              run: make test-down
+
+            - name: "Inspect Privateerr for Bilge Rot 🔍"
+              uses: aquasecurity/trivy-action@v0.36.0
+              with:
+                  image-ref: ${{ env.IMAGE_NAME }}:latest
+                  format: table
+                  vuln-type: os,library
+                  severity: CRITICAL,HIGH
+                  ignore-unfixed: true
+                  exit-code: 1
+
+            - name: "Inspect Buccaneerr for Bilge Rot 🔍"
+              uses: aquasecurity/trivy-action@v0.36.0
+              with:
+                  image-ref: ${{ env.BUCCANEERR_IMAGE_NAME }}:latest
+                  format: table
+                  vuln-type: os,library
+                  severity: CRITICAL,HIGH
+                  ignore-unfixed: true
+                  exit-code: 1
+
+            - name: "Bury the Images in GHCR 💰"
+              run: |
+                  docker tag ${IMAGE_NAME}:latest ${REGISTRY}/${IMAGE_NAMESPACE}/${IMAGE_NAME}:latest
+                  docker tag ${BUCCANEERR_IMAGE_NAME}:latest ${REGISTRY}/${IMAGE_NAMESPACE}/${BUCCANEERR_IMAGE_NAME}:latest
+                  docker push ${REGISTRY}/${IMAGE_NAMESPACE}/${IMAGE_NAME}:latest
+                  docker push ${REGISTRY}/${IMAGE_NAMESPACE}/${BUCCANEERR_IMAGE_NAME}:latest

@@ -1,20 +1,19 @@
 ---
-name: "Feature request for this fine vessel 🏴‍☠️"
-about: Share an idea to help Privateerr grow stronger ⚓
-title: "[FEATURE] New treasure request for Privateerr"
+name: "Feature request from the quarterdeck ✨"
+about: "Suggest new cargo for Privateerr to carry ⚓"
+title: "[FEATURE] "
 labels: enhancement
 assignees: scottgigawatt
-
 ---
 
-**🏴‍☠️ What problem be troubling you**
-Tell me what issue or limitation you are running into.
+**🏴‍☠️ Problem to solve**
+What limitation or rough water are ye running into?
 
-**💰 The treasure you seek**
-Describe the feature or change you want added to Privateerr.
+**💰 Treasure requested**
+Describe the feature or change ye want.
 
-**🗺️ Other routes you thought about**
-List any other ideas or approaches you considered.
+**🗺️ Routes already considered**
+List alternatives, workarounds, or related ideas.
 
-**🧭 Extra details**
-Add anything that helps explain the request. Screenshots or examples are welcome.
+**🧭 Extra context**
+Screenshots, links, examples, or notes welcome.

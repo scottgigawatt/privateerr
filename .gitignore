@@ -1,3 +1,9 @@
 .DS_Store
 .secrets
 .env
+config/gluetun/forwarded_port
+config/gluetun/ip
+config/gluetun/piaportforward.json
+config/gluetun/servers/
+config/privateerr/logs/
+config/buccaneerr/logs/

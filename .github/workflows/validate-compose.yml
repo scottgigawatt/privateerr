@@ -1,25 +1,25 @@
-name: Validate Docker Compose
+name: "Inspect the Compose Charts 🧭"
 
 on:
-  push:
-    branches:
-      - main
-    paths:
-      - 'docker-compose.yml'
-      - '.github/workflows/validate-compose.yml'
+    push:
+        branches:
+            - main
+        paths:
+            - "docker-compose.yml"
+            - "example.env"
+            - "config/**"
+            - ".github/workflows/validate-compose.yml"
 
 jobs:
-  validate-docker-compose:
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
+    validate-docker-compose:
+        name: "Check the Sea Charts 🗺️"
+        runs-on: ubuntu-latest
+        permissions:
+            contents: read
 
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+        steps:
+            - name: "Grab the Treasure Map 🗺️"
+              uses: actions/checkout@v7
 
-      - name: Install Docker Compose
-        uses: ndeloof/install-compose-action@v0.0.1
-
-      - name: Validate Docker Compose configuration
-        run: docker-compose config --no-interpolate
+            - name: "Read the Compose Charts 🔎"
+              run: docker compose config --no-interpolate
