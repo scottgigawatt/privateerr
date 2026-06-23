@@ -18,16 +18,22 @@ Tell me what broke. Keep it clear enough that I can chase the cursed thing down.
 What should have happened?
 
 **📜 Logs or output**
-Paste logs, errors, screenshots, or command output.
+Paste logs, errors, screenshots, or command output. `make logs` and `make test-logs` be useful spyglasses.
+
+> [!WARNING]
+> Redact PIA credentials, WireGuard private keys, live `wg0.conf`, live `privateerr.env`, and private logs before tossin' anything onto the public deck.
 
 **🧩 Setup**
 
 - Privateerr image tag:
+- Buccaneerr image tag:
+- Gluetun image tag:
 - OS / platform:
 - Docker version:
 - Docker Compose version:
 - PIA region or server:
-- Relevant environment variables:
+- Command ye ran:
+- Relevant environment variables, with secrets removed:
 
 **🧭 Extra clues**
 Anything else that helps find the leak below deck.

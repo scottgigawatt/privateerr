@@ -136,7 +136,7 @@ services:
       <<: *default-healthcheck-settings  # Pull in default healthcheck settings
       test:                              # Check Gluetun's internal health server
         - CMD-SHELL
-        - wget --no-verbose --tries=1 --spider "http://127.0.0.1:9999" || exit 1
+        - wget -q -O /dev/null "http://127.0.0.1:9999" || exit 1
 
     # Specify container service dependencies
     depends_on:
