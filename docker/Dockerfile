@@ -61,6 +61,7 @@ LABEL org.opencontainers.image.title="Privateerr" \
 #
 COPY pia-manual-connections ${PIA_BIN_HOME}
 COPY privateerr-entrypoint.sh ${PRIVATEERR_BIN_HOME}/privateerr-entrypoint.sh
+COPY privateerr-date.sh /usr/local/bin/date
 
 #
 # Install only the tools required to generate PIA manual WireGuard configs.
@@ -68,20 +69,22 @@ COPY privateerr-entrypoint.sh ${PRIVATEERR_BIN_HOME}/privateerr-entrypoint.sh
 # writing the WireGuard config and metadata that Gluetun will consume.
 # openresolv provides the resolvconf command that PIA's scripts check when
 # PIA_DNS=true, even though Privateerr only writes a config file.
+# A tiny date compatibility shim replaces the need for GNU coreutils.
 # jq is installed from the configured package repository until Alpine stable
 # includes a version that fixes known 1.8.1-r0 vulnerabilities.
 #
 RUN apk add --no-cache \
       bash \
       ca-certificates \
-      coreutils \
       curl \
       openresolv \
       wireguard-tools && \
     apk add --no-cache \
       --repository="${JQ_APK_REPOSITORY}" \
       "jq>=${JQ_APK_MIN_VERSION}" && \
-    chmod +x "${PRIVATEERR_BIN_HOME}/privateerr-entrypoint.sh"
+    chmod +x \
+      "${PRIVATEERR_BIN_HOME}/privateerr-entrypoint.sh" \
+      /usr/local/bin/date
 
 #
 # Set the working directory to the PIA scripts install location.
