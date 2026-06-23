@@ -165,14 +165,14 @@ jobs:
                   provenance: true
 
             - name: "Stamp Privateerr's Provenance Scroll 🧾"
-              uses: actions/attest-build-provenance@v3
+              uses: actions/attest-build-provenance@v4
               with:
                   subject-name: ${{ env.PRIVATEERR_IMAGE_REF }}
                   subject-digest: ${{ steps.publish-privateerr.outputs.digest }}
                   push-to-registry: true
 
             - name: "Stamp Buccaneerr's Provenance Scroll 🧾"
-              uses: actions/attest-build-provenance@v3
+              uses: actions/attest-build-provenance@v4
               with:
                   subject-name: ${{ env.BUCCANEERR_IMAGE_REF }}
                   subject-digest: ${{ steps.publish-buccaneerr.outputs.digest }}
