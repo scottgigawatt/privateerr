@@ -26,7 +26,7 @@ Report vulnerabilities using GitHub's private vulnerability reporting feature:
 2. Choose **Report a vulnerability**.
 3. Include clear steps to reproduce, affected files, logs, container tags, and any relevant Docker Compose settings.
 
-Ye can also send a message through the [🔥HADES🔥 Discord server](https://discord.gg/BpEGzWwGYf) if ye need to hail the captain quickly.
+Ye can also send a message through the [🔥HADES🔥](https://discord.gg/BpEGzWwGYf) Discord server if ye need to hail the captain quickly.
 
 If private vulnerability reporting is unavailable, open a GitHub issue with only a brief non-sensitive note asking for a secure reporting channel, or use Discord to ask where to send details. Keep the dangerous details off the public deck.
 

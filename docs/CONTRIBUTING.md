@@ -73,6 +73,6 @@ Tiny pull requests be easier to review than a kraken-sized rewrite with six unre
 
 ## Security Reports 🛡️
 
-Do not report security problems in public issues or pull requests. Use the [security policy](SECURITY.md), or hail the captain in [🔥HADES🔥 Discord](https://discord.gg/BpEGzWwGYf) for a safer channel.
+Do not report security problems in public issues or pull requests. Use the [security policy](SECURITY.md), or hail the captain in [🔥HADES🔥](https://discord.gg/BpEGzWwGYf) Discord for a safer channel.
 
 Fair winds, clean diffs, and may yer YAML indent on the first try. ☠️

@@ -168,6 +168,10 @@ Targets:
   test-down          Stops the stack and restores example config files.
   test-logs          Shows logs for the service stack.
   up                 Builds, (re)creates, and starts every service.
+  config             Renders the Docker Compose model.
+  env                Prints the evaluated docker compose default env configuration.
+  print-config       Prints the raw uncommented docker compose yaml configuration.
+  print-env          Prints the raw uncommented docker compose env configuration.
   start              Alias for up.
   stop               Alias for down.
   logs               Shows logs for the service stack.

@@ -16,7 +16,7 @@ What should the docs explain better?
 Drop a draft, link, or example if ye have one.
 
 **🧪 Did ye try a command?**
-If a command confused ye, name it here. Examples: `make help`, `make run-privateerr`, `make test-e2e`, `make nuke`.
+If a command confused ye, name it here. Examples: `make help`, `make config`, `make env`, `make print-config`, `make run-privateerr`, `make test-e2e`, `make nuke`.
 
 **🧭 Extra context**
 Anything else that helps polish the ship's log.

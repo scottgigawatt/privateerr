@@ -13,6 +13,7 @@
 - [ ] `make help`
 - [ ] `pre-commit run --all-files`
 - [ ] `docker compose config --quiet`
+- [ ] `make config`
 - [ ] `make build`
 - [ ] `make build-buccaneerr`
 - [ ] `make test-e2e` if VPN behavior changed

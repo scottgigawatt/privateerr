@@ -24,6 +24,10 @@ TEST_E2E=test-e2e
 TEST_DOWN=test-down
 TEST_LOGS=test-logs
 UP=up
+CONFIG=config
+ENV=env
+PRINT_CONFIG=print-config
+PRINT_ENV=print-env
 LOGS=logs
 HELP=help
 START=start
@@ -70,13 +74,15 @@ FROM_IMAGES ?= $(shell awk '\
 #
 # Docker cleanup commands and options used by the nuke target.
 #
-NUKE_COMPOSE_IMAGES_COMMAND   ?= $(DOCKER_COMPOSE) config --images 2>/dev/null | sort -u
+NUKE_COMPOSE_IMAGES_COMMAND   ?= $(DOCKER_COMPOSE) -f $(COMPOSE_FILE) config --images 2>/dev/null | sort -u
 NUKE_CONTAINER_FILTER_OPTIONS ?= --filter "name=^/privateerr-" --filter "name=^/gluetun-" --filter "name=^/buccaneerr-"
 
 #
 # Docker Compose options
 #
+COMPOSE_FILE                    ?= docker-compose.yml
 COMPOSE_DOWN_TIMEOUT            ?= 30
+COMPOSE_ENV_FILE                ?= $(ENV_FILE)
 COMPOSE_DOWN_OPTIONS            ?= --timeout $(COMPOSE_DOWN_TIMEOUT) --volumes --remove-orphans
 COMPOSE_BUILD_OPTIONS           ?= --pull --no-cache
 COMPOSE_UP_OPTIONS              ?= --build --force-recreate --pull always --remove-orphans
@@ -108,7 +114,7 @@ EXAMPLE_ENV_FILE=example.env
 # Targets that are not files (i.e. never up-to-date); these will run every
 # time the target is called or required.
 #
-.PHONY: $(ALL) $(DOWN) $(CLEAN) $(NUKE) $(BUILD_DEPENDS) $(CHECK_ENV) $(BUILD) $(BUILD_BUCCANEERR) $(RUN_PRIVATEERR) $(RESET_CONFIG) $(TEST_E2E) $(TEST_DOWN) $(TEST_LOGS) $(UP) $(LOGS) $(HELP) $(START) $(STOP)
+.PHONY: $(ALL) $(DOWN) $(CLEAN) $(NUKE) $(BUILD_DEPENDS) $(CHECK_ENV) $(BUILD) $(BUILD_BUCCANEERR) $(RUN_PRIVATEERR) $(RESET_CONFIG) $(TEST_E2E) $(TEST_DOWN) $(TEST_LOGS) $(UP) $(CONFIG) $(ENV) $(PRINT_CONFIG) $(PRINT_ENV) $(LOGS) $(HELP) $(START) $(STOP)
 
 #
 # $(ALL): Default makefile target. Builds and starts the service stack.
@@ -147,7 +153,7 @@ $(CHECK_ENV):
 #
 $(DOWN): $(BUILD_DEPENDS) $(CHECK_ENV)
 	@echo "\nDroppin' anchor for the whole fleet. ⚓"
-	$(DOCKER_COMPOSE) down $(COMPOSE_DOWN_OPTIONS)
+	$(DOCKER_COMPOSE) -f $(COMPOSE_FILE) down $(COMPOSE_DOWN_OPTIONS)
 
 #
 # $(BUILD): Builds only the Privateerr image.
@@ -158,7 +164,7 @@ $(DOWN): $(BUILD_DEPENDS) $(CHECK_ENV)
 #
 $(BUILD): $(BUILD_DEPENDS) $(CHECK_ENV)
 	@echo "\nHammerin' Privateerr into a seaworthy image. ⚒️"
-	$(DOCKER_COMPOSE) build $(COMPOSE_BUILD_OPTIONS) $(PRIVATEERR_SERVICE)
+	$(DOCKER_COMPOSE) -f $(COMPOSE_FILE) build $(COMPOSE_BUILD_OPTIONS) $(PRIVATEERR_SERVICE)
 
 #
 # $(BUILD_BUCCANEERR): Builds only the Buccaneerr image.
@@ -169,7 +175,7 @@ $(BUILD): $(BUILD_DEPENDS) $(CHECK_ENV)
 #
 $(BUILD_BUCCANEERR): $(BUILD_DEPENDS) $(CHECK_ENV)
 	@echo "\nForgin' the Buccaneerr spyglass. 🔎"
-	$(DOCKER_COMPOSE) build $(COMPOSE_BUILD_OPTIONS) $(BUCCANEERR_SERVICE)
+	$(DOCKER_COMPOSE) -f $(COMPOSE_FILE) build $(COMPOSE_BUILD_OPTIONS) $(BUCCANEERR_SERVICE)
 
 #
 # $(RUN_PRIVATEERR): Runs only Privateerr to generate WireGuard config and metadata.
@@ -180,7 +186,7 @@ $(BUILD_BUCCANEERR): $(BUILD_DEPENDS) $(CHECK_ENV)
 #
 $(RUN_PRIVATEERR): $(BUILD_DEPENDS) $(CHECK_ENV)
 	@echo "\nSummonin' WireGuard map and Gluetun scroll. 📜"
-	PRIVATEERR_KEEPALIVE=false $(DOCKER_COMPOSE) up \
+	PRIVATEERR_KEEPALIVE=false $(DOCKER_COMPOSE) -f $(COMPOSE_FILE) up \
 		$(COMPOSE_PRIVATEERR_ONLY_OPTIONS) \
 		$(PRIVATEERR_SERVICE)
 
@@ -201,7 +207,7 @@ $(RESET_CONFIG):
 #
 $(TEST_E2E): $(BUILD_DEPENDS) $(CHECK_ENV)
 	@echo "\nLaunching Privateerr, Gluetun, and Buccaneerr in one voyage. 🌊"
-	$(DOCKER_COMPOSE) up $(COMPOSE_TEST_OPTIONS)
+	$(DOCKER_COMPOSE) -f $(COMPOSE_FILE) up $(COMPOSE_TEST_OPTIONS)
 
 #
 # $(TEST_DOWN): Stops and removes containers, then restores example config files.
@@ -222,7 +228,7 @@ $(TEST_DOWN): $(DOWN) $(RESET_CONFIG)
 $(NUKE): $(BUILD_DEPENDS) $(CHECK_ENV)
 	@echo "\nFirin' the clean broadside. Repo-safe files stay aboard. 💣"
 	@compose_images="$$( $(NUKE_COMPOSE_IMAGES_COMMAND) || true )"; \
-	$(DOCKER_COMPOSE) down $(COMPOSE_DOWN_OPTIONS) --rmi all; \
+	$(DOCKER_COMPOSE) -f $(COMPOSE_FILE) down $(COMPOSE_DOWN_OPTIONS) --rmi all; \
 	containers="$$(docker ps -aq $(NUKE_CONTAINER_FILTER_OPTIONS))"; \
 	if [ -n "$${containers}" ]; then \
 		echo "Scuttlin' leftover containers. 🧨"; \
@@ -245,11 +251,9 @@ $(NUKE): $(BUILD_DEPENDS) $(CHECK_ENV)
 # $(TEST_LOGS): View output from stack containers.
 #
 # Dependencies:
-#   $(CHECK_ENV) - Ensure .env exists before running Compose commands.
+#   $(LOGS) - Show logs for the service stack.
 #
-$(TEST_LOGS): $(CHECK_ENV)
-	@echo "\nReadin' ship logs. 🔎"
-	$(DOCKER_COMPOSE) logs $(COMPOSE_LOGS_OPTIONS)
+$(TEST_LOGS): $(LOGS)
 
 #
 # $(UP): Builds, (re)creates, and starts every service in the stack.
@@ -260,7 +264,61 @@ $(TEST_LOGS): $(CHECK_ENV)
 #
 $(UP): $(BUILD_DEPENDS) $(CHECK_ENV)
 	@echo "\nRaisin' the whole Privateerr fleet. 🏴‍☠️"
-	$(DOCKER_COMPOSE) up $(COMPOSE_UP_OPTIONS)
+	$(DOCKER_COMPOSE) -f $(COMPOSE_FILE) up $(COMPOSE_UP_OPTIONS)
+
+#
+# $(CONFIG): Renders the Docker Compose model.
+#
+# Dependencies:
+#   $(BUILD_DEPENDS) - Ensure build dependencies are installed.
+#   $(CHECK_ENV) - Ensure .env exists before running Compose commands.
+#
+$(CONFIG): $(BUILD_DEPENDS) $(CHECK_ENV)
+	$(DOCKER_COMPOSE) --env-file $(COMPOSE_ENV_FILE) -f $(COMPOSE_FILE) config
+
+#
+# $(ENV): Prints the evaluated docker compose default env configuration.
+#
+# Dependencies:
+#   $(CHECK_ENV) - Ensure .env exists before running Compose commands.
+#
+$(ENV): $(CHECK_ENV)
+	@. ./$(COMPOSE_ENV_FILE) && \
+	awk -F '=' '/^[^#]/ { \
+		gsub(/^[[:space:]]+|[[:space:]]+$$/, ""); \
+		value = ENVIRON[$$1]; \
+		if (!value) { \
+			split($$2, parts, /:-/); \
+			if (length(parts) > 1) { \
+				gsub(/[{}"]/,"", parts[2]); \
+				value = parts[2]; \
+			} \
+		} \
+		printf "%s=%s\n", $$1, value \
+	}' $(COMPOSE_ENV_FILE)
+
+#
+# $(PRINT_CONFIG): Prints the raw uncommented docker compose yaml configuration.
+#
+$(PRINT_CONFIG):
+	@awk '{ \
+		sub(/#.*/, ""); \
+		sub(/[[:space:]]+$$/, ""); \
+		if (NF) print \
+	}' $(COMPOSE_FILE)
+
+#
+# $(PRINT_ENV): Prints the raw uncommented docker compose env configuration.
+#
+# Dependencies:
+#   $(CHECK_ENV) - Ensure .env exists before running Compose commands.
+#
+$(PRINT_ENV): $(CHECK_ENV)
+	@awk '{ \
+		sub(/#.*/, ""); \
+		sub(/[[:space:]]+$$/, ""); \
+		if (NF) print \
+	}' $(COMPOSE_ENV_FILE)
 
 #
 # $(LOGS): View output from containers.
@@ -270,7 +328,7 @@ $(UP): $(BUILD_DEPENDS) $(CHECK_ENV)
 #
 $(LOGS): $(CHECK_ENV)
 	@echo "\nReadin' logs for the fleet. 🔎"
-	$(DOCKER_COMPOSE) logs $(COMPOSE_LOGS_OPTIONS)
+	$(DOCKER_COMPOSE) -f $(COMPOSE_FILE) logs $(COMPOSE_LOGS_OPTIONS)
 
 #
 # $(HELP): Print help information.
@@ -293,6 +351,10 @@ $(HELP):
 	@echo "  $(TEST_DOWN)          Stops the stack and restores example config files."
 	@echo "  $(TEST_LOGS)          Shows logs for the service stack."
 	@echo "  $(UP)                 Builds, (re)creates, and starts every service."
+	@echo "  $(CONFIG)             Renders the Docker Compose model."
+	@echo "  $(ENV)                Prints the evaluated docker compose default env configuration."
+	@echo "  $(PRINT_CONFIG)       Prints the raw uncommented docker compose yaml configuration."
+	@echo "  $(PRINT_ENV)          Prints the raw uncommented docker compose env configuration."
 	@echo "  $(START)              Alias for $(UP)."
 	@echo "  $(STOP)               Alias for $(DOWN)."
 	@echo "  $(LOGS)               Shows logs for the service stack."

@@ -18,7 +18,7 @@ Tell me what broke. Keep it clear enough that I can chase the cursed thing down.
 What should have happened?
 
 **📜 Logs or output**
-Paste logs, errors, screenshots, or command output. `make logs` and `make test-logs` be useful spyglasses.
+Paste logs, errors, screenshots, or command output. `make logs`, `make test-logs`, and `make config` be useful spyglasses.
 
 > [!WARNING]
 > Redact PIA credentials, WireGuard private keys, live `wg0.conf`, live `privateerr.env`, and private logs before tossin' anything onto the public deck.
@@ -33,6 +33,7 @@ Paste logs, errors, screenshots, or command output. `make logs` and `make test-l
 - Docker Compose version:
 - PIA region or server:
 - Command ye ran:
+- Did `make config` pass?
 - Relevant environment variables, with secrets removed:
 
 **🧭 Extra clues**
