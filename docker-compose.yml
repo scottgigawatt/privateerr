@@ -9,10 +9,19 @@
 #
 
 #
-# Shared labels applied to local containers.
+# Shared label used to prevent automated Watchtower updates.
 #
-x-privateerr-labels: &privateerr-labels
-  - "com.centurylinklabs.watchtower.enable=false"  # Prevent Watchtower from updating this container
+x-exclude-from-watchtower: &exclude-from-watchtower  # YAML anchor for labels to exclude containers from Watchtower
+  - "com.centurylinklabs.watchtower.enable=false"    # Prevent Watchtower from updating this container
+
+#
+# Shared healthcheck timing settings.
+#
+x-default-healthcheck-settings: &default-healthcheck-settings  # YAML anchor for healthcheck settings
+  interval: ${DEFAULT_HEALTHCHECK_INTERVAL}                    # Run the check at this interval
+  timeout: ${DEFAULT_HEALTHCHECK_TIMEOUT}                      # Fail if it exceeds this duration
+  start_period: ${DEFAULT_HEALTHCHECK_START_PERIOD}            # Grace period before checks start
+  retries: ${DEFAULT_HEALTHCHECK_RETRIES}                      # Mark as unhealthy after failures
 
 #
 # Define the services used in this stack.
@@ -23,30 +32,30 @@ services:
   #
   privateerr:
     # Docker image build and container information
-    image: ${PRIVATEERR_IMAGE}:${PRIVATEERR_TAG}     # Set the image name and tag for the container
-    build:                                           # Define build context and arguments
-      context: docker                                # Directory containing the Dockerfile
-      dockerfile: Dockerfile                         # Dockerfile used for building the image
-      args:                                          # Arguments passed to the Dockerfile build stage
-        ALPINE_TAG: ${ALPINE_TAG}                    # Base Alpine image version
-        PIA_BIN_HOME: ${PIA_BIN_HOME}                # Directory where PIA scripts will reside
-        PRIVATEERR_BIN_HOME: ${PRIVATEERR_BIN_HOME}  # Directory where helper scripts will reside
-        IMAGE_CREATED: ${IMAGE_CREATED}              # OCI image creation timestamp
-        IMAGE_REVISION: ${IMAGE_REVISION}            # OCI image source revision
-        IMAGE_VERSION: ${PRIVATEERR_TAG}             # OCI image version
-    container_name: privateerr-${PRIVATEERR_TAG}     # Container name including the tag
-    restart: no                                      # Container will not restart automatically
-    network_mode: bridge                             # Use Docker's default bridge network
-    hostname: privateerr                             # Set hostname inside the container
-    privileged: true                                 # Required for upstream IPv6 sysctl behavior
+    image: ghcr.io/scottgigawatt/privateerr:${PRIVATEERR_TAG}  # Set the image tag for the container
+    build:                                                     # Define build context and arguments
+      context: docker                                          # Directory containing the Dockerfile
+      dockerfile: Dockerfile                                   # Dockerfile used for building the image
+      args:                                                    # Arguments passed to the Dockerfile build stage
+        ALPINE_TAG: ${ALPINE_TAG}                              # Base Alpine image version
+        PIA_BIN_HOME: ${PIA_BIN_HOME}                          # Directory where PIA scripts will reside
+        PRIVATEERR_BIN_HOME: ${PRIVATEERR_BIN_HOME}            # Directory where helper scripts will reside
+        IMAGE_CREATED: ${IMAGE_CREATED}                        # OCI image creation timestamp
+        IMAGE_REVISION: ${IMAGE_REVISION}                      # OCI image source revision
+        IMAGE_VERSION: ${PRIVATEERR_TAG}                       # OCI image version
+    container_name: privateerr-${PRIVATEERR_TAG}               # Container name including the tag
+    restart: no                                                # Container will not restart automatically
+    network_mode: bridge                                       # Use Docker's default bridge network
+    hostname: privateerr                                       # Set hostname inside the container
+    privileged: true                                           # Required for upstream IPv6 sysctl behavior
 
     # Apply Docker labels to the container
-    labels: *privateerr-labels
+    labels: *exclude-from-watchtower  # Exclude this container from Watchtower updates
 
     # Define the container environment
     environment:
       # PIA manual connection environment variables
-      VPN_PROTOCOL: ${PIA_VPN_PROTOCOL}          # VPN type: wireguard or openvpn
+      VPN_PROTOCOL: ${PIA_VPN_PROTOCOL}          # VPN type: wireguard NOT openvpn
       DISABLE_IPV6: ${PIA_DISABLE_IPV6}          # Disable IPv6: yes or no
       DIP_TOKEN: ${PIA_DIP_TOKEN}                # Optional PIA dedicated IP token
       AUTOCONNECT: ${PIA_AUTOCONNECT}            # Auto-select the server with lowest latency
@@ -66,11 +75,10 @@ services:
 
     # Report healthy after the wrapper finishes successfully
     healthcheck:
-      test: ["CMD-SHELL", "test -f \"$${PRIVATEERR_HEALTHCHECK_MARKER}\""]  # Healthy when healthcheck marker file exists
-      interval: ${PRIVATEERR_HEALTHCHECK_INTERVAL}                          # Run the check at this interval
-      timeout: ${PRIVATEERR_HEALTHCHECK_TIMEOUT}                            # Fail if it exceeds this duration
-      start_period: ${PRIVATEERR_HEALTHCHECK_START_PERIOD}                  # Grace period before checks start
-      retries: ${PRIVATEERR_HEALTHCHECK_RETRIES}                            # Mark as unhealthy after failures
+      <<: *default-healthcheck-settings  # Pull in default healthcheck settings
+      test:                              # Healthy when healthcheck marker file exists
+        - CMD-SHELL
+        - test -f "$${PRIVATEERR_HEALTHCHECK_MARKER}"
 
     # Mount host directories into the container
     volumes:
@@ -82,7 +90,7 @@ services:
   #
   gluetun:
     # Docker image and container information
-    image: ${GLUETUN_IMAGE}:${GLUETUN_TAG}  # Gluetun image used for live VPN validation
+    image: qmcgaw/gluetun:${GLUETUN_TAG}    # Gluetun image used for live VPN validation
     container_name: gluetun-${GLUETUN_TAG}  # Container name including the tag
     restart: no                             # Test stack should not restart forever
     hostname: gluetun                       # Set hostname inside the container
@@ -99,7 +107,7 @@ services:
       - /dev/net/tun:/dev/net/tun  # Allow container to handle encrypted VPN traffic directly
 
     # Apply Docker labels to the container
-    labels: *privateerr-labels
+    labels: *exclude-from-watchtower  # Exclude this container from Watchtower updates
 
     # Define the container environment
     environment:
@@ -109,6 +117,10 @@ services:
       VPN_PORT_FORWARDING_PROVIDER: ${GLUETUN_VPN_PORT_FORWARDING_PROVIDER}                  # PIA port-forwarding helper
       VPN_PORT_FORWARDING_USERNAME: ${PIA_USER}                                              # PIA username for Gluetun port forwarding
       VPN_PORT_FORWARDING_PASSWORD: ${PIA_PASS}                                              # PIA password for Gluetun port forwarding
+      HEALTH_TARGET_ADDRESSES: ${GLUETUN_HEALTH_TARGET_ADDRESSES}                            # TCP/TLS targets Gluetun checks for VPN health
+      HEALTH_ICMP_TARGET_IPS: ${GLUETUN_HEALTH_ICMP_TARGET_IPS}                              # ICMP targets Gluetun checks for VPN health
+      HEALTH_SERVER_ADDRESS: 127.0.0.1:9999                                                  # Internal Gluetun health server address
+      HEALTH_RESTART_VPN: ${GLUETUN_HEALTH_RESTART_VPN}                                      # Let Gluetun restart VPN when health checks fail
       PRIVATEERR_METADATA_PATH: ${PRIVATEERR_METADATA_PATH}                                  # Metadata file generated by Privateerr
       GLUETUN_DEFAULT_ENTRYPOINT: ${GLUETUN_DEFAULT_ENTRYPOINT}                              # Original Gluetun entrypoint
       PRIVATEERR_GLUETUN_METADATA_WAIT_SECONDS: ${PRIVATEERR_GLUETUN_METADATA_WAIT_SECONDS}  # Metadata wait timeout
@@ -118,6 +130,13 @@ services:
       - ${GLUETUN_CONFIG_PATH}:/gluetun:rw                               # Gluetun config directory
       - ${GLUETUN_CONFIG_PATH}:/tmp/gluetun:rw                           # Gluetun runtime state directory
       - ${GLUETUN_WRAPPER_SCRIPT_PATH}:${GLUETUN_ENTRYPOINT_WRAPPER}:ro  # Gluetun entrypoint wrapper script
+
+    # Define container healthcheck to verify VPN connectivity
+    healthcheck:
+      <<: *default-healthcheck-settings  # Pull in default healthcheck settings
+      test:                              # Check Gluetun's internal health server
+        - CMD-SHELL
+        - wget --no-verbose --tries=1 --spider "http://127.0.0.1:9999" || exit 1
 
     # Specify container service dependencies
     depends_on:
@@ -129,22 +148,22 @@ services:
   #
   buccaneerr:
     # Docker image build and container information
-    image: ${BUCCANEERR_IMAGE}:${BUCCANEERR_TAG}     # Buccaneerr image name and tag
-    build:                                           # Define build context and Dockerfile
-      context: test                                  # Directory containing Buccaneerr Dockerfile
-      dockerfile: Dockerfile                         # Dockerfile used for validation tools
-      args:                                          # Arguments passed to the Buccaneerr image
-        ALPINE_TAG: ${ALPINE_TAG}                    # Base Alpine image version
-        BUCCANEERR_BIN_HOME: ${BUCCANEERR_BIN_HOME}  # Directory where Buccaneerr scripts will reside
-        IMAGE_CREATED: ${IMAGE_CREATED}              # OCI image creation timestamp
-        IMAGE_REVISION: ${IMAGE_REVISION}            # OCI image source revision
-        IMAGE_VERSION: ${BUCCANEERR_TAG}             # OCI image version
-    container_name: buccaneerr-${BUCCANEERR_TAG}     # Buccaneerr container name
-    restart: no                                      # Buccaneerr exits with pass/fail status
-    network_mode: service:gluetun                    # Test from inside Gluetun's network namespace
+    image: ghcr.io/scottgigawatt/buccaneerr:${BUCCANEERR_TAG}  # Buccaneerr image name and tag
+    build:                                                     # Define build context and Dockerfile
+      context: test                                            # Directory containing Buccaneerr Dockerfile
+      dockerfile: Dockerfile                                   # Dockerfile used for validation tools
+      args:                                                    # Arguments passed to the Buccaneerr image
+        ALPINE_TAG: ${ALPINE_TAG}                              # Base Alpine image version
+        BUCCANEERR_BIN_HOME: ${BUCCANEERR_BIN_HOME}            # Directory where Buccaneerr scripts will reside
+        IMAGE_CREATED: ${IMAGE_CREATED}                        # OCI image creation timestamp
+        IMAGE_REVISION: ${IMAGE_REVISION}                      # OCI image source revision
+        IMAGE_VERSION: ${BUCCANEERR_TAG}                       # OCI image version
+    container_name: buccaneerr-${BUCCANEERR_TAG}               # Buccaneerr container name
+    restart: no                                                # Buccaneerr exits with pass/fail status
+    network_mode: service:gluetun                              # Test from inside Gluetun's network namespace
 
     # Apply Docker labels to the container
-    labels: *privateerr-labels
+    labels: *exclude-from-watchtower  # Exclude this container from Watchtower updates
 
     # Define the container environment
     environment:

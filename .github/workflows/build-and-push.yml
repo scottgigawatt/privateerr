@@ -29,8 +29,8 @@ jobs:
             packages: write
         env:
             REGISTRY: ghcr.io
-            IMAGE_NAME: ${{ github.event.repository.name }}
-            BUCCANEERR_IMAGE_NAME: buccaneerr
+            PRIVATEERR_LOCAL_IMAGE_REF: ghcr.io/scottgigawatt/privateerr
+            BUCCANEERR_LOCAL_IMAGE_REF: ghcr.io/scottgigawatt/buccaneerr
             PRIVATEERR_IMAGE_REF: ghcr.io/${{ github.repository }}
             BUCCANEERR_IMAGE_REF: ghcr.io/${{ github.repository_owner }}/buccaneerr
 
@@ -56,8 +56,6 @@ jobs:
               run: |
                   cp example.env .env
                   {
-                    echo "PRIVATEERR_IMAGE=${IMAGE_NAME}"
-                    echo "BUCCANEERR_IMAGE=${BUCCANEERR_IMAGE_NAME}"
                     echo "IMAGE_CREATED=$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
                     echo "IMAGE_REVISION=${GITHUB_SHA}"
                   } >> .env
@@ -90,7 +88,7 @@ jobs:
             - name: "Inspect Privateerr for Bilge Rot 🔍"
               uses: aquasecurity/trivy-action@v0.36.0
               with:
-                  image-ref: ${{ env.IMAGE_NAME }}:latest
+                  image-ref: ${{ env.PRIVATEERR_LOCAL_IMAGE_REF }}:latest
                   format: table
                   vuln-type: os,library
                   severity: CRITICAL,HIGH
@@ -100,7 +98,7 @@ jobs:
             - name: "Inspect Buccaneerr for Bilge Rot 🔍"
               uses: aquasecurity/trivy-action@v0.36.0
               with:
-                  image-ref: ${{ env.BUCCANEERR_IMAGE_NAME }}:latest
+                  image-ref: ${{ env.BUCCANEERR_LOCAL_IMAGE_REF }}:latest
                   format: table
                   vuln-type: os,library
                   severity: CRITICAL,HIGH
