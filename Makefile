@@ -8,7 +8,7 @@
 #
 
 #
-# Makefile target names
+# Makefile target names.
 #
 ALL=all
 DOWN=down
@@ -34,14 +34,39 @@ HELP=help
 START=start
 STOP=stop
 
+TARGETS= \
+	$(ALL) \
+	$(DOWN) \
+	$(CLEAN) \
+	$(NUKE) \
+	$(BUILD_DEPENDS) \
+	$(CHECK_ENV) \
+	$(BUILD) \
+	$(BUILD_BUCCANEERR) \
+	$(BUILD_MULTIARCH) \
+	$(RUN_PRIVATEERR) \
+	$(RESET_CONFIG) \
+	$(TEST_E2E) \
+	$(TEST_DOWN) \
+	$(TEST_LOGS) \
+	$(UP) \
+	$(CONFIG) \
+	$(ENV) \
+	$(PRINT_CONFIG) \
+	$(PRINT_ENV) \
+	$(LOGS) \
+	$(HELP) \
+	$(START) \
+	$(STOP)
+
 #
-# Docker Compose service names
+# Docker Compose service names.
 #
 PRIVATEERR_SERVICE ?= privateerr
 BUCCANEERR_SERVICE ?= buccaneerr
 
 #
-# Config reset paths
+# Config reset paths.
 #
 PRIVATEERR_EXAMPLE_WG_CONFIG   ?= test/examples/example-wg0.conf
 PRIVATEERR_EXAMPLE_METADATA    ?= test/examples/example-privateerr.env
@@ -73,23 +98,49 @@ FROM_IMAGES ?= $(shell awk '\
 	}' $(DOCKERFILES) | sort -u)
 
 #
-# Docker cleanup commands and options used by the nuke target.
+# Docker Compose command to list all images used by the stack, sorted and unique.
 #
-NUKE_COMPOSE_IMAGES_COMMAND   ?= $(DOCKER_COMPOSE) -f $(COMPOSE_FILE) config --images 2>/dev/null | sort -u
-NUKE_CONTAINER_FILTER_OPTIONS ?= --filter "name=^/privateerr-" --filter "name=^/gluetun-" --filter "name=^/buccaneerr-"
+NUKE_COMPOSE_IMAGES_COMMAND ?= \
+	$(DOCKER_COMPOSE) -f $(COMPOSE_FILE) config --images 2>/dev/null | sort -u
 
 #
-# Docker Compose options
+# Docker container filter options used by the nuke target to identify containers to remove.
 #
-COMPOSE_FILE                    ?= docker-compose.yml
-COMPOSE_DOWN_TIMEOUT            ?= 30
-COMPOSE_ENV_FILE                ?= $(ENV_FILE)
-COMPOSE_DOWN_OPTIONS            ?= --timeout $(COMPOSE_DOWN_TIMEOUT) --volumes --remove-orphans
-COMPOSE_BUILD_OPTIONS           ?= --pull --no-cache
-COMPOSE_UP_OPTIONS              ?= --build --force-recreate --pull always --remove-orphans
-COMPOSE_LOGS_OPTIONS            ?= -f
-COMPOSE_TEST_OPTIONS            ?= --build --force-recreate --remove-orphans --abort-on-container-exit --exit-code-from $(BUCCANEERR_SERVICE)
-COMPOSE_PRIVATEERR_ONLY_OPTIONS ?= --build --force-recreate --remove-orphans --abort-on-container-exit --exit-code-from $(PRIVATEERR_SERVICE)
+NUKE_CONTAINER_FILTER_OPTIONS ?= \
+	--filter "name=^/privateerr-" \
+	--filter "name=^/gluetun-" \
+	--filter "name=^/buccaneerr-"
+
+#
+# Docker Compose options.
+#
+COMPOSE_FILE          ?= docker-compose.yml
+COMPOSE_DOWN_TIMEOUT  ?= 30
+COMPOSE_ENV_FILE      ?= $(ENV_FILE)
+COMPOSE_DOWN_OPTIONS  ?= --timeout $(COMPOSE_DOWN_TIMEOUT) --volumes --remove-orphans
+COMPOSE_BUILD_OPTIONS ?= --pull --no-cache
+COMPOSE_UP_OPTIONS    ?= --build --force-recreate --pull always --remove-orphans
+COMPOSE_LOGS_OPTIONS  ?= -f
+
+#
+# Docker Compose options for test targets.
+#
+COMPOSE_TEST_OPTIONS  ?= \
+	--build \
+	--force-recreate \
+	--remove-orphans \
+	--abort-on-container-exit \
+	--exit-code-from $(BUCCANEERR_SERVICE)
+
+#
+# Docker Compose options for running only Privateerr.
+#
+COMPOSE_PRIVATEERR_ONLY_OPTIONS ?= \
+	--build \
+	--force-recreate \
+	--remove-orphans \
+	--abort-on-container-exit \
+	--exit-code-from $(PRIVATEERR_SERVICE)
 
 #
 # Docker Buildx options used to verify multi-architecture image builds.
@@ -102,19 +153,37 @@ BUILDX_BUCCANEERR_IMAGE_TAG ?= ghcr.io/scottgigawatt/buccaneerr:multiarch-local
 #
 # Docker Compose command compatible with 'docker compose' (v2) and 'docker-compose' (v1).
 #
-DOCKER_COMPOSE := $(shell if docker compose version >/dev/null 2>&1; then echo "docker compose"; elif command -v docker-compose >/dev/null 2>&1; then echo "docker-compose"; else echo ""; fi)
+DOCKER_COMPOSE := $(shell \
+	if docker compose version >/dev/null 2>&1; then \
+		echo "docker compose"; \
+	elif command -v docker-compose >/dev/null 2>&1; then \
+		echo "docker-compose"; \
+	else \
+		echo ""; \
+	fi)
 
+#
+# Help line formatting function.
+#
+define help_line
+	@printf "  %-22s %s\n" "$(1)" "$(2)"
+endef
+
+#
+# Verify Docker Compose availability.
+#
 ifeq ($(DOCKER_COMPOSE),)
-    $(error "Neither 'docker compose' nor 'docker-compose' is available. Please install Docker Compose.")
+    $(error "Neither 'docker compose' nor 'docker-compose' is available. \
+        Please install Docker Compose.")
 endif
 
 #
-# Build dependencies
+# Build dependencies.
 #
 DEPENDENCIES=docker
 
 #
-# Environment file paths
+# Environment file paths.
 #
 ENV_FILE=.env
 EXAMPLE_ENV_FILE=example.env
@@ -123,7 +192,7 @@ EXAMPLE_ENV_FILE=example.env
 # Targets that are not files (i.e. never up-to-date); these will run every
 # time the target is called or required.
 #
-.PHONY: $(ALL) $(DOWN) $(CLEAN) $(NUKE) $(BUILD_DEPENDS) $(CHECK_ENV) $(BUILD) $(BUILD_BUCCANEERR) $(BUILD_MULTIARCH) $(RUN_PRIVATEERR) $(RESET_CONFIG) $(TEST_E2E) $(TEST_DOWN) $(TEST_LOGS) $(UP) $(CONFIG) $(ENV) $(PRINT_CONFIG) $(PRINT_ENV) $(LOGS) $(HELP) $(START) $(STOP)
+.PHONY: $(TARGETS)
 
 #
 # $(ALL): Default makefile target. Builds and starts the service stack.
@@ -140,7 +209,11 @@ $(BUILD_DEPENDS):
 	$(foreach exe,$(DEPENDENCIES), \
 		$(if $(shell which $(exe) 2> /dev/null),,$(error "No $(exe) in PATH")))
 	@# Verify Docker Compose availability.
-	@$(DOCKER_COMPOSE) version >/dev/null 2>&1 || (echo "Docker Compose be missin'. Install docker compose or docker-compose. 🧭" && exit 1)
+	@$(DOCKER_COMPOSE) version >/dev/null 2>&1 || { \
+		echo "Docker Compose be missin'."; \
+		echo "Install docker compose or docker-compose. 🧭"; \
+		exit 1; \
+	}
 
 #
 # $(CHECK_ENV): Ensure .env exists before running Compose commands.
@@ -148,7 +221,8 @@ $(BUILD_DEPENDS):
 $(CHECK_ENV):
 	@if [ ! -f "$(ENV_FILE)" ]; then \
 		echo "\nNo $(ENV_FILE) found. The ship needs a chart before it sails. 🗺️"; \
-		echo "Copy $(EXAMPLE_ENV_FILE) to $(ENV_FILE), then update yer PIA credentials and voyage settings."; \
+		echo "Copy $(EXAMPLE_ENV_FILE) to $(ENV_FILE), then update yer PIA"; \
+		echo "credentials and voyage settings."; \
 		echo "Run: cp $(EXAMPLE_ENV_FILE) $(ENV_FILE)"; \
 		exit 1; \
 	fi
@@ -363,32 +437,32 @@ $(HELP):
 	@echo "Usage: make [TARGET]"
 	@echo ""
 	@echo "Targets:"
-	@echo "  $(ALL)                Builds and starts the full service stack."
-	@echo "  $(BUILD_DEPENDS)      Ensures build dependencies are installed."
-	@echo "  $(CHECK_ENV)          Ensures .env exists before Compose commands run."
-	@echo "  $(DOWN)               Stops and removes the full service stack."
-	@echo "  $(CLEAN)              Stops the stack and restores example config files."
-	@echo "  $(NUKE)               Removes containers, images, generated files, and restores example config."
-	@echo "  $(BUILD)              Builds only the Privateerr image."
-	@echo "  $(BUILD_BUCCANEERR)   Builds only the Buccaneerr image."
-	@echo "  $(BUILD_MULTIARCH)    Verifies Privateerr and Buccaneerr build for amd64 and arm64."
-	@echo "  $(RUN_PRIVATEERR)     Runs only Privateerr to generate config and metadata."
-	@echo "  $(RESET_CONFIG)       Restores example wg0.conf and privateerr.env files."
-	@echo "  $(TEST_E2E)           Runs the full one-shot Privateerr + Gluetun validation voyage."
-	@echo "  $(TEST_DOWN)          Stops the stack and restores example config files."
-	@echo "  $(TEST_LOGS)          Shows logs for the service stack."
-	@echo "  $(UP)                 Builds, (re)creates, and starts every service."
-	@echo "  $(CONFIG)             Renders the Docker Compose model."
-	@echo "  $(ENV)                Prints the evaluated docker compose default env configuration."
-	@echo "  $(PRINT_CONFIG)       Prints the raw uncommented docker compose yaml configuration."
-	@echo "  $(PRINT_ENV)          Prints the raw uncommented docker compose env configuration."
-	@echo "  $(START)              Alias for $(UP)."
-	@echo "  $(STOP)               Alias for $(DOWN)."
-	@echo "  $(LOGS)               Shows logs for the service stack."
-	@echo "  $(HELP)               Displays this help message."
+	$(call help_line,$(ALL),Builds and starts the full service stack.)
+	$(call help_line,$(BUILD_DEPENDS),Ensures build dependencies are installed.)
+	$(call help_line,$(CHECK_ENV),Ensures .env exists.)
+	$(call help_line,$(DOWN),Stops and removes the full service stack.)
+	$(call help_line,$(CLEAN),Stops the stack and restores example configs.)
+	$(call help_line,$(NUKE),Removes containers plus images and generated files.)
+	$(call help_line,$(BUILD),Builds only the Privateerr image.)
+	$(call help_line,$(BUILD_BUCCANEERR),Builds only the Buccaneerr image.)
+	$(call help_line,$(BUILD_MULTIARCH),Verifies amd64 and arm64 image builds.)
+	$(call help_line,$(RUN_PRIVATEERR),Runs Privateerr to generate config.)
+	$(call help_line,$(RESET_CONFIG),Restores example VPN config files.)
+	$(call help_line,$(TEST_E2E),Runs the one-shot validation voyage.)
+	$(call help_line,$(TEST_DOWN),Stops the stack and restores example configs.)
+	$(call help_line,$(TEST_LOGS),Shows logs for the service stack.)
+	$(call help_line,$(UP),Builds then starts every service.)
+	$(call help_line,$(CONFIG),Renders the Docker Compose model.)
+	$(call help_line,$(ENV),Prints evaluated Compose env values.)
+	$(call help_line,$(PRINT_CONFIG),Prints uncommented Compose yaml.)
+	$(call help_line,$(PRINT_ENV),Prints uncommented Compose env values.)
+	$(call help_line,$(START),Alias for $(UP).)
+	$(call help_line,$(STOP),Alias for $(DOWN).)
+	$(call help_line,$(LOGS),Shows logs for the service stack.)
+	$(call help_line,$(HELP),Displays this help message.)
 
 #
-# Alias for test-down
+# $(CLEAN): Alias for test-down.
 #
 # Dependencies:
 #   $(TEST_DOWN) - Stop the stack and restore example config files.
@@ -396,7 +470,7 @@ $(HELP):
 $(CLEAN): $(TEST_DOWN)
 
 #
-# Alias for up
+# $(START): Alias for $(UP).
 #
 # Dependencies:
 #   $(UP) - Builds, recreates, and starts every service in the stack.
@@ -404,7 +478,7 @@ $(CLEAN): $(TEST_DOWN)
 $(START): $(UP)
 
 #
-# Alias for down
+# $(STOP): Alias for $(DOWN).
 #
 # Dependencies:
 #   $(DOWN) - Stop and remove the stack.
