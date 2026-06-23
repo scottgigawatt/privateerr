@@ -56,8 +56,7 @@ LABEL org.opencontainers.image.title="Buccaneerr" \
 RUN apk add --no-cache \
       bash \
       ca-certificates \
-      curl \
-      jq
+      curl
 
 #
 # Copy over the Buccaneerr script and make it executable.

@@ -26,6 +26,8 @@ ARG ALPINE_TAG=latest
 #
 ARG PIA_BIN_HOME=/pia
 ARG PRIVATEERR_BIN_HOME=/privateerr
+ARG JQ_APK_REPOSITORY=https://dl-cdn.alpinelinux.org/alpine/edge/main
+ARG JQ_APK_MIN_VERSION=1.8.2-r0
 ARG IMAGE_CREATED=unknown
 ARG IMAGE_REVISION=unknown
 ARG IMAGE_VERSION=latest
@@ -66,15 +68,19 @@ COPY privateerr-entrypoint.sh ${PRIVATEERR_BIN_HOME}/privateerr-entrypoint.sh
 # writing the WireGuard config and metadata that Gluetun will consume.
 # openresolv provides the resolvconf command that PIA's scripts check when
 # PIA_DNS=true, even though Privateerr only writes a config file.
+# jq is installed from the configured package repository until Alpine stable
+# includes a version that fixes known 1.8.1-r0 vulnerabilities.
 #
 RUN apk add --no-cache \
       bash \
       ca-certificates \
       coreutils \
       curl \
-      jq \
       openresolv \
       wireguard-tools && \
+    apk add --no-cache \
+      --repository="${JQ_APK_REPOSITORY}" \
+      "jq>=${JQ_APK_MIN_VERSION}" && \
     chmod +x "${PRIVATEERR_BIN_HOME}/privateerr-entrypoint.sh"
 
 #
