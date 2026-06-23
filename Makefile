@@ -15,6 +15,7 @@ DOWN=down
 CLEAN=clean
 NUKE=nuke
 BUILD_DEPENDS=build-depends
+CHECK_ENV=check-env
 BUILD=build
 BUILD_BUCCANEERR=build-buccaneerr
 RUN_PRIVATEERR=run-privateerr
@@ -98,13 +99,22 @@ endif
 DEPENDENCIES=docker
 
 #
+# Environment file paths
+#
+ENV_FILE=.env
+EXAMPLE_ENV_FILE=example.env
+
+#
 # Targets that are not files (i.e. never up-to-date); these will run every
 # time the target is called or required.
 #
-.PHONY: $(ALL) $(DOWN) $(CLEAN) $(NUKE) $(BUILD_DEPENDS) $(BUILD) $(BUILD_BUCCANEERR) $(RUN_PRIVATEERR) $(RESET_CONFIG) $(TEST_E2E) $(TEST_DOWN) $(TEST_LOGS) $(UP) $(LOGS) $(HELP) $(START) $(STOP)
+.PHONY: $(ALL) $(DOWN) $(CLEAN) $(NUKE) $(BUILD_DEPENDS) $(CHECK_ENV) $(BUILD) $(BUILD_BUCCANEERR) $(RUN_PRIVATEERR) $(RESET_CONFIG) $(TEST_E2E) $(TEST_DOWN) $(TEST_LOGS) $(UP) $(LOGS) $(HELP) $(START) $(STOP)
 
 #
 # $(ALL): Default makefile target. Builds and starts the service stack.
+#
+# Dependencies:
+#   $(UP) - Builds, recreates, and starts every service in the stack.
 #
 $(ALL): $(UP)
 
@@ -118,36 +128,57 @@ $(BUILD_DEPENDS):
 	@$(DOCKER_COMPOSE) version >/dev/null 2>&1 || (echo "Docker Compose be missin'. Install docker compose or docker-compose. 🧭" && exit 1)
 
 #
+# $(CHECK_ENV): Ensure .env exists before running Compose commands.
+#
+$(CHECK_ENV):
+	@if [ ! -f "$(ENV_FILE)" ]; then \
+		echo "\nNo $(ENV_FILE) found. The ship needs a chart before it sails. 🗺️"; \
+		echo "Copy $(EXAMPLE_ENV_FILE) to $(ENV_FILE), then update yer PIA credentials and voyage settings."; \
+		echo "Run: cp $(EXAMPLE_ENV_FILE) $(ENV_FILE)"; \
+		exit 1; \
+	fi
+
+#
 # $(DOWN): Stops containers and removes containers, networks, and volumes.
 #
-$(DOWN): $(BUILD_DEPENDS)
+# Dependencies:
+#   $(BUILD_DEPENDS) - Ensure build dependencies are installed.
+#   $(CHECK_ENV) - Ensure .env exists before running Compose commands.
+#
+$(DOWN): $(BUILD_DEPENDS) $(CHECK_ENV)
 	@echo "\nDroppin' anchor for the whole fleet. ⚓"
 	$(DOCKER_COMPOSE) down $(COMPOSE_DOWN_OPTIONS)
 
 #
 # $(BUILD): Builds only the Privateerr image.
 #
-# Dependencies: $(BUILD_DEPENDS) - Ensure build dependencies are installed.
+# Dependencies:
+#   $(BUILD_DEPENDS) - Ensure build dependencies are installed.
+#   $(CHECK_ENV) - Ensure .env exists before running Compose commands.
 #
-$(BUILD): $(BUILD_DEPENDS)
+$(BUILD): $(BUILD_DEPENDS) $(CHECK_ENV)
 	@echo "\nHammerin' Privateerr into a seaworthy image. ⚒️"
 	$(DOCKER_COMPOSE) build $(COMPOSE_BUILD_OPTIONS) $(PRIVATEERR_SERVICE)
 
 #
 # $(BUILD_BUCCANEERR): Builds only the Buccaneerr image.
 #
-# Dependencies: $(BUILD_DEPENDS) - Ensure build dependencies are installed.
+# Dependencies:
+#   $(BUILD_DEPENDS) - Ensure build dependencies are installed.
+#   $(CHECK_ENV) - Ensure .env exists before running Compose commands.
 #
-$(BUILD_BUCCANEERR): $(BUILD_DEPENDS)
+$(BUILD_BUCCANEERR): $(BUILD_DEPENDS) $(CHECK_ENV)
 	@echo "\nForgin' the Buccaneerr spyglass. 🔎"
 	$(DOCKER_COMPOSE) build $(COMPOSE_BUILD_OPTIONS) $(BUCCANEERR_SERVICE)
 
 #
 # $(RUN_PRIVATEERR): Runs only Privateerr to generate WireGuard config and metadata.
 #
-# Dependencies: $(BUILD_DEPENDS) - Ensure build dependencies are installed.
+# Dependencies:
+#   $(BUILD_DEPENDS) - Ensure build dependencies are installed.
+#   $(CHECK_ENV) - Ensure .env exists before running Compose commands.
 #
-$(RUN_PRIVATEERR): $(BUILD_DEPENDS)
+$(RUN_PRIVATEERR): $(BUILD_DEPENDS) $(CHECK_ENV)
 	@echo "\nSummonin' WireGuard map and Gluetun scroll. 📜"
 	PRIVATEERR_KEEPALIVE=false $(DOCKER_COMPOSE) up \
 		$(COMPOSE_PRIVATEERR_ONLY_OPTIONS) \
@@ -164,25 +195,31 @@ $(RESET_CONFIG):
 #
 # $(TEST_E2E): Starts the full stack once and runs the Buccaneerr.
 #
-# Dependencies: $(BUILD_DEPENDS) - Ensure build dependencies are installed.
+# Dependencies:
+#   $(BUILD_DEPENDS) - Ensure build dependencies are installed.
+#   $(CHECK_ENV) - Ensure .env exists before running Compose commands.
 #
-$(TEST_E2E): $(BUILD_DEPENDS)
+$(TEST_E2E): $(BUILD_DEPENDS) $(CHECK_ENV)
 	@echo "\nLaunching Privateerr, Gluetun, and Buccaneerr in one voyage. 🌊"
 	$(DOCKER_COMPOSE) up $(COMPOSE_TEST_OPTIONS)
 
 #
 # $(TEST_DOWN): Stops and removes containers, then restores example config files.
 #
-# Dependencies: $(DOWN) - Stop and remove the stack.
+# Dependencies:
+#   $(DOWN) - Stop and remove the stack.
+#   $(RESET_CONFIG) - Restore example config files.
 #
 $(TEST_DOWN): $(DOWN) $(RESET_CONFIG)
 
 #
 # $(NUKE): Removes containers, local images, generated files, and resets example config.
 #
-# Dependencies: $(BUILD_DEPENDS) - Ensure build dependencies are installed.
+# Dependencies:
+#   $(BUILD_DEPENDS) - Ensure build dependencies are installed.
+#   $(CHECK_ENV) - Ensure .env exists before running Compose commands.
 #
-$(NUKE): $(BUILD_DEPENDS)
+$(NUKE): $(BUILD_DEPENDS) $(CHECK_ENV)
 	@echo "\nFirin' the clean broadside. Repo-safe files stay aboard. 💣"
 	@compose_images="$$( $(NUKE_COMPOSE_IMAGES_COMMAND) || true )"; \
 	$(DOCKER_COMPOSE) down $(COMPOSE_DOWN_OPTIONS) --rmi all; \
@@ -207,23 +244,31 @@ $(NUKE): $(BUILD_DEPENDS)
 #
 # $(TEST_LOGS): View output from stack containers.
 #
-$(TEST_LOGS):
+# Dependencies:
+#   $(CHECK_ENV) - Ensure .env exists before running Compose commands.
+#
+$(TEST_LOGS): $(CHECK_ENV)
 	@echo "\nReadin' ship logs. 🔎"
 	$(DOCKER_COMPOSE) logs $(COMPOSE_LOGS_OPTIONS)
 
 #
 # $(UP): Builds, (re)creates, and starts every service in the stack.
 #
-# Dependencies: $(BUILD_DEPENDS) - Ensure build dependencies are installed.
+# Dependencies:
+#   $(BUILD_DEPENDS) - Ensure build dependencies are installed.
+#   $(CHECK_ENV) - Ensure .env exists before running Compose commands.
 #
-$(UP): $(BUILD_DEPENDS)
+$(UP): $(BUILD_DEPENDS) $(CHECK_ENV)
 	@echo "\nRaisin' the whole Privateerr fleet. 🏴‍☠️"
 	$(DOCKER_COMPOSE) up $(COMPOSE_UP_OPTIONS)
 
 #
 # $(LOGS): View output from containers.
 #
-$(LOGS):
+# Dependencies:
+#   $(CHECK_ENV) - Ensure .env exists before running Compose commands.
+#
+$(LOGS): $(CHECK_ENV)
 	@echo "\nReadin' logs for the fleet. 🔎"
 	$(DOCKER_COMPOSE) logs $(COMPOSE_LOGS_OPTIONS)
 
@@ -236,6 +281,7 @@ $(HELP):
 	@echo "Targets:"
 	@echo "  $(ALL)                Builds and starts the full service stack."
 	@echo "  $(BUILD_DEPENDS)      Ensures build dependencies are installed."
+	@echo "  $(CHECK_ENV)          Ensures .env exists before Compose commands run."
 	@echo "  $(DOWN)               Stops and removes the full service stack."
 	@echo "  $(CLEAN)              Stops the stack and restores example config files."
 	@echo "  $(NUKE)               Removes containers, images, generated files, and restores example config."
@@ -255,14 +301,23 @@ $(HELP):
 #
 # Alias for test-down
 #
+# Dependencies:
+#   $(TEST_DOWN) - Stop the stack and restore example config files.
+#
 $(CLEAN): $(TEST_DOWN)
 
 #
 # Alias for up
 #
+# Dependencies:
+#   $(UP) - Builds, recreates, and starts every service in the stack.
+#
 $(START): $(UP)
 
 #
 # Alias for down
+#
+# Dependencies:
+#   $(DOWN) - Stop and remove the stack.
 #
 $(STOP): $(DOWN)

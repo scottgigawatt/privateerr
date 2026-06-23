@@ -156,6 +156,7 @@ Usage: make [TARGET]
 Targets:
   all                Builds and starts the full service stack.
   build-depends      Ensures build dependencies are installed.
+  check-env          Ensures .env exists before Compose commands run.
   down               Stops and removes the full service stack.
   clean              Stops the stack and restores example config files.
   nuke               Removes containers, images, generated files, and restores example config.
