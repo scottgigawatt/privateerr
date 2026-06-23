@@ -141,6 +141,11 @@ jobs:
                   push: true
                   tags: ${{ steps.meta-privateerr.outputs.tags }}
                   labels: ${{ steps.meta-privateerr.outputs.labels }}
+                  annotations: |
+                      index:org.opencontainers.image.title=Privateerr
+                      index:org.opencontainers.image.description=Privateerr generates PIA WireGuard configs and Gluetun metadata from unmodified PIA manual connection scripts.
+                      index:org.opencontainers.image.source=https://github.com/${{ github.repository }}
+                      index:org.opencontainers.image.documentation=https://github.com/${{ github.repository }}#readme
                   build-args: |
                       ALPINE_TAG=latest
                       PIA_BIN_HOME=/pia
@@ -161,6 +166,11 @@ jobs:
                   push: true
                   tags: ${{ steps.meta-buccaneerr.outputs.tags }}
                   labels: ${{ steps.meta-buccaneerr.outputs.labels }}
+                  annotations: |
+                      index:org.opencontainers.image.title=Buccaneerr
+                      index:org.opencontainers.image.description=Test-only Buccaneerr validator for Privateerr, Gluetun WireGuard, and PIA port-forwarding e2e checks.
+                      index:org.opencontainers.image.source=https://github.com/${{ github.repository }}
+                      index:org.opencontainers.image.documentation=https://github.com/${{ github.repository }}#readme
                   build-args: |
                       ALPINE_TAG=latest
                       BUCCANEERR_BIN_HOME=/buccaneerr
