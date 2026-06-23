@@ -1,20 +1,22 @@
 ---
-name: "Documentation enhancement for Privateerr’s logs 🏴‍☠️"
-about: Request improvements to Privateerr documentation ⚓
-title: "[DOC] Request to tidy up the Privateerr docs"
+name: "Documentation fix for the ship's log 📚"
+about: "Request clearer docs, examples, or setup notes ⚓"
+title: "[DOC] "
 labels: documentation
 assignees: scottgigawatt
-
 ---
 
 **📚 What needs clearer words**
-Tell me what part of the documentation is confusing or incomplete.
+Which section, file, command, or example is confusing?
 
-**📝 The improvement you want**
-Describe the change or addition that would make the docs better.
+**📝 Requested improvement**
+What should the docs explain better?
 
-**🗺️ Other ideas you have**
-List any other approaches or notes you think might help.
+**🗺️ Suggested wording or route**
+Drop a draft, link, or example if ye have one.
 
-**🧭 Extra details**
-Add context or examples if you have them.
+**🧪 Did ye try a command?**
+If a command confused ye, name it here. Examples: `make help`, `make config`, `make env`, `make print-config`, `make run-privateerr`, `make test-e2e`, `make nuke`.
+
+**🧭 Extra context**
+Anything else that helps polish the ship's log.

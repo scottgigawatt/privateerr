@@ -1,33 +1,40 @@
 ---
-name: "Bug report for this here vessel 🏴‍☠️"
-about: Share a problem so we can keep Privateerr charting steady ⚓
-title: "[BUG] A pesky gremlin in the code be misbehavin"
+name: "Bug report from the crow's nest 🐛"
+about: "Report trouble so Privateerr can keep chartin' clean waters ⚓"
+title: "[BUG] "
 labels: bug
 assignees: scottgigawatt
 ---
 
 **☠️ What went wrong**
-Tell me what broke in Privateerr. Keep it short and clear.
+Tell me what broke. Keep it clear enough that I can chase the cursed thing down.
 
-**🪝 How to trigger the problem**
-List the steps so I can reproduce it.
+**🪝 Steps to reproduce**
 1.
 2.
 3.
 
-**🌊 What you expected**
-Tell me what should have happened instead.
+**🌊 Expected result**
+What should have happened?
 
 **📜 Logs or output**
-Share logs, error messages, or screenshots if you have them.
+Paste logs, errors, screenshots, or command output. `make logs`, `make test-logs`, and `make config` be useful spyglasses.
 
-**🧩 Your setup**
+> [!WARNING]
+> Redact PIA credentials, WireGuard private keys, live `wg0.conf`, live `privateerr.env`, and private logs before tossin' anything onto the public deck.
 
-- Privateerr version or tag:
-- OS and version:
+**🧩 Setup**
+
+- Privateerr image tag:
+- Buccaneerr image tag:
+- Gluetun image tag:
+- OS / platform:
 - Docker version:
+- Docker Compose version:
 - PIA region or server:
-- Any environment variables you set:
+- Command ye ran:
+- Did `make config` pass?
+- Relevant environment variables, with secrets removed:
 
-**🧭 Extra details**
-Anything else that might help track down the bug.
+**🧭 Extra clues**
+Anything else that helps find the leak below deck.

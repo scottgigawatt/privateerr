@@ -1,46 +1,179 @@
-name: "Heave to the Registry ⚓ "
+name: "Hoist the Registry Sails 🏴‍☠️"
 
 on:
-  push:
-    branches:
-      - main
-    paths:
-      - 'docker/**'
-      - 'Makefile'
-      - 'example.env'
-      - '.github/workflows/build-and-push.yml'
+    push:
+        branches:
+            - main
+        tags:
+            - "v*.*.*"
+        paths:
+            - "docker/**"
+            - "test/**"
+            - "config/**"
+            - "docker-compose.yml"
+            - "Makefile"
+            - "example.env"
+            - ".github/workflows/build-and-push.yml"
+    schedule:
+        - cron: "17 7 * * 1"
+    workflow_dispatch:
 
 jobs:
-  build-and-push:
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write
+    build-and-push:
+        name: "Pack the Cargo Hold 🧰"
+        runs-on: ubuntu-latest
+        permissions:
+            contents: read
+            id-token: write
+            attestations: write
+            packages: write
+        env:
+            REGISTRY: ghcr.io
+            PRIVATEERR_LOCAL_IMAGE_REF: ghcr.io/scottgigawatt/privateerr
+            BUCCANEERR_LOCAL_IMAGE_REF: ghcr.io/scottgigawatt/buccaneerr
+            PRIVATEERR_IMAGE_REF: ghcr.io/${{ github.repository }}
+            BUCCANEERR_IMAGE_REF: ghcr.io/${{ github.repository_owner }}/buccaneerr
 
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          submodules: recursive
+        steps:
+            - name: "Grab the Treasure Map 🗺️"
+              uses: actions/checkout@v7
+              with:
+                  submodules: recursive
+                  persist-credentials: false
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+            - name: "Sharpen the Build Axe 🪓"
+              uses: docker/setup-buildx-action@v4.1.0
 
-      - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+            - name: "Board the GHCR Galleon 🔐"
+              uses: docker/login-action@v4.2.0
+              with:
+                  registry: ${{ env.REGISTRY }}
+                  username: ${{ github.actor }}
+                  password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Install Docker Compose
-        uses: ndeloof/install-compose-action@v0.0.1
+            - name: "Ink the Build Scroll 📜"
+              id: build-scroll
+              run: |
+                  cp example.env .env
+                  {
+                    echo "IMAGE_CREATED=$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+                    echo "IMAGE_REVISION=${GITHUB_SHA}"
+                  } >> .env
+                  echo "created=$(date -u +'%Y-%m-%dT%H:%M:%SZ')" >> "${GITHUB_OUTPUT}"
 
-      - name: Prepare environment file
-        run: cp example.env .env
+            - name: "Hammer the Docker Hulls ⚒️"
+              run: |
+                  make build
+                  make build-buccaneerr
 
-      - name: Build and push Docker image
-        run: |
-          make build
-          docker tag scottgigawatt/privateerr:latest ghcr.io/${{ github.repository_owner }}/privateerr:latest
-          docker push ghcr.io/${{ github.repository_owner }}/privateerr:latest
+            - name: "Send the Test Ship to Sea 🌊"
+              env:
+                  PIA_USER: ${{ secrets.PIA_USER }}
+                  PIA_PASS: ${{ secrets.PIA_PASS }}
+              run: |
+                  if [ -z "${PIA_USER}" ] || [ -z "${PIA_PASS}" ]; then
+                    echo "PIA secrets missing; skipping live e2e voyage."
+                    exit 0
+                  fi
+                  {
+                    echo "PIA_USER=${PIA_USER}"
+                    echo "PIA_PASS=${PIA_PASS}"
+                  } >> .env
+                  make test-e2e
+
+            - name: "Swab the Test Deck 🧽"
+              if: always()
+              run: make test-down
+
+            - name: "Inspect Privateerr for Bilge Rot 🔍"
+              uses: aquasecurity/trivy-action@v0.36.0
+              with:
+                  image-ref: ${{ env.PRIVATEERR_LOCAL_IMAGE_REF }}:latest
+                  format: table
+                  vuln-type: os,library
+                  severity: CRITICAL,HIGH
+                  ignore-unfixed: true
+                  exit-code: 1
+
+            - name: "Inspect Buccaneerr for Bilge Rot 🔍"
+              uses: aquasecurity/trivy-action@v0.36.0
+              with:
+                  image-ref: ${{ env.BUCCANEERR_LOCAL_IMAGE_REF }}:latest
+                  format: table
+                  vuln-type: os,library
+                  severity: CRITICAL,HIGH
+                  ignore-unfixed: true
+                  exit-code: 1
+
+            - name: "Chart Privateerr Tags 🗺️"
+              id: meta-privateerr
+              uses: docker/metadata-action@v5
+              with:
+                  images: ${{ env.PRIVATEERR_IMAGE_REF }}
+                  tags: |
+                      type=raw,value=latest,enable={{is_default_branch}}
+                      type=raw,value=latest,enable=${{ startsWith(github.ref, 'refs/tags/v') }}
+                      type=sha,prefix=sha-
+                      type=semver,pattern={{version}}
+
+            - name: "Chart Buccaneerr Tags 🗺️"
+              id: meta-buccaneerr
+              uses: docker/metadata-action@v5
+              with:
+                  images: ${{ env.BUCCANEERR_IMAGE_REF }}
+                  tags: |
+                      type=raw,value=latest,enable={{is_default_branch}}
+                      type=raw,value=latest,enable=${{ startsWith(github.ref, 'refs/tags/v') }}
+                      type=sha,prefix=sha-
+                      type=semver,pattern={{version}}
+
+            - name: "Bury Privateerr in GHCR 💰"
+              id: publish-privateerr
+              uses: docker/build-push-action@v6
+              with:
+                  context: docker
+                  file: docker/Dockerfile
+                  push: true
+                  tags: ${{ steps.meta-privateerr.outputs.tags }}
+                  labels: ${{ steps.meta-privateerr.outputs.labels }}
+                  build-args: |
+                      ALPINE_TAG=latest
+                      PIA_BIN_HOME=/pia
+                      PRIVATEERR_BIN_HOME=/privateerr
+                      IMAGE_CREATED=${{ steps.build-scroll.outputs.created }}
+                      IMAGE_REVISION=${{ github.sha }}
+                      IMAGE_VERSION=${{ steps.meta-privateerr.outputs.version }}
+                  sbom: true
+                  provenance: true
+
+            - name: "Bury Buccaneerr in GHCR 💰"
+              id: publish-buccaneerr
+              uses: docker/build-push-action@v6
+              with:
+                  context: test
+                  file: test/Dockerfile
+                  push: true
+                  tags: ${{ steps.meta-buccaneerr.outputs.tags }}
+                  labels: ${{ steps.meta-buccaneerr.outputs.labels }}
+                  build-args: |
+                      ALPINE_TAG=latest
+                      BUCCANEERR_BIN_HOME=/buccaneerr
+                      IMAGE_CREATED=${{ steps.build-scroll.outputs.created }}
+                      IMAGE_REVISION=${{ github.sha }}
+                      IMAGE_VERSION=${{ steps.meta-buccaneerr.outputs.version }}
+                  sbom: true
+                  provenance: true
+
+            - name: "Stamp Privateerr's Provenance Scroll 🧾"
+              uses: actions/attest-build-provenance@v3
+              with:
+                  subject-name: ${{ env.PRIVATEERR_IMAGE_REF }}
+                  subject-digest: ${{ steps.publish-privateerr.outputs.digest }}
+                  push-to-registry: true
+
+            - name: "Stamp Buccaneerr's Provenance Scroll 🧾"
+              uses: actions/attest-build-provenance@v3
+              with:
+                  subject-name: ${{ env.BUCCANEERR_IMAGE_REF }}
+                  subject-digest: ${{ steps.publish-buccaneerr.outputs.digest }}
+                  push-to-registry: true
