@@ -168,6 +168,7 @@ Targets:
   nuke               Removes containers, images, generated files, and restores example config.
   build              Builds only the Privateerr image.
   build-buccaneerr   Builds only the Buccaneerr image.
+  build-multiarch    Verifies Privateerr and Buccaneerr build for amd64 and arm64.
   run-privateerr     Runs only Privateerr to generate config and metadata.
   reset-config       Restores example wg0.conf and privateerr.env files.
   test-e2e           Runs the full one-shot Privateerr + Gluetun validation voyage.
