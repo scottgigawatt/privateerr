@@ -14,7 +14,7 @@ Buccaneerr checks the important loot:
 - The stack behaves like the downstream Synology-friendly Compose setup.
 
 > [!IMPORTANT]
-> ⚓ Buccaneerr exists so the main Privateerr image can stay wee, clean, and focused. Test tools like `curl` and `jq` stay in this image instead of clutterin' the production brig.
+> ⚓ Buccaneerr exists so the main Privateerr image can stay wee, clean, and focused. Test tools like `curl` stay in this image instead of clutterin' the production brig.
 
 ## How It Gets Built 🛠️
 
