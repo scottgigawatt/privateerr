@@ -107,7 +107,7 @@ jobs:
 
             - name: "Chart Privateerr Tags 🗺️"
               id: meta-privateerr
-              uses: docker/metadata-action@v5
+              uses: docker/metadata-action@v6
               with:
                   images: ${{ env.PRIVATEERR_IMAGE_REF }}
                   tags: |
@@ -118,7 +118,7 @@ jobs:
 
             - name: "Chart Buccaneerr Tags 🗺️"
               id: meta-buccaneerr
-              uses: docker/metadata-action@v5
+              uses: docker/metadata-action@v6
               with:
                   images: ${{ env.BUCCANEERR_IMAGE_REF }}
                   tags: |
