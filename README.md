@@ -22,6 +22,7 @@
   <img src="https://img.shields.io/badge/Dockerized-Brig-blue?logo=docker" alt="Dockerized Brig" />
   <img src="https://img.shields.io/badge/Cloaked-by%20PIA%20%26%20WireGuard-green?logo=protonvpn" alt="Cloaked" />
   <img src="https://img.shields.io/badge/Base-Alpine%20Latest-0D597F?logo=alpinelinux" alt="Alpine Latest" />
+  <img src="https://img.shields.io/badge/Multi--Arch-amd64%20%7C%20arm64-blue?logo=docker" alt="Multi-Arch amd64 and arm64" />
   <img src="https://img.shields.io/badge/Battle--Tested-Synology%20%7C%20macOS-blue" alt="Battle-Tested" />
   <img src="https://img.shields.io/github/last-commit/scottgigawatt/privateerr?label=Last%20Raid&logo=git" alt="Last Raid" />
   <img src="https://img.shields.io/github/repo-size/scottgigawatt/privateerr?label=Hold%20Capacity" alt="Hold Capacity" />
@@ -63,6 +64,11 @@ A copy of the [Manual PIA VPN Connections](https://github.com/pia-foss/manual-co
 
 > [!NOTE]
 > 🧪 Alpine be a smaller test voyage, not a distro PIA lists as officially confirmed for these scripts. Privateerr builds from Alpine's `latest` tag by default so fresh security patches climb aboard each rebuild, and the e2e stack below inspects the plank before the image ships.
+
+<!-- -->
+
+> [!NOTE]
+> 🏴‍☠️ Published Privateerr and Buccaneerr images ship as multi-arch treasure chests for `linux/amd64` and `linux/arm64`. Pull `latest` from Intel/AMD or ARM64 decks, and Docker should grab the right cargo without ye naming the architecture by hand.
 
 <!-- -->
 

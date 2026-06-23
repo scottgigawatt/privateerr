@@ -18,6 +18,7 @@ BUILD_DEPENDS=build-depends
 CHECK_ENV=check-env
 BUILD=build
 BUILD_BUCCANEERR=build-buccaneerr
+BUILD_MULTIARCH=build-multiarch
 RUN_PRIVATEERR=run-privateerr
 RESET_CONFIG=reset-config
 TEST_E2E=test-e2e
@@ -91,6 +92,14 @@ COMPOSE_TEST_OPTIONS            ?= --build --force-recreate --remove-orphans --a
 COMPOSE_PRIVATEERR_ONLY_OPTIONS ?= --build --force-recreate --remove-orphans --abort-on-container-exit --exit-code-from $(PRIVATEERR_SERVICE)
 
 #
+# Docker Buildx options used to verify multi-architecture image builds.
+#
+BUILDX_PLATFORM_OPTIONS     ?= --platform linux/amd64,linux/arm64
+BUILDX_BUILD_OPTIONS        ?= --pull --no-cache
+BUILDX_PRIVATEERR_IMAGE_TAG ?= ghcr.io/scottgigawatt/privateerr:multiarch-local
+BUILDX_BUCCANEERR_IMAGE_TAG ?= ghcr.io/scottgigawatt/buccaneerr:multiarch-local
+
+#
 # Docker Compose command compatible with 'docker compose' (v2) and 'docker-compose' (v1).
 #
 DOCKER_COMPOSE := $(shell if docker compose version >/dev/null 2>&1; then echo "docker compose"; elif command -v docker-compose >/dev/null 2>&1; then echo "docker-compose"; else echo ""; fi)
@@ -114,7 +123,7 @@ EXAMPLE_ENV_FILE=example.env
 # Targets that are not files (i.e. never up-to-date); these will run every
 # time the target is called or required.
 #
-.PHONY: $(ALL) $(DOWN) $(CLEAN) $(NUKE) $(BUILD_DEPENDS) $(CHECK_ENV) $(BUILD) $(BUILD_BUCCANEERR) $(RUN_PRIVATEERR) $(RESET_CONFIG) $(TEST_E2E) $(TEST_DOWN) $(TEST_LOGS) $(UP) $(CONFIG) $(ENV) $(PRINT_CONFIG) $(PRINT_ENV) $(LOGS) $(HELP) $(START) $(STOP)
+.PHONY: $(ALL) $(DOWN) $(CLEAN) $(NUKE) $(BUILD_DEPENDS) $(CHECK_ENV) $(BUILD) $(BUILD_BUCCANEERR) $(BUILD_MULTIARCH) $(RUN_PRIVATEERR) $(RESET_CONFIG) $(TEST_E2E) $(TEST_DOWN) $(TEST_LOGS) $(UP) $(CONFIG) $(ENV) $(PRINT_CONFIG) $(PRINT_ENV) $(LOGS) $(HELP) $(START) $(STOP)
 
 #
 # $(ALL): Default makefile target. Builds and starts the service stack.
@@ -176,6 +185,23 @@ $(BUILD): $(BUILD_DEPENDS) $(CHECK_ENV)
 $(BUILD_BUCCANEERR): $(BUILD_DEPENDS) $(CHECK_ENV)
 	@echo "\nForgin' the Buccaneerr spyglass. 🔎"
 	$(DOCKER_COMPOSE) -f $(COMPOSE_FILE) build $(COMPOSE_BUILD_OPTIONS) $(BUCCANEERR_SERVICE)
+
+#
+# $(BUILD_MULTIARCH): Verifies Privateerr and Buccaneerr build for configured platforms.
+#
+# Dependencies:
+#   $(BUILD_DEPENDS) - Ensure build dependencies are installed.
+#
+$(BUILD_MULTIARCH): $(BUILD_DEPENDS)
+	@echo "\nTestin' the hulls across amd64 and arm64 seas. 🧭"
+	docker buildx build $(BUILDX_BUILD_OPTIONS) $(BUILDX_PLATFORM_OPTIONS) \
+		--tag $(BUILDX_PRIVATEERR_IMAGE_TAG) \
+		--file docker/Dockerfile \
+		docker
+	docker buildx build $(BUILDX_BUILD_OPTIONS) $(BUILDX_PLATFORM_OPTIONS) \
+		--tag $(BUILDX_BUCCANEERR_IMAGE_TAG) \
+		--file test/Dockerfile \
+		test
 
 #
 # $(RUN_PRIVATEERR): Runs only Privateerr to generate WireGuard config and metadata.
@@ -345,6 +371,7 @@ $(HELP):
 	@echo "  $(NUKE)               Removes containers, images, generated files, and restores example config."
 	@echo "  $(BUILD)              Builds only the Privateerr image."
 	@echo "  $(BUILD_BUCCANEERR)   Builds only the Buccaneerr image."
+	@echo "  $(BUILD_MULTIARCH)    Verifies Privateerr and Buccaneerr build for amd64 and arm64."
 	@echo "  $(RUN_PRIVATEERR)     Runs only Privateerr to generate config and metadata."
 	@echo "  $(RESET_CONFIG)       Restores example wg0.conf and privateerr.env files."
 	@echo "  $(TEST_E2E)           Runs the full one-shot Privateerr + Gluetun validation voyage."

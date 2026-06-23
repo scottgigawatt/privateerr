@@ -29,6 +29,7 @@ jobs:
             packages: write
         env:
             REGISTRY: ghcr.io
+            IMAGE_PLATFORMS: linux/amd64,linux/arm64
             PRIVATEERR_LOCAL_IMAGE_REF: ghcr.io/scottgigawatt/privateerr
             BUCCANEERR_LOCAL_IMAGE_REF: ghcr.io/scottgigawatt/buccaneerr
             PRIVATEERR_IMAGE_REF: ghcr.io/${{ github.repository }}
@@ -40,6 +41,9 @@ jobs:
               with:
                   submodules: recursive
                   persist-credentials: false
+
+            - name: "Summon Cross-Arch Cannons 🧨"
+              uses: docker/setup-qemu-action@v4
 
             - name: "Sharpen the Build Axe 🪓"
               uses: docker/setup-buildx-action@v4.1.0
@@ -133,6 +137,7 @@ jobs:
               with:
                   context: docker
                   file: docker/Dockerfile
+                  platforms: ${{ env.IMAGE_PLATFORMS }}
                   push: true
                   tags: ${{ steps.meta-privateerr.outputs.tags }}
                   labels: ${{ steps.meta-privateerr.outputs.labels }}
@@ -152,6 +157,7 @@ jobs:
               with:
                   context: test
                   file: test/Dockerfile
+                  platforms: ${{ env.IMAGE_PLATFORMS }}
                   push: true
                   tags: ${{ steps.meta-buccaneerr.outputs.tags }}
                   labels: ${{ steps.meta-buccaneerr.outputs.labels }}
