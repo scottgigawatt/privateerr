@@ -129,7 +129,7 @@ jobs:
 
             - name: "Bury Privateerr in GHCR 💰"
               id: publish-privateerr
-              uses: docker/build-push-action@v6
+              uses: docker/build-push-action@v7
               with:
                   context: docker
                   file: docker/Dockerfile
@@ -148,7 +148,7 @@ jobs:
 
             - name: "Bury Buccaneerr in GHCR 💰"
               id: publish-buccaneerr
-              uses: docker/build-push-action@v6
+              uses: docker/build-push-action@v7
               with:
                   context: test
                   file: test/Dockerfile
