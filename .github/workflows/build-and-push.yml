@@ -93,6 +93,61 @@ jobs:
                     --data "${payload}" \
                     "${DISCORD_WEBHOOK_URL}"
 
+            - name: "Notify Hades Discord: build started 🔥"
+              env:
+                  DISCORD_HADES_HOOK_URL: ${{ secrets.DISCORD_HADES_HOOK_URL }}
+                  RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+                  WORKFLOW_NAME: ${{ github.workflow }}
+                  REF_NAME: ${{ github.ref_name }}
+                  ACTOR: ${{ github.actor }}
+                  REPOSITORY: ${{ github.repository }}
+                  GHCR_IMAGE_REF: ${{ env.PRIVATEERR_IMAGE_REF }}
+                  DOCKERHUB_IMAGE_REF: ${{ env.DOCKERHUB_PRIVATEERR_IMAGE_REF }}
+                  IMAGE_PLATFORMS: ${{ env.IMAGE_PLATFORMS }}
+              run: |
+                  if [ -z "${DISCORD_HADES_HOOK_URL}" ]; then
+                    echo "DISCORD_HADES_HOOK_URL is not set; skipping Hades Discord notification."
+                    exit 0
+                  fi
+
+                  payload="$(jq -n \
+                    --arg title "🔥 The Build Inferno Has Opened" \
+                    --arg description "${WORKFLOW_NAME} has been hurled into the CI furnace. The registry rites are beginning." \
+                    --arg url "${RUN_URL}" \
+                    --arg repository "${REPOSITORY}" \
+                    --arg ref "${REF_NAME}" \
+                    --arg actor "${ACTOR}" \
+                    --arg platforms "${IMAGE_PLATFORMS}" \
+                    --arg ghcr "${GHCR_IMAGE_REF}" \
+                    --arg dockerhub "${DOCKERHUB_IMAGE_REF}" \
+                    '{
+                      username: "Hades Build Bureau",
+                      embeds: [{
+                        title: $title,
+                        description: $description,
+                        url: $url,
+                        color: 15158332,
+                        fields: [
+                          {name: "🏛️ Underworld Repo", value: $repository, inline: true},
+                          {name: "🩸 Bloodline Ref", value: $ref, inline: true},
+                          {name: "😈 Summoner", value: $actor, inline: true},
+                          {name: "🧱 Platforms on the Rack", value: $platforms, inline: false},
+                          {name: "📦 GHCR Cauldron", value: $ghcr, inline: false},
+                          {name: "🐳 Docker Hub Lava Dock", value: $dockerhub, inline: false}
+                        ],
+                        footer: {text: "Filed by the Underworld Release Desk"},
+                        timestamp: now | todate
+                      }]
+                    }')"
+
+                  curl \
+                    --fail \
+                    --silent \
+                    --show-error \
+                    --header "Content-Type: application/json" \
+                    --data "${payload}" \
+                    "${DISCORD_HADES_HOOK_URL}"
+
             - name: "Grab the Treasure Map 🗺️"
               uses: actions/checkout@v7
               with:
@@ -434,3 +489,85 @@ jobs:
                     --header "Content-Type: application/json" \
                     --data "${payload}" \
                     "${DISCORD_WEBHOOK_URL}"
+
+            - name: "Notify Hades Discord: build finished 🔥"
+              if: always()
+              env:
+                  DISCORD_HADES_HOOK_URL: ${{ secrets.DISCORD_HADES_HOOK_URL }}
+                  JOB_STATUS: ${{ job.status }}
+                  RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+                  REPOSITORY: ${{ github.repository }}
+                  REF_NAME: ${{ github.ref_name }}
+                  GHCR_PACKAGE_URL: ${{ github.server_url }}/${{ github.repository }}/pkgs/container/privateerr
+                  DOCKERHUB_URL: https://hub.docker.com/r/${{ github.repository_owner }}/privateerr
+                  PRIVATEERR_TAGS: ${{ steps.publish-summary.outputs.tags }}
+                  GHCR_DIGEST: ${{ steps.publish-summary.outputs.ghcr_digest }}
+                  DOCKERHUB_DIGEST: ${{ steps.publish-summary.outputs.dockerhub_digest }}
+                  DIGEST_MATCH: ${{ steps.publish-summary.outputs.digest_match }}
+                  DOCKERHUB_PULLS: ${{ steps.publish-summary.outputs.dockerhub_pulls }}
+                  DOCKERHUB_STARS: ${{ steps.publish-summary.outputs.dockerhub_stars }}
+              run: |
+                  if [ -z "${DISCORD_HADES_HOOK_URL}" ]; then
+                    echo "DISCORD_HADES_HOOK_URL is not set; skipping Hades Discord notification."
+                    exit 0
+                  fi
+
+                  if [ "${JOB_STATUS}" = "success" ]; then
+                    title="😈 The Image Escaped the Furnace"
+                    description="The registry ritual completed, and the Docker Hub mirror survived the flames."
+                    color="16753920"
+                  else
+                    title="💀 The Registry Ritual Botched the Summoning"
+                    description="The infernal pipeline finished with status: ${JOB_STATUS}. Somebody poke the cauldron logs."
+                    color="15158332"
+                  fi
+
+                  formatted_tags="$(printf '%s\n' "${PRIVATEERR_TAGS:-none}" | sed '/^$/d; s/^/• /')"
+                  [ -n "${formatted_tags}" ] || formatted_tags="none"
+
+                  payload="$(jq -n \
+                    --arg title "${title}" \
+                    --arg description "${description}" \
+                    --arg url "${RUN_URL}" \
+                    --arg repository "${REPOSITORY}" \
+                    --arg ref "${REF_NAME}" \
+                    --arg tags "${formatted_tags}" \
+                    --arg ghcrDigest "${GHCR_DIGEST:-unavailable}" \
+                    --arg dockerhubDigest "${DOCKERHUB_DIGEST:-unavailable}" \
+                    --arg digestMatch "${DIGEST_MATCH:-not checked}" \
+                    --arg dockerhubPulls "${DOCKERHUB_PULLS:-unavailable}" \
+                    --arg dockerhubStars "${DOCKERHUB_STARS:-unavailable}" \
+                    --arg ghcrUrl "${GHCR_PACKAGE_URL}" \
+                    --arg dockerhubUrl "${DOCKERHUB_URL}" \
+                    --argjson color "${color}" \
+                    '{
+                      username: "Hades Build Bureau",
+                      embeds: [{
+                        title: $title,
+                        description: $description,
+                        url: $url,
+                        color: $color,
+                        fields: [
+                          {name: "🏛️ Repository of the Damned", value: $repository, inline: true},
+                          {name: "🩸 Ref Bloodline", value: $ref, inline: true},
+                          {name: "🏷️ Soul Tags", value: $tags, inline: false},
+                          {name: "🧾 GHCR Sigil", value: $ghcrDigest, inline: false},
+                          {name: "🧾 Docker Hub Sigil", value: $dockerhubDigest, inline: false},
+                          {name: "🪞 Mirror Pact Preserved", value: $digestMatch, inline: true},
+                          {name: "🐳 Docker Hub Pulls from the Abyss", value: $dockerhubPulls, inline: true},
+                          {name: "⭐ Infernal Stars", value: $dockerhubStars, inline: true},
+                          {name: "📦 GHCR Portal", value: $ghcrUrl, inline: false},
+                          {name: "🐳 Docker Hub Gate", value: $dockerhubUrl, inline: false}
+                        ],
+                        footer: {text: "Hades Build Bureau: surprisingly compliant with OCI metadata"},
+                        timestamp: now | todate
+                      }]
+                    }')"
+
+                  curl \
+                    --fail \
+                    --silent \
+                    --show-error \
+                    --header "Content-Type: application/json" \
+                    --data "${payload}" \
+                    "${DISCORD_HADES_HOOK_URL}"
