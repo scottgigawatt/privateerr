@@ -232,5 +232,5 @@ jobs:
                   username: ${{ secrets.DOCKERHUB_USERNAME }}
                   password: ${{ secrets.DOCKERHUB_TOKEN }}
                   repository: ${{ github.repository_owner }}/privateerr
-                  short-description: "Generate Private Internet Access WireGuard config and Gluetun metadata using PIA's unmodified scripts."
+                  short-description: "Generate PIA WireGuard config and Gluetun port forwarding metadata."
                   readme-filepath: ./docs/DOCKERHUB_README.md

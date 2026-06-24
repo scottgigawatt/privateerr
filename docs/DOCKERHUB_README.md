@@ -1,13 +1,13 @@
 # ⚓ Privateerr
 
-Privateerr is a lightweight Docker image that packages the unmodified Private Internet Access (PIA) manual connection scripts from [pia-foss/manual-connections](https://github.com/pia-foss/manual-connections).
+Privateerr is a tiny Docker wrapper that packages the original, unmodified [pia-foss/manual-connections](https://github.com/pia-foss/manual-connections) scripts from Private Internet Access (PIA).
 
 > [!IMPORTANT]
-> **Privateerr is not a VPN client.** It generates a PIA WireGuard config file and a small Gluetun metadata file, then gets out of the way.
+> ⚠️ Privateerr is not a VPN client!️️ ⚠️  It generates a PIA WireGuard config file and a small Gluetun port forwarding metadata file, then gets out of the way.
 
 ## 📦 Images
 
-```bash
+```console
 docker pull scottgigawatt/privateerr:latest
 ```
 
@@ -23,9 +23,9 @@ Docker should pull the right image for your host automatically.
 
 ## ⚡ Fastest Path
 
-Most users should use the GitHub repo because it includes the Docker Compose file, Makefile, example env file, and mounted config directories:
+Most users should use the GitHub repo because it includes the Compose file, Makefile, example env file, and mounted config directories:
 
-```bash
+```console
 git clone --recurse-submodules https://github.com/scottgigawatt/privateerr.git
 cd privateerr
 cp example.env .env
@@ -36,15 +36,15 @@ That writes:
 
 | 📄 File | 🎯 Purpose |
 | --- | --- |
-| `config/gluetun/wireguard/wg0.conf` | The PIA WireGuard config. |
-| `config/gluetun/wireguard/privateerr.env` | Selected PIA endpoint and Gluetun handoff metadata. |
+| `config/gluetun/wireguard/wg0.conf` | The PIA WireGuard configuration file. |
+| `config/gluetun/wireguard/privateerr.env` | Selected PIA endpoint and Gluetun port forwarding metadata. |
 
 > [!WARNING]
-> Keep `wg0.conf` private. It contains VPN connection material.
+> 🚨 Keep wg0.conf private! 🚨  It contains VPN connection material.
 
 ## 🧭 Why Pair It With Gluetun?
 
-Gluetun is a real VPN client. Privateerr is a config generator.
+Gluetun is a real VPN client. Privateerr is a VPN config generator.
 
 The simple use case is: generate `wg0.conf`, copy it into the VPN client you already use, and leave.
 
