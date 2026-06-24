@@ -38,6 +38,61 @@ jobs:
             DOCKERHUB_PRIVATEERR_IMAGE_REF: docker.io/${{ github.repository_owner }}/privateerr
 
         steps:
+            - name: "Notify Discord: build started 📣"
+              env:
+                  DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+                  RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+                  WORKFLOW_NAME: ${{ github.workflow }}
+                  REF_NAME: ${{ github.ref_name }}
+                  ACTOR: ${{ github.actor }}
+                  REPOSITORY: ${{ github.repository }}
+                  GHCR_IMAGE_REF: ${{ env.PRIVATEERR_IMAGE_REF }}
+                  DOCKERHUB_IMAGE_REF: ${{ env.DOCKERHUB_PRIVATEERR_IMAGE_REF }}
+                  IMAGE_PLATFORMS: ${{ env.IMAGE_PLATFORMS }}
+              run: |
+                  if [ -z "${DISCORD_WEBHOOK_URL}" ]; then
+                    echo "DISCORD_WEBHOOK_URL is not set; skipping Discord notification."
+                    exit 0
+                  fi
+
+                  payload="$(jq -n \
+                    --arg title "🚢 Privateerr publish started" \
+                    --arg description "${WORKFLOW_NAME} is building and publishing container images." \
+                    --arg url "${RUN_URL}" \
+                    --arg repository "${REPOSITORY}" \
+                    --arg ref "${REF_NAME}" \
+                    --arg actor "${ACTOR}" \
+                    --arg platforms "${IMAGE_PLATFORMS}" \
+                    --arg ghcr "${GHCR_IMAGE_REF}" \
+                    --arg dockerhub "${DOCKERHUB_IMAGE_REF}" \
+                    '{
+                      username: "Privateerr Builds",
+                      embeds: [{
+                        title: $title,
+                        description: $description,
+                        url: $url,
+                        color: 3447003,
+                        fields: [
+                          {name: "📚 Repository", value: $repository, inline: true},
+                          {name: "🌿 Ref", value: $ref, inline: true},
+                          {name: "🧑‍✈️ Actor", value: $actor, inline: true},
+                          {name: "🧱 Platforms", value: $platforms, inline: false},
+                          {name: "📦 GHCR", value: $ghcr, inline: false},
+                          {name: "🐳 Docker Hub", value: $dockerhub, inline: false}
+                        ],
+                        footer: {text: "Privateerr registry voyage"},
+                        timestamp: now | todate
+                      }]
+                    }')"
+
+                  curl \
+                    --fail \
+                    --silent \
+                    --show-error \
+                    --header "Content-Type: application/json" \
+                    --data "${payload}" \
+                    "${DISCORD_WEBHOOK_URL}"
+
             - name: "Grab the Treasure Map 🗺️"
               uses: actions/checkout@v7
               with:
@@ -234,3 +289,148 @@ jobs:
                   repository: ${{ github.repository_owner }}/privateerr
                   short-description: "Generate PIA WireGuard config and Gluetun port forwarding metadata."
                   readme-filepath: ./docs/DOCKERHUB_README.md
+
+            - name: "Collect publish summary 📊"
+              id: publish-summary
+              if: always()
+              env:
+                  GHCR_USERNAME: ${{ github.actor }}
+                  GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+                  DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+                  DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+                  GHCR_IMAGE_REF: ${{ env.PRIVATEERR_IMAGE_REF }}
+                  DOCKERHUB_IMAGE_REF: ${{ env.DOCKERHUB_PRIVATEERR_IMAGE_REF }}
+                  PRIVATEERR_TAGS: ${{ steps.meta-privateerr.outputs.tags }}
+                  DOCKERHUB_REPOSITORY: ${{ github.repository_owner }}/privateerr
+              run: |
+                  {
+                    echo "tags<<EOF"
+                    printf '%s\n' "${PRIVATEERR_TAGS:-none}"
+                    echo "EOF"
+                  } >> "${GITHUB_OUTPUT}"
+
+                  primary_ghcr_tag="$(printf '%s\n' "${PRIVATEERR_TAGS:-}" | sed '/^$/d' | head -n 1)"
+                  primary_dockerhub_tag=""
+                  ghcr_digest="unavailable"
+                  dockerhub_digest="unavailable"
+                  digest_match="not checked"
+
+                  if [ -n "${primary_ghcr_tag}" ]; then
+                    tag_suffix="${primary_ghcr_tag#"${GHCR_IMAGE_REF}"}"
+                    primary_dockerhub_tag="${DOCKERHUB_IMAGE_REF}${tag_suffix}"
+                  fi
+
+                  if [ -n "${primary_ghcr_tag}" ] && command -v skopeo >/dev/null 2>&1; then
+                    ghcr_digest="$(skopeo inspect \
+                      --creds "${GHCR_USERNAME}:${GHCR_TOKEN}" \
+                      "docker://${primary_ghcr_tag}" \
+                      | jq -r '.Digest // "unavailable"' || true)"
+
+                    dockerhub_digest="$(skopeo inspect \
+                      --creds "${DOCKERHUB_USERNAME}:${DOCKERHUB_TOKEN}" \
+                      "docker://${primary_dockerhub_tag}" \
+                      | jq -r '.Digest // "unavailable"' || true)"
+
+                    if [ "${ghcr_digest}" = "${dockerhub_digest}" ] && [ "${ghcr_digest}" != "unavailable" ]; then
+                      digest_match="yes"
+                    elif [ "${ghcr_digest}" != "unavailable" ] || [ "${dockerhub_digest}" != "unavailable" ]; then
+                      digest_match="no"
+                    fi
+                  fi
+
+                  dockerhub_json="$(curl --fail --silent --show-error \
+                    "https://hub.docker.com/v2/repositories/${DOCKERHUB_REPOSITORY}/" || true)"
+                  dockerhub_pulls="$(printf '%s' "${dockerhub_json}" | jq -r '.pull_count // "unavailable"' 2>/dev/null || echo "unavailable")"
+                  dockerhub_stars="$(printf '%s' "${dockerhub_json}" | jq -r '.star_count // "unavailable"' 2>/dev/null || echo "unavailable")"
+
+                  {
+                    echo "primary_ghcr_tag=${primary_ghcr_tag:-unavailable}"
+                    echo "primary_dockerhub_tag=${primary_dockerhub_tag:-unavailable}"
+                    echo "ghcr_digest=${ghcr_digest}"
+                    echo "dockerhub_digest=${dockerhub_digest}"
+                    echo "digest_match=${digest_match}"
+                    echo "dockerhub_pulls=${dockerhub_pulls}"
+                    echo "dockerhub_stars=${dockerhub_stars}"
+                  } >> "${GITHUB_OUTPUT}"
+
+            - name: "Notify Discord: build finished 📣"
+              if: always()
+              env:
+                  DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+                  JOB_STATUS: ${{ job.status }}
+                  RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+                  REPOSITORY: ${{ github.repository }}
+                  REF_NAME: ${{ github.ref_name }}
+                  GHCR_PACKAGE_URL: ${{ github.server_url }}/${{ github.repository }}/pkgs/container/privateerr
+                  DOCKERHUB_URL: https://hub.docker.com/r/${{ github.repository_owner }}/privateerr
+                  PRIVATEERR_TAGS: ${{ steps.publish-summary.outputs.tags }}
+                  GHCR_DIGEST: ${{ steps.publish-summary.outputs.ghcr_digest }}
+                  DOCKERHUB_DIGEST: ${{ steps.publish-summary.outputs.dockerhub_digest }}
+                  DIGEST_MATCH: ${{ steps.publish-summary.outputs.digest_match }}
+                  DOCKERHUB_PULLS: ${{ steps.publish-summary.outputs.dockerhub_pulls }}
+                  DOCKERHUB_STARS: ${{ steps.publish-summary.outputs.dockerhub_stars }}
+              run: |
+                  if [ -z "${DISCORD_WEBHOOK_URL}" ]; then
+                    echo "DISCORD_WEBHOOK_URL is not set; skipping Discord notification."
+                    exit 0
+                  fi
+
+                  if [ "${JOB_STATUS}" = "success" ]; then
+                    title="✅ Privateerr publish complete"
+                    description="Images are published and the Docker Hub mirror has been checked."
+                    color="5763719"
+                  else
+                    title="🔥 Privateerr publish needs attention"
+                    description="The registry workflow finished with status: ${JOB_STATUS}."
+                    color="15548997"
+                  fi
+
+                  formatted_tags="$(printf '%s\n' "${PRIVATEERR_TAGS:-none}" | sed '/^$/d; s/^/• /')"
+                  [ -n "${formatted_tags}" ] || formatted_tags="none"
+
+                  payload="$(jq -n \
+                    --arg title "${title}" \
+                    --arg description "${description}" \
+                    --arg url "${RUN_URL}" \
+                    --arg repository "${REPOSITORY}" \
+                    --arg ref "${REF_NAME}" \
+                    --arg tags "${formatted_tags}" \
+                    --arg ghcrDigest "${GHCR_DIGEST:-unavailable}" \
+                    --arg dockerhubDigest "${DOCKERHUB_DIGEST:-unavailable}" \
+                    --arg digestMatch "${DIGEST_MATCH:-not checked}" \
+                    --arg dockerhubPulls "${DOCKERHUB_PULLS:-unavailable}" \
+                    --arg dockerhubStars "${DOCKERHUB_STARS:-unavailable}" \
+                    --arg ghcrUrl "${GHCR_PACKAGE_URL}" \
+                    --arg dockerhubUrl "${DOCKERHUB_URL}" \
+                    --argjson color "${color}" \
+                    '{
+                      username: "Privateerr Builds",
+                      embeds: [{
+                        title: $title,
+                        description: $description,
+                        url: $url,
+                        color: $color,
+                        fields: [
+                          {name: "📚 Repository", value: $repository, inline: true},
+                          {name: "🌿 Ref", value: $ref, inline: true},
+                          {name: "🏷️ Tags", value: $tags, inline: false},
+                          {name: "🧾 GHCR digest", value: $ghcrDigest, inline: false},
+                          {name: "🧾 Docker Hub digest", value: $dockerhubDigest, inline: false},
+                          {name: "🪞 Digest preserved", value: $digestMatch, inline: true},
+                          {name: "🐳 Docker Hub pulls", value: $dockerhubPulls, inline: true},
+                          {name: "⭐ Docker Hub stars", value: $dockerhubStars, inline: true},
+                          {name: "📦 GHCR package", value: $ghcrUrl, inline: false},
+                          {name: "🐳 Docker Hub", value: $dockerhubUrl, inline: false}
+                        ],
+                        footer: {text: "Privateerr registry voyage"},
+                        timestamp: now | todate
+                      }]
+                    }')"
+
+                  curl \
+                    --fail \
+                    --silent \
+                    --show-error \
+                    --header "Content-Type: application/json" \
+                    --data "${payload}" \
+                    "${DISCORD_WEBHOOK_URL}"
