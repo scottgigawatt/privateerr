@@ -85,7 +85,7 @@ Configure these GitHub Actions values before enabling Docker Hub publishing:
 
 | 🔐 Type | 🧾 Name | 🎯 Purpose |
 | --- | --- | --- |
-| Variable | `DOCKERHUB_USERNAME` | Docker Hub username used to log in. |
+| Secret | `DOCKERHUB_USERNAME` | Docker Hub username used to log in. |
 | Secret | `DOCKERHUB_TOKEN` | Docker Hub access token used by GitHub Actions. |
 
 The Docker Hub repository overview is updated by the same workflow from [DOCKERHUB_README.md](./DOCKERHUB_README.md). Keep that file shorter than the GitHub README: Docker Hub readers usually need to know what the image does, how to pull it, what platforms it supports, and where the full project docs live.
