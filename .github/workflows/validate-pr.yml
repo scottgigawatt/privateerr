@@ -15,7 +15,7 @@ jobs:
             contents: read
 
         env:
-            IMAGE_PLATFORMS: linux/amd64,linux/arm64
+            IMAGE_PLATFORMS: linux/amd64,linux/arm64,linux/arm/v7
             PRIVATEERR_LOCAL_IMAGE_REF: ghcr.io/scottgigawatt/privateerr
             BUCCANEERR_LOCAL_IMAGE_REF: ghcr.io/scottgigawatt/buccaneerr
 
@@ -51,7 +51,7 @@ jobs:
                   make build
                   make build-buccaneerr
 
-            - name: "Test the Two-Deck Hull Plans 🛠️"
+            - name: "Test the Three-Deck Hull Plans 🛠️"
               run: make build-multiarch
 
             - name: "Inspect Privateerr for Bilge Rot 🔍"

@@ -59,8 +59,9 @@ RUN apk add --no-cache \
       curl
 
 #
-# Copy over the Buccaneerr script and make it executable.
+# Copy over the project license and Buccaneerr script, then make the script executable.
 #
+COPY LICENSE /LICENSE
 COPY buccaneerr-entrypoint.sh ${BUCCANEERR_BIN_HOME}/buccaneerr-entrypoint.sh
 RUN chmod +x "${BUCCANEERR_BIN_HOME}/buccaneerr-entrypoint.sh"
 

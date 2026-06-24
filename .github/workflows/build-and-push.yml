@@ -10,6 +10,7 @@ on:
             - "docker/**"
             - "test/**"
             - "config/**"
+            - "docs/DOCKERHUB_README.md"
             - "docker-compose.yml"
             - "Makefile"
             - "example.env"
@@ -29,11 +30,12 @@ jobs:
             packages: write
         env:
             REGISTRY: ghcr.io
-            IMAGE_PLATFORMS: linux/amd64,linux/arm64
-            PRIVATEERR_LOCAL_IMAGE_REF: ghcr.io/scottgigawatt/privateerr
-            BUCCANEERR_LOCAL_IMAGE_REF: ghcr.io/scottgigawatt/buccaneerr
+            IMAGE_PLATFORMS: linux/amd64,linux/arm64,linux/arm/v7
+            PRIVATEERR_LOCAL_IMAGE_REF: ghcr.io/${{ github.repository }}
+            BUCCANEERR_LOCAL_IMAGE_REF: ghcr.io/${{ github.repository_owner }}/buccaneerr
             PRIVATEERR_IMAGE_REF: ghcr.io/${{ github.repository }}
             BUCCANEERR_IMAGE_REF: ghcr.io/${{ github.repository_owner }}/buccaneerr
+            DOCKERHUB_PRIVATEERR_IMAGE_REF: docker.io/${{ github.repository_owner }}/privateerr
 
         steps:
             - name: "Grab the Treasure Map 🗺️"
@@ -131,7 +133,7 @@ jobs:
                       type=sha,prefix=sha-
                       type=semver,pattern={{version}}
 
-            - name: "Bury Privateerr in GHCR 💰"
+            - name: "Publish Privateerr to GHCR 💰"
               id: publish-privateerr
               uses: docker/build-push-action@v7
               with:
@@ -156,7 +158,37 @@ jobs:
                   sbom: true
                   provenance: true
 
-            - name: "Bury Buccaneerr in GHCR 💰"
+            - name: "Install Skopeo 🪞"
+              run: |
+                  sudo apt-get update
+                  sudo apt-get install --yes skopeo
+
+            - name: "Mirror Privateerr to Docker Hub 🪞"
+              env:
+                  GHCR_USERNAME: ${{ github.actor }}
+                  GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+                  DOCKERHUB_USERNAME: ${{ vars.DOCKERHUB_USERNAME }}
+                  DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+                  GHCR_IMAGE_REF: ${{ env.PRIVATEERR_IMAGE_REF }}
+                  DOCKERHUB_IMAGE_REF: ${{ env.DOCKERHUB_PRIVATEERR_IMAGE_REF }}
+                  PRIVATEERR_TAGS: ${{ steps.meta-privateerr.outputs.tags }}
+              run: |
+                  while IFS= read -r ghcr_tag; do
+                    [ -n "${ghcr_tag}" ] || continue
+                    tag_suffix="${ghcr_tag#"${GHCR_IMAGE_REF}"}"
+                    dockerhub_tag="${DOCKERHUB_IMAGE_REF}${tag_suffix}"
+
+                    echo "Mirroring ${ghcr_tag} to ${dockerhub_tag}"
+                    skopeo copy \
+                      --all \
+                      --preserve-digests \
+                      --src-creds "${GHCR_USERNAME}:${GHCR_TOKEN}" \
+                      --dest-creds "${DOCKERHUB_USERNAME}:${DOCKERHUB_TOKEN}" \
+                      "docker://${ghcr_tag}" \
+                      "docker://${dockerhub_tag}"
+                  done <<< "${PRIVATEERR_TAGS}"
+
+            - name: "Publish Buccaneerr to registries 💰"
               id: publish-buccaneerr
               uses: docker/build-push-action@v7
               with:
@@ -193,3 +225,12 @@ jobs:
                   subject-name: ${{ env.BUCCANEERR_IMAGE_REF }}
                   subject-digest: ${{ steps.publish-buccaneerr.outputs.digest }}
                   push-to-registry: true
+
+            - name: "Update Privateerr Docker Hub overview 📘"
+              uses: peter-evans/dockerhub-description@e98e4d1628a5f3be2be7c231e50981aee98723ae  # v4.0.0
+              with:
+                  username: ${{ vars.DOCKERHUB_USERNAME }}
+                  password: ${{ secrets.DOCKERHUB_TOKEN }}
+                  repository: ${{ github.repository_owner }}/privateerr
+                  short-description: "Generate Private Internet Access WireGuard config and Gluetun metadata using PIA's unmodified scripts."
+                  readme-filepath: ./docs/DOCKERHUB_README.md
