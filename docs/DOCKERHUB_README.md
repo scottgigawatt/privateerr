@@ -39,7 +39,8 @@ That writes:
 | `config/gluetun/wireguard/wg0.conf` | The PIA WireGuard config. |
 | `config/gluetun/wireguard/privateerr.env` | Selected PIA endpoint and Gluetun handoff metadata. |
 
-Keep `wg0.conf` private. It contains VPN connection material.
+> [!WARNING]
+> Keep `wg0.conf` private. It contains VPN connection material.
 
 ## 🧭 Why Pair It With Gluetun?
 
