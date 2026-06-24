@@ -167,7 +167,7 @@ jobs:
               env:
                   GHCR_USERNAME: ${{ github.actor }}
                   GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-                  DOCKERHUB_USERNAME: ${{ vars.DOCKERHUB_USERNAME }}
+                  DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
                   DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
                   GHCR_IMAGE_REF: ${{ env.PRIVATEERR_IMAGE_REF }}
                   DOCKERHUB_IMAGE_REF: ${{ env.DOCKERHUB_PRIVATEERR_IMAGE_REF }}
@@ -229,7 +229,7 @@ jobs:
             - name: "Update Privateerr Docker Hub overview 📘"
               uses: peter-evans/dockerhub-description@e98e4d1628a5f3be2be7c231e50981aee98723ae  # v4.0.0
               with:
-                  username: ${{ vars.DOCKERHUB_USERNAME }}
+                  username: ${{ secrets.DOCKERHUB_USERNAME }}
                   password: ${{ secrets.DOCKERHUB_TOKEN }}
                   repository: ${{ github.repository_owner }}/privateerr
                   short-description: "Generate Private Internet Access WireGuard config and Gluetun metadata using PIA's unmodified scripts."
