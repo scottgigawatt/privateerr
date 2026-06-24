@@ -206,7 +206,8 @@ If you want to see the actual Compose configuration Docker will run:
 | `make reset-config` | You want to restore the checked-in example config files. |
 | `make clean` | You want to stop the stack and restore example config files. |
 
-More build, test, and release details live in [Advanced Usage](./docs/ADVANCED_USAGE.md).
+> [!TIP]
+> More build, test, and release details live in [Advanced Usage](./docs/ADVANCED_USAGE.md).
 
 ## 📦 Platform Notes
 
