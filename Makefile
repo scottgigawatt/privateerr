@@ -145,7 +145,7 @@ COMPOSE_PRIVATEERR_ONLY_OPTIONS ?= \
 #
 # Docker Buildx options used to verify multi-architecture image builds.
 #
-BUILDX_PLATFORM_OPTIONS     ?= --platform linux/amd64,linux/arm64
+BUILDX_PLATFORM_OPTIONS     ?= --platform linux/amd64,linux/arm64,linux/arm/v7
 BUILDX_BUILD_OPTIONS        ?= --pull --no-cache
 BUILDX_PRIVATEERR_IMAGE_TAG ?= ghcr.io/scottgigawatt/privateerr:multiarch-local
 BUILDX_BUCCANEERR_IMAGE_TAG ?= ghcr.io/scottgigawatt/buccaneerr:multiarch-local
@@ -210,8 +210,8 @@ $(BUILD_DEPENDS):
 		$(if $(shell which $(exe) 2> /dev/null),,$(error "No $(exe) in PATH")))
 	@# Verify Docker Compose availability.
 	@$(DOCKER_COMPOSE) version >/dev/null 2>&1 || { \
-		echo "Docker Compose be missin'."; \
-		echo "Install docker compose or docker-compose. 🧭"; \
+		echo "Docker Compose is not available."; \
+		echo "Install docker compose or docker-compose."; \
 		exit 1; \
 	}
 
@@ -220,9 +220,9 @@ $(BUILD_DEPENDS):
 #
 $(CHECK_ENV):
 	@if [ ! -f "$(ENV_FILE)" ]; then \
-		echo "\nNo $(ENV_FILE) found. The ship needs a chart before it sails. 🗺️"; \
-		echo "Copy $(EXAMPLE_ENV_FILE) to $(ENV_FILE), then update yer PIA"; \
-		echo "credentials and voyage settings."; \
+		echo "\nNo $(ENV_FILE) found."; \
+		echo "Copy $(EXAMPLE_ENV_FILE) to $(ENV_FILE), then update your PIA"; \
+		echo "credentials and settings."; \
 		echo "Run: cp $(EXAMPLE_ENV_FILE) $(ENV_FILE)"; \
 		exit 1; \
 	fi
@@ -235,7 +235,7 @@ $(CHECK_ENV):
 #   $(CHECK_ENV) - Ensure .env exists before running Compose commands.
 #
 $(DOWN): $(BUILD_DEPENDS) $(CHECK_ENV)
-	@echo "\nDroppin' anchor for the whole fleet. ⚓"
+	@echo "\nStopping and removing the service stack. ⚓"
 	$(DOCKER_COMPOSE) -f $(COMPOSE_FILE) down $(COMPOSE_DOWN_OPTIONS)
 
 #
@@ -246,7 +246,7 @@ $(DOWN): $(BUILD_DEPENDS) $(CHECK_ENV)
 #   $(CHECK_ENV) - Ensure .env exists before running Compose commands.
 #
 $(BUILD): $(BUILD_DEPENDS) $(CHECK_ENV)
-	@echo "\nHammerin' Privateerr into a seaworthy image. ⚒️"
+	@echo "\nBuilding the Privateerr image. ⚒️"
 	$(DOCKER_COMPOSE) -f $(COMPOSE_FILE) build $(COMPOSE_BUILD_OPTIONS) $(PRIVATEERR_SERVICE)
 
 #
@@ -257,7 +257,7 @@ $(BUILD): $(BUILD_DEPENDS) $(CHECK_ENV)
 #   $(CHECK_ENV) - Ensure .env exists before running Compose commands.
 #
 $(BUILD_BUCCANEERR): $(BUILD_DEPENDS) $(CHECK_ENV)
-	@echo "\nForgin' the Buccaneerr spyglass. 🔎"
+	@echo "\nBuilding the Buccaneerr image. 🔎"
 	$(DOCKER_COMPOSE) -f $(COMPOSE_FILE) build $(COMPOSE_BUILD_OPTIONS) $(BUCCANEERR_SERVICE)
 
 #
@@ -267,7 +267,7 @@ $(BUILD_BUCCANEERR): $(BUILD_DEPENDS) $(CHECK_ENV)
 #   $(BUILD_DEPENDS) - Ensure build dependencies are installed.
 #
 $(BUILD_MULTIARCH): $(BUILD_DEPENDS)
-	@echo "\nTestin' the hulls across amd64 and arm64 seas. 🧭"
+	@echo "\nVerifying multi-architecture builds for amd64, arm64, and arm/v7. 🧭"
 	docker buildx build $(BUILDX_BUILD_OPTIONS) $(BUILDX_PLATFORM_OPTIONS) \
 		--tag $(BUILDX_PRIVATEERR_IMAGE_TAG) \
 		--file docker/Dockerfile \
@@ -285,7 +285,7 @@ $(BUILD_MULTIARCH): $(BUILD_DEPENDS)
 #   $(CHECK_ENV) - Ensure .env exists before running Compose commands.
 #
 $(RUN_PRIVATEERR): $(BUILD_DEPENDS) $(CHECK_ENV)
-	@echo "\nSummonin' WireGuard map and Gluetun scroll. 📜"
+	@echo "\nGenerating WireGuard config and Gluetun metadata. 📜"
 	PRIVATEERR_KEEPALIVE=false $(DOCKER_COMPOSE) -f $(COMPOSE_FILE) up \
 		$(COMPOSE_PRIVATEERR_ONLY_OPTIONS) \
 		$(PRIVATEERR_SERVICE)
@@ -294,7 +294,7 @@ $(RUN_PRIVATEERR): $(BUILD_DEPENDS) $(CHECK_ENV)
 # $(RESET_CONFIG): Restores checked-in example config files after live tests.
 #
 $(RESET_CONFIG):
-	@echo "\nRestorin' example maps for safe check-in. 🧭"
+	@echo "\nRestoring example config files. 🧭"
 	cp $(PRIVATEERR_EXAMPLE_WG_CONFIG) $(PRIVATEERR_GENERATED_WG_CONFIG)
 	cp $(PRIVATEERR_EXAMPLE_METADATA) $(PRIVATEERR_GENERATED_METADATA)
 
@@ -306,7 +306,7 @@ $(RESET_CONFIG):
 #   $(CHECK_ENV) - Ensure .env exists before running Compose commands.
 #
 $(TEST_E2E): $(BUILD_DEPENDS) $(CHECK_ENV)
-	@echo "\nLaunching Privateerr, Gluetun, and Buccaneerr in one voyage. 🌊"
+	@echo "\nStarting Privateerr, Gluetun, and Buccaneerr for e2e validation. 🌊"
 	$(DOCKER_COMPOSE) -f $(COMPOSE_FILE) up $(COMPOSE_TEST_OPTIONS)
 
 #
@@ -326,23 +326,23 @@ $(TEST_DOWN): $(DOWN) $(RESET_CONFIG)
 #   $(CHECK_ENV) - Ensure .env exists before running Compose commands.
 #
 $(NUKE): $(BUILD_DEPENDS) $(CHECK_ENV)
-	@echo "\nFirin' the clean broadside. Repo-safe files stay aboard. 💣"
+	@echo "\nRemoving containers, images, logs, and generated state. 💣"
 	@compose_images="$$( $(NUKE_COMPOSE_IMAGES_COMMAND) || true )"; \
 	$(DOCKER_COMPOSE) -f $(COMPOSE_FILE) down $(COMPOSE_DOWN_OPTIONS) --rmi all; \
 	containers="$$(docker ps -aq $(NUKE_CONTAINER_FILTER_OPTIONS))"; \
 	if [ -n "$${containers}" ]; then \
-		echo "Scuttlin' leftover containers. 🧨"; \
+		echo "Removing leftover containers. 🧨"; \
 		docker rm -f $${containers}; \
 	fi; \
 	if [ -n "$${compose_images}" ]; then \
-		echo "Sinkin' local service images. 🏴‍☠️"; \
+		echo "Removing local service images."; \
 		docker image rm -f $${compose_images} >/dev/null 2>&1 || true; \
 	fi
 
-	@echo "Scrubbin' generated logs and Gluetun state. 🧽"
+	@echo "Removing generated logs and Gluetun state. 🧽"
 	rm -rf $(PRIVATEERR_GENERATED_PATHS)
 
-	@echo "Keelhaulin' base FROM images. ⚓"
+	@echo "Removing base images used by Dockerfiles. ⚓"
 	docker image rm -f $(FROM_IMAGES) >/dev/null 2>&1 || true
 
 	@$(MAKE) --no-print-directory $(RESET_CONFIG)
@@ -363,7 +363,7 @@ $(TEST_LOGS): $(LOGS)
 #   $(CHECK_ENV) - Ensure .env exists before running Compose commands.
 #
 $(UP): $(BUILD_DEPENDS) $(CHECK_ENV)
-	@echo "\nRaisin' the whole Privateerr fleet. 🏴‍☠️"
+	@echo "\nBuilding and starting the full service stack. 🚀"
 	$(DOCKER_COMPOSE) -f $(COMPOSE_FILE) up $(COMPOSE_UP_OPTIONS)
 
 #
@@ -427,7 +427,7 @@ $(PRINT_ENV): $(CHECK_ENV)
 #   $(CHECK_ENV) - Ensure .env exists before running Compose commands.
 #
 $(LOGS): $(CHECK_ENV)
-	@echo "\nReadin' logs for the fleet. 🔎"
+	@echo "\nShowing service stack logs. 🔎"
 	$(DOCKER_COMPOSE) -f $(COMPOSE_FILE) logs $(COMPOSE_LOGS_OPTIONS)
 
 #
@@ -445,10 +445,10 @@ $(HELP):
 	$(call help_line,$(NUKE),Removes containers plus images and generated files.)
 	$(call help_line,$(BUILD),Builds only the Privateerr image.)
 	$(call help_line,$(BUILD_BUCCANEERR),Builds only the Buccaneerr image.)
-	$(call help_line,$(BUILD_MULTIARCH),Verifies amd64 and arm64 image builds.)
+	$(call help_line,$(BUILD_MULTIARCH),Verifies amd64/arm64/arm/v7 image builds.)
 	$(call help_line,$(RUN_PRIVATEERR),Runs Privateerr to generate config.)
 	$(call help_line,$(RESET_CONFIG),Restores example VPN config files.)
-	$(call help_line,$(TEST_E2E),Runs the one-shot validation voyage.)
+	$(call help_line,$(TEST_E2E),Runs the one-shot e2e validation stack.)
 	$(call help_line,$(TEST_DOWN),Stops the stack and restores example configs.)
 	$(call help_line,$(TEST_LOGS),Shows logs for the service stack.)
 	$(call help_line,$(UP),Builds then starts every service.)

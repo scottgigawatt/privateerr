@@ -18,11 +18,11 @@
   <img src="https://img.shields.io/badge/Scanned-Trivy%20Bilge%20Check-teal?logo=aqua" alt="Trivy Bilge Check" />
   <img src="https://img.shields.io/github/license/scottgigawatt/privateerr?label=Legal%20Scroll&color=blue" alt="Legal Scroll" />
   <img src="https://img.shields.io/badge/GHCR-Privateerr%20Captain-blue?logo=github" alt="GHCR Privateerr Captain" />
-  <img src="https://img.shields.io/badge/GHCR-Buccaneerr%20Scout-purple?logo=github" alt="GHCR Buccaneerr Scout" />
+  <img src="https://img.shields.io/docker/pulls/scottgigawatt/privateerr?label=Docker%20Hub%20Privateerr&logo=docker" alt="Docker Hub Privateerr Pulls" />
   <img src="https://img.shields.io/badge/Dockerized-Brig-blue?logo=docker" alt="Dockerized Brig" />
   <img src="https://img.shields.io/badge/Cloaked-by%20PIA%20%26%20WireGuard-green?logo=protonvpn" alt="Cloaked" />
   <img src="https://img.shields.io/badge/Base-Alpine%20Latest-0D597F?logo=alpinelinux" alt="Alpine Latest" />
-  <img src="https://img.shields.io/badge/Multi--Arch-amd64%20%7C%20arm64-blue?logo=docker" alt="Multi-Arch amd64 and arm64" />
+  <img src="https://img.shields.io/badge/Multi--Arch-amd64%20%7C%20arm64%20%7C%20arm%2Fv7-blue?logo=docker" alt="Multi-Arch amd64, arm64, and arm/v7" />
   <img src="https://img.shields.io/badge/Battle--Tested-Synology%20%7C%20macOS-blue" alt="Battle-Tested" />
   <img src="https://img.shields.io/github/last-commit/scottgigawatt/privateerr?label=Last%20Raid&logo=git" alt="Last Raid" />
   <img src="https://img.shields.io/github/repo-size/scottgigawatt/privateerr?label=Hold%20Capacity" alt="Hold Capacity" />
@@ -43,166 +43,196 @@
 
 <hr />
 
-<!-- markdownlint-enable MD033 -->
-
 # ⚓️ Privateerr ☠️🏴‍☠️
 
-Ahoy there! Welcome to Privateerr, where we sail the digital seas with Private Internet Access and WireGuard!
+Ahoy! Privateerr is a lightweight Docker image that packages the official, unmodified,   Private Internet Access (PIA) ✨ [pia-foss/manual-connections](https://github.com/pia-foss/manual-connections) ✨ scripts.
 
-WireGuard be the leaner cannon on this ship. Compared with OpenVPN, it uses a smaller, simpler protocol design, usually needs less CPU to move the same booty, and keeps memory overhead low enough for wee vessels like Synology NAS boxes, home servers, and other resource-pinched decks. That means smoother seas, faster handshakes, and fewer fans screamin' like cursed sirens while yer torrents and containers do their work. Privateerr charts WireGuard on purpose: lighter load, cleaner config, happier NAS. 🧭
+Those PIA scripts live in this repo as a submodule at `docker/pia-manual-connections`; Privateerr packages them into a small Alpine image, runs them, and makes the output easy to use and consume with automation.
 
-## 🦜 Captain's Log ⚓️
-
-Privateerr be a tool fer generatin' a native WireGuard config file fer Private Internet Access (PIA). She takes the official PIA manual connection scripts, bundles 'em into a wee Alpine Docker image, and adds all the tools needed to craft a proper WireGuard chart to guide yer VPN voyage.
-
-> [!NOTE]
-> ☠️ Privateerr don't set sail on the VPN seas herself—she just scribbles the map. The config file she leaves behind can be handed off to a proper first mate like [Gluetun](https://github.com/qdm12/gluetun) to hoist the sails and make the actual connection.
-
-The main configuration lives in the [docker-compose.yml](./docker-compose.yml) manifest. This handles buildin' the image from an Alpine base, usin' the [Dockerfile](./docker/Dockerfile) found in the `docker` directory. Customize yer voyage by copyin' [example.env](./example.env) to `.env` and adjustin' the knobs to yer likin'.
-
-A copy of the [Manual PIA VPN Connections](https://github.com/pia-foss/manual-connections) repo be included as a submodule in `docker/pia-manual-connections`, so it's baked into the build. Those upstream scripts stay untouched and shiny as a freshly polished doubloon. Privateerr launches them with [`docker/privateerr-entrypoint.sh`](docker/privateerr-entrypoint.sh), then writes Gluetun metadata beside the generated config. When she's done, ye'll find yer precious WireGuard config at [`config/gluetun/wireguard/wg0.conf`](config/gluetun/wireguard/wg0.conf), and a Gluetun-friendly env scroll at [`config/gluetun/wireguard/privateerr.env`](config/gluetun/wireguard/privateerr.env).
-
-> [!NOTE]
-> 🧪 Alpine be a smaller test voyage, not a distro PIA lists as officially confirmed for these scripts. Privateerr builds from Alpine's `latest` tag by default so fresh security patches climb aboard each rebuild, and the e2e stack below inspects the plank before the image ships.
-
-<!-- -->
-
-> [!NOTE]
-> 🏴‍☠️ Published Privateerr and Buccaneerr images ship as multi-arch treasure chests for `linux/amd64` and `linux/arm64`. Pull `latest` from Intel/AMD or ARM64 decks, and Docker should grab the right cargo without ye naming the architecture by hand.
-
-<!-- -->
-
-> [!TIP]
-> ⚓ If ye be wonderin' how to use Privateerr alongside a proper VPN client like Gluetun, take a gander at the [Plundarr README](https://github.com/scottgigawatt/plundarr#readme) and the [docker-compose file](https://github.com/scottgigawatt/plundarr/blob/main/docker-compose.yml). There ye'll find a battle-tested setup where Privateerr scrawls the WireGuard map, and Gluetun sets sail with it.
->
-> 🧭 This setup be mighty handy, as PIA server latency can shift like the tides. With this rig, ye can simply restart the stack and let Privateerr chart a new course to the lowest-latency port before Gluetun embarks. Smooth sailin' guaranteed!
-
-Chart yer course with Privateerr and roam the open seas with stealth and style! 🏴‍☠️
-
-## 🗺️ Chartin' Yer Course 🔧
-
-To set sail and embark on yer VPN journey, follow these steps:
+And that's it! That's the whole trick: PIA's original scripts do the WireGuard work. Privateerr just gives them a clean container, friendly defaults, repeatable commands, and a small metadata file for Docker Compose setups.
 
 > [!IMPORTANT]
-> 🦜 Adjust yer `.env` like a savvy navigator before hoisting anchor.
+> **Privateerr is NOT a VPN client.** It does not create or run a VPN tunnel. It generates a PIA WireGuard configuration file (`wg0.conf`) that you can hand to an actual VPN client.
 
-```bash
-# Hoist the Jolly Roger and clone the repository with submodules
-git clone --recurse-submodules git@github.com:scottgigawatt/privateerr.git
-cd privateerr
+There are already excellent VPN clients. One of the best container-friendly options is [Gluetun](https://github.com/qdm12/gluetun). If what you really want is "get Gluetun working with PIA WireGuard," Privateerr may have you covered: generate the files, point Gluetun at them, and move on.
 
-# Copy the example environment file
-cp example.env .env
+## ⚡ Fastest Path
 
-# Open .env file and adjust the values to yer requirements
-
-# Weigh anchor and start the container
-make
-
-# Spy yer WireGuard treasure map at config/gluetun/wireguard/wg0.conf
-# Spy Gluetun metadata at config/gluetun/wireguard/privateerr.env
-```
-
-The treasure map to yer WireGuard configuration file will be buried in the [`config/gluetun/wireguard`](./config/gluetun/wireguard/) directory. This directory contains an example configuration file, [`wg0.conf`](./config/gluetun/wireguard/wg0.conf), so the repo stays shipshape before live credentials overwrite it.
-
-When ye run Privateerr, this file will be updated with the PIA WireGuard configuration. Ye can then use this configuration file to configure a VPN client like [Gluetun](https://github.com/qdm12/gluetun) for secure connections.
-
-Privateerr also writes `config/gluetun/wireguard/privateerr.env`, which includes Gluetun-ready booty such as:
-
-```env
-PIA_WG_SERVER_NAME=panama408
-PIA_WG_ENDPOINT_IP=1.2.3.4
-PIA_WG_ENDPOINT_PORT=1337
-PIA_REGION_ID=panama
-PIA_PORT_FORWARDING_SUPPORTED=true
-```
-
-That `PIA_WG_SERVER_NAME` value matters when Gluetun uses `VPN_SERVICE_PROVIDER=custom` and `VPN_TYPE=wireguard` with PIA port forwarding. In this stack, a tiny wrapper script waits for Privateerr's metadata scroll, exports `SERVER_NAMES`, and then hands the wheel back to Gluetun's original entrypoint. One `docker compose up`, no second voyage required.
-
-> [!WARNING]
-> ⚓️ Yer precious `wg0.conf` be the map to yer VPN treasure—keep it safe or risk scurvy.
-
-## 🧪 Trial by Cannon Fire
-
-Privateerr can run a full e2e voyage before ye publish the image. The single Compose stack:
-
-1. Builds Privateerr.
-2. Generates `wg0.conf` and `privateerr.env`.
-3. Starts Gluetun after Privateerr reports healthy.
-4. Enables PIA port forwarding through Gluetun.
-5. Runs a one-shot Buccaneerr inside Gluetun's network namespace.
-
-```bash
-make test-e2e
-```
-
-If ye only want Privateerr to generate config and metadata:
-
-```bash
-make run-privateerr
-```
-
-If the test voyage gets rowdy and ye need to clear the deck, this also restores the example `wg0.conf` and `privateerr.env` files:
-
-```bash
-make test-down
-```
-
-> [!IMPORTANT]
-> 🏴‍☠️ The e2e test uses real PIA credentials from `.env`. Fake credentials will sink the ship exactly as designed.
-
-## ☠️ Navigatin' Troubled Waters 🌊
-
-The included `Makefile` be yer trusty map to help ye navigate these treacherous waters. Use these commands to steer yer ship with ease and gain a clearer view of the environment and configuration details. Set sail with confidence, ye scurvy dogs! 🏴‍☠️
+Clone the repo with submodules, copy the example environment file, then pass your PIA credentials inline:
 
 ```console
-❯ make help
-Usage: make [TARGET]
-
-Targets:
-  all                Builds and starts the full service stack.
-  build-depends      Ensures build dependencies are installed.
-  check-env          Ensures .env exists before Compose commands run.
-  down               Stops and removes the full service stack.
-  clean              Stops the stack and restores example config files.
-  nuke               Removes containers, images, generated files, and restores example config.
-  build              Builds only the Privateerr image.
-  build-buccaneerr   Builds only the Buccaneerr image.
-  build-multiarch    Verifies Privateerr and Buccaneerr build for amd64 and arm64.
-  run-privateerr     Runs only Privateerr to generate config and metadata.
-  reset-config       Restores example wg0.conf and privateerr.env files.
-  test-e2e           Runs the full one-shot Privateerr + Gluetun validation voyage.
-  test-down          Stops the stack and restores example config files.
-  test-logs          Shows logs for the service stack.
-  up                 Builds, (re)creates, and starts every service.
-  config             Renders the Docker Compose model.
-  env                Prints the evaluated docker compose default env configuration.
-  print-config       Prints the raw uncommented docker compose yaml configuration.
-  print-env          Prints the raw uncommented docker compose env configuration.
-  start              Alias for up.
-  stop               Alias for down.
-  logs               Shows logs for the service stack.
-  help               Displays this help message.
+❯ git clone --recurse-submodules git@github.com:scottgigawatt/privateerr.git
+❯ cd privateerr
+❯ cp example.env .env
+❯ PIA_USER="p1234567" PIA_PASS="p0rtRoya1" PIA_PF="false" make run-privateerr
 ```
 
-## 🏝️ Know Yer Waters 🔍
+You don't even need to look at or update the `.env` file to get a fully functioning WireGuard configuration file _in seconds!_ Now, the `.env` file is intentionally roomy, but the defaults are ready to go; just use inline variables to override anything in the `.env` file for that run.
 
-> [!CAUTION]
-> 🏴‍☠️⚠️ While tested on Synology an' macOS, other waters may be stormier than expected.
+When the command finishes, the main file you came for is here:
 
-Privateerr has been tested on Synology DS1522+ and DS916+ running DSM 7.2 as well as macOS Tahoe. But fear not, me hearties! It should work on other lands as well.
+```console
+❯ cat config/gluetun/wireguard/wg0.conf
+[Interface]
+Address = 10.10.10.10
+PrivateKey = shiverMeTimbers123
+DNS = 10.10.10.10
 
-## ⚖️ Keep to the Code 📜
+[Peer]
+PersistentKeepalive = 25
+PublicKey = yoHoHoPublicKey123
+AllowedIPs = 0.0.0.0/0
+Endpoint = 10.10.10.10:1234
+```
 
-This project be licensed under the Apache 2 License—see the [LICENSE](LICENSE) scroll for details.
+Privateerr also writes a tiny metadata file beside the WireGuard config:
 
-The PIA manual connection scripts used in this repository be licensed under the [MIT license](https://choosealicense.com/licenses/mit/), 🪏❌ buried [in the PIA manual-connections repository](https://github.com/pia-foss/manual-connections/blob/master/LICENSE).
+```console
+❯ cat config/gluetun/wireguard/privateerr.env
+PIA_WG_SERVER_NAME=jolly-roger-401
+PIA_WG_ENDPOINT_IP=10.10.10.10
+PIA_WG_ENDPOINT_PORT=1234
+PIA_REGION_ID=skull-island
+PIA_REGION_NAME="Skull Island"
+PIA_PORT_FORWARDING_SUPPORTED=true
+PIA_GEOLOCATED_REGION=false
+```
 
-Community scrolls fer brave souls who wander aboard:
+| 📄 File | 🎯 What it is for |
+| --- | --- |
+| `config/gluetun/wireguard/wg0.conf` | The WireGuard config generated by PIA's scripts. Use this with Gluetun, WireGuard, or another VPN client that accepts WireGuard configs. |
+| `config/gluetun/wireguard/privateerr.env` | A small helper file with the selected PIA server name, endpoint, region, and port-forwarding support metadata. |
 
-- [Contributing](docs/CONTRIBUTING.md) — how to offer treasure without sinkin' the dinghy.
-- [Keep to the Code](docs/CODE_OF_CONDUCT.md) — pirate manners, but make 'em useful.
-- [Security Policy](docs/SECURITY.md) — where to report leaky hulls without shoutin' secrets across the harbor.
+Keep `wg0.conf` private. It contains VPN connection material.
+
+## 🚪 Port Forwarding
+
+Want a port-forwarding-capable PIA server? Change one variable:
+
+```console
+❯ PIA_USER="p1234567" PIA_PASS="p0rtRoya1" PIA_PF="true" make run-privateerr
+```
+
+PIA port forwarding is usually awkward because the server choice matters after WireGuard is involved. Privateerr makes the handoff simple: with `PIA_PF=true`, it asks PIA for a port-forwarding-capable WireGuard endpoint, generates `wg0.conf`, figures out the matching PIA WireGuard server name, and writes that name into `privateerr.env`.
+
+The metadata in `privateer.env` is what lets a Docker Compose stack establish a fully functioning port forwarded VPN connection in _one single step_, in _less than 1 minute_. Privateerr writes the map, reads `PIA_WG_SERVER_NAME`, exports it as `SERVER_NAMES`, then Gluetun can start immediately with the right server information instead of making you run a second manual step _after_ the VPN connection is established.
+
+> [!TIP]
+> For the simplest use case, take `wg0.conf` and leave. For the powerful use case, pair Privateerr with Gluetun in Compose so config generation, server-name handoff, and VPN startup happen together.
+
+For the wired-together version, see the included [Compose file](./docker-compose.yml). For a larger real-world stack, see [Plundarr](https://github.com/scottgigawatt/plundarr#readme).
+
+## 🔎 Inspect The Knobs
+
+Curious about every variable available in this project? Run:
+
+```console
+❯ make env
+```
+
+If you only care about the PIA settings, anchor the grep at the start of the line:
+
+```console
+❯ make env | grep ^PIA
+PIA_BIN_HOME=/pia
+PIA_VPN_PROTOCOL=wireguard
+PIA_DISABLE_IPV6=yes
+...
+```
+
+If you want to see the Gluetun side:
+
+```console
+❯ make env | grep ^GLUETUN
+GLUETUN_TAG=latest
+GLUETUN_CONFIG_PATH=./config/gluetun
+GLUETUN_WRAPPER_SCRIPT_PATH=./config/gluetun/scripts/gluetun-entrypoint-wrapper.sh
+...
+```
+
+## 🧩 PIA Script Variables
+
+These are the environment variables understood by PIA's own manual connection scripts. Privateerr did not invent them; it passes these values through to the scripts from [pia-foss/manual-connections](https://github.com/pia-foss/manual-connections). Everything else in `.env` is scaffolding around that core: Docker image paths, Compose mounts, healthchecks, Gluetun handoff, logs, and test automation.
+
+| 🧩 PIA script variable | 🛠️ Privateerr `.env` variable | What it configures |
+| --- | --- | --- |
+| `PIA_USER` | `PIA_USER` | Your PIA username. |
+| `PIA_PASS` | `PIA_PASS` | Your PIA password. |
+| `DIP_TOKEN` | `PIA_DIP_TOKEN` | Optional PIA dedicated IP token. |
+| `PIA_DNS` | `PIA_DNS` | Whether PIA should write DNS settings into the generated config. |
+| `PIA_PF` | `PIA_PF` | Whether to request a port-forwarding-capable PIA region. |
+| `PIA_CONNECT` | `PIA_CONNECT` | Whether the PIA script should connect after generating config. Privateerr sets this to `false` so it only writes files. |
+| `PIA_CONF_PATH` | `PIA_CONF_PATH` | Where the WireGuard config file is written inside the container. |
+| `MAX_LATENCY` | Not set by default | Optional latency threshold used by PIA's region selection. |
+| `AUTOCONNECT` | `PIA_AUTOCONNECT` | Whether PIA should pick the lowest-latency region automatically. |
+| `PREFERRED_REGION` | Not set by default | Optional PIA region ID when you want to choose a specific region. |
+| `VPN_PROTOCOL` | `PIA_VPN_PROTOCOL` | Which PIA protocol to use. Privateerr uses `wireguard`. |
+| `DISABLE_IPV6` | `PIA_DISABLE_IPV6` | Whether PIA's scripts should disable IPv6 behavior. |
+
+## 🧭 Compose Automation
+
+The included [docker-compose.yml](./docker-compose.yml) is intentionally variable-heavy. That keeps the file reusable, but it can make it hard to read raw.
+
+Use these commands when you want Docker Compose to show you what it sees:
+
+| 🧭 Command | 📄 What it prints |
+| --- | --- |
+| `make print-config` | The project Compose file with comments removed, but variables still visible. |
+| `make config` | The fully rendered Docker Compose model with variables resolved from `.env`. |
+
+So if you want to inspect the template, run:
+
+```console
+❯ make print-config
+```
+
+If you want to see the actual Compose configuration Docker will run:
+
+```console
+❯ make config
+```
+
+## ⚙️ Useful Commands
+
+| ⚙️ Command | ✅ Use it when |
+| --- | --- |
+| `make run-privateerr` | You only want fresh `wg0.conf` and `privateerr.env`. |
+| `make up` | You want the full Privateerr + Gluetun Compose stack. |
+| `make down` | You want to stop and remove the stack. |
+| `make logs` | You want to inspect container output. |
+| `make print-config` | You want the Compose template without comments. |
+| `make config` | You want the fully rendered Compose model. |
+| `make reset-config` | You want to restore the checked-in example config files. |
+| `make clean` | You want to stop the stack and restore example config files. |
+
+More build, test, and release details live in [Advanced Usage](./docs/ADVANCED_USAGE.md).
+
+## 📦 Platform Notes
+
+The image builds from Alpine for a small footprint. Alpine is not a distro PIA lists as officially confirmed for the manual scripts, so this project validates the container path separately before publishing images.
+
+Published Privateerr images support `linux/amd64`, `linux/arm64`, and `linux/arm/v7`.
+
+Images are published to both GHCR and Docker Hub:
+
+| 📦 Registry | 🏷️ Image |
+| --- | --- |
+| GHCR | `ghcr.io/scottgigawatt/privateerr:latest` |
+| Docker Hub | `scottgigawatt/privateerr:latest` |
+
+The Docker Hub overview is generated from [docs/DOCKERHUB_README.md](./docs/DOCKERHUB_README.md), which keeps Docker Hub focused on pulling the image and understanding the basic use case. The full project docs stay here in the GitHub README.
+
+## ⚖️ License And Community
+
+Privateerr is licensed under Apache 2.0; see [LICENSE](LICENSE). The bundled PIA manual connection scripts are licensed under MIT by PIA; see their [license](https://github.com/pia-foss/manual-connections/blob/master/LICENSE).
+
+### 📖 Community Guides
+
+| 📚 Guide | 🧭 Purpose |
+| --- | --- |
+| 🤝 [Contributing](docs/CONTRIBUTING.md) | How to offer changes without sinking the dinghy. |
+| ⚖️ [Code of Conduct](docs/CODE_OF_CONDUCT.md) | Pirate manners, but useful. |
+| 🔐 [Security Policy](docs/SECURITY.md) | How to report leaky hulls without shouting secrets across the harbor. |
 
 ---
 

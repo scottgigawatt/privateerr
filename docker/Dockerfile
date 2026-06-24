@@ -57,21 +57,17 @@ LABEL org.opencontainers.image.title="Privateerr" \
       org.opencontainers.image.base.name="docker.io/library/alpine:${ALPINE_TAG}"
 
 #
-# Copy over the PIA manual connection scripts and Privateerr helper scripts.
+# Copy license files, PIA manual connection scripts, and Privateerr helper scripts.
 #
+COPY LICENSE /LICENSE
+COPY pia-manual-connections/LICENSE /licenses/pia-manual-connections/LICENSE
 COPY pia-manual-connections ${PIA_BIN_HOME}
 COPY privateerr-entrypoint.sh ${PRIVATEERR_BIN_HOME}/privateerr-entrypoint.sh
 COPY privateerr-date.sh /usr/local/bin/date
 
 #
-# Install only the tools required to generate PIA manual WireGuard configs.
-# Privateerr does not establish the VPN connection itself. It stops after
-# writing the WireGuard config and metadata that Gluetun will consume.
-# openresolv provides the resolvconf command that PIA's scripts check when
-# PIA_DNS=true, even though Privateerr only writes a config file.
-# A tiny date compatibility shim replaces the need for GNU coreutils.
-# jq is installed from the configured package repository until Alpine stable
-# includes a version that fixes known 1.8.1-r0 vulnerabilities.
+# Install the small runtime needed to generate PIA WireGuard configs.
+# jq comes from the configured repository until Alpine stable has the patched version.
 #
 RUN apk add --no-cache \
       bash \
