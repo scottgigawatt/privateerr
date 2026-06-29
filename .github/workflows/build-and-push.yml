@@ -55,9 +55,12 @@ jobs:
                     exit 0
                   fi
 
+                  embed_colors=(16711884 15961002 11685080 10181046 15844367 16738740)
+                  color="${embed_colors[$((RANDOM % ${#embed_colors[@]}))]}"
+
                   payload="$(jq -n \
-                    --arg title "🚢 Privateerr publish started" \
-                    --arg description "${WORKFLOW_NAME} is building and publishing container images." \
+                    --arg title "🚢 Privateerr kicked dock door open" \
+                    --arg description "${WORKFLOW_NAME} is in lashes, shipping fresh images with concerning confidence." \
                     --arg url "${RUN_URL}" \
                     --arg repository "${REPOSITORY}" \
                     --arg ref "${REF_NAME}" \
@@ -65,22 +68,23 @@ jobs:
                     --arg platforms "${IMAGE_PLATFORMS}" \
                     --arg ghcr "${GHCR_IMAGE_REF}" \
                     --arg dockerhub "${DOCKERHUB_IMAGE_REF}" \
+                    --argjson color "${color}" \
                     '{
                       username: "Privateerr Builds",
                       embeds: [{
                         title: $title,
                         description: $description,
                         url: $url,
-                        color: 3447003,
+                        color: $color,
                         fields: [
-                          {name: "📚 Repository", value: $repository, inline: true},
-                          {name: "🌿 Ref", value: $ref, inline: true},
-                          {name: "🧑‍✈️ Actor", value: $actor, inline: true},
-                          {name: "🧱 Platforms", value: $platforms, inline: false},
-                          {name: "📦 GHCR", value: $ghcr, inline: false},
-                          {name: "🐳 Docker Hub", value: $dockerhub, inline: false}
+                          {name: "📚 Eyeliner Repo", value: $repository, inline: true},
+                          {name: "🌿 Drama Ref", value: $ref, inline: true},
+                          {name: "🧑‍✈️ Chaos Captain", value: $actor, inline: true},
+                          {name: "🧱 Platform Era", value: $platforms, inline: false},
+                          {name: "📦 GHCR Coffin", value: $ghcr, inline: false},
+                          {name: "🐳 Docker Side Quest", value: $dockerhub, inline: false}
                         ],
-                        footer: {text: "Privateerr registry voyage"},
+                        footer: {text: "Privateerr registry voyage: waterproof mascara"},
                         timestamp: now | todate
                       }]
                     }')"
@@ -92,6 +96,65 @@ jobs:
                     --header "Content-Type: application/json" \
                     --data "${payload}" \
                     "${DISCORD_WEBHOOK_URL}"
+
+            - name: "Notify Hades Discord: build started 🔥"
+              env:
+                  DISCORD_HADES_HOOK_URL: ${{ secrets.DISCORD_HADES_HOOK_URL }}
+                  RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+                  WORKFLOW_NAME: ${{ github.workflow }}
+                  REF_NAME: ${{ github.ref_name }}
+                  ACTOR: ${{ github.actor }}
+                  REPOSITORY: ${{ github.repository }}
+                  GHCR_IMAGE_REF: ${{ env.PRIVATEERR_IMAGE_REF }}
+                  DOCKERHUB_IMAGE_REF: ${{ env.DOCKERHUB_PRIVATEERR_IMAGE_REF }}
+                  IMAGE_PLATFORMS: ${{ env.IMAGE_PLATFORMS }}
+              run: |
+                  if [ -z "${DISCORD_HADES_HOOK_URL}" ]; then
+                    echo "DISCORD_HADES_HOOK_URL is not set; skipping Hades Discord notification."
+                    exit 0
+                  fi
+
+                  embed_colors=(16711884 15961002 11685080 10181046 15844367 16738740)
+                  color="${embed_colors[$((RANDOM % ${#embed_colors[@]}))]}"
+
+                  payload="$(jq -n \
+                    --arg title "🔥 Inferno clocked in. Violence selected." \
+                    --arg description "${WORKFLOW_NAME} entered CI crypt in boots, lashes, and unserious intentions." \
+                    --arg url "${RUN_URL}" \
+                    --arg repository "${REPOSITORY}" \
+                    --arg ref "${REF_NAME}" \
+                    --arg actor "${ACTOR}" \
+                    --arg platforms "${IMAGE_PLATFORMS}" \
+                    --arg ghcr "${GHCR_IMAGE_REF}" \
+                    --arg dockerhub "${DOCKERHUB_IMAGE_REF}" \
+                    --argjson color "${color}" \
+                    '{
+                      username: "Hades Build Bureau",
+                      embeds: [{
+                        title: $title,
+                        description: $description,
+                        url: $url,
+                        color: $color,
+                        fields: [
+                          {name: "🏛️ Crypt Repo", value: $repository, inline: true},
+                          {name: "🩸 Pretty Bloodline", value: $ref, inline: true},
+                          {name: "😈 Booted Summoner", value: $actor, inline: true},
+                          {name: "🧱 Velvet Rack", value: $platforms, inline: false},
+                          {name: "📦 GHCR Cauldron", value: $ghcr, inline: false},
+                          {name: "🐳 Lava Lounge", value: $dockerhub, inline: false}
+                        ],
+                        footer: {text: "Underworld Release Desk: nails wet"},
+                        timestamp: now | todate
+                      }]
+                    }')"
+
+                  curl \
+                    --fail \
+                    --silent \
+                    --show-error \
+                    --header "Content-Type: application/json" \
+                    --data "${payload}" \
+                    "${DISCORD_HADES_HOOK_URL}"
 
             - name: "Grab the Treasure Map 🗺️"
               uses: actions/checkout@v7
@@ -361,6 +424,7 @@ jobs:
                   RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
                   REPOSITORY: ${{ github.repository }}
                   REF_NAME: ${{ github.ref_name }}
+                  GHCR_IMAGE_REF: ${{ env.PRIVATEERR_IMAGE_REF }}
                   GHCR_PACKAGE_URL: ${{ github.server_url }}/${{ github.repository }}/pkgs/container/privateerr
                   DOCKERHUB_URL: https://hub.docker.com/r/${{ github.repository_owner }}/privateerr
                   PRIVATEERR_TAGS: ${{ steps.publish-summary.outputs.tags }}
@@ -376,17 +440,20 @@ jobs:
                   fi
 
                   if [ "${JOB_STATUS}" = "success" ]; then
-                    title="✅ Privateerr publish complete"
-                    description="Images are published and the Docker Hub mirror has been checked."
-                    color="5763719"
+                    title="✅ Fresh image couture served"
+                    description="Registry fit is live. Docker Hub mirror checked the look. No embarrassment detected."
                   else
-                    title="🔥 Privateerr publish needs attention"
-                    description="The registry workflow finished with status: ${JOB_STATUS}."
-                    color="15548997"
+                    title="🔥 Fog machine incident"
+                    description="Registry workflow ended ${JOB_STATUS}. Dramatic. Inconvenient. On brand."
                   fi
+                  embed_colors=(16711884 15961002 11685080 10181046 15844367 16738740)
+                  color="${embed_colors[$((RANDOM % ${#embed_colors[@]}))]}"
 
-                  formatted_tags="$(printf '%s\n' "${PRIVATEERR_TAGS:-none}" | sed '/^$/d; s/^/• /')"
+                  formatted_tags="$(printf '%s\n' "${PRIVATEERR_TAGS:-none}" \
+                    | sed '/^$/d; s#^'"${GHCR_IMAGE_REF}"':##; s/^/• /')"
                   [ -n "${formatted_tags}" ] || formatted_tags="none"
+                  ghcr_digest_short="$(printf '%s' "${GHCR_DIGEST:-unavailable}" | sed -E 's/^(sha256:[0-9a-f]{12}).*/\1/')"
+                  dockerhub_digest_short="$(printf '%s' "${DOCKERHUB_DIGEST:-unavailable}" | sed -E 's/^(sha256:[0-9a-f]{12}).*/\1/')"
 
                   payload="$(jq -n \
                     --arg title "${title}" \
@@ -395,8 +462,8 @@ jobs:
                     --arg repository "${REPOSITORY}" \
                     --arg ref "${REF_NAME}" \
                     --arg tags "${formatted_tags}" \
-                    --arg ghcrDigest "${GHCR_DIGEST:-unavailable}" \
-                    --arg dockerhubDigest "${DOCKERHUB_DIGEST:-unavailable}" \
+                    --arg ghcrDigest "${ghcr_digest_short}" \
+                    --arg dockerhubDigest "${dockerhub_digest_short}" \
                     --arg digestMatch "${DIGEST_MATCH:-not checked}" \
                     --arg dockerhubPulls "${DOCKERHUB_PULLS:-unavailable}" \
                     --arg dockerhubStars "${DOCKERHUB_STARS:-unavailable}" \
@@ -411,18 +478,18 @@ jobs:
                         url: $url,
                         color: $color,
                         fields: [
-                          {name: "📚 Repository", value: $repository, inline: true},
-                          {name: "🌿 Ref", value: $ref, inline: true},
-                          {name: "🏷️ Tags", value: $tags, inline: false},
-                          {name: "🧾 GHCR digest", value: $ghcrDigest, inline: false},
-                          {name: "🧾 Docker Hub digest", value: $dockerhubDigest, inline: false},
-                          {name: "🪞 Digest preserved", value: $digestMatch, inline: true},
-                          {name: "🐳 Docker Hub pulls", value: $dockerhubPulls, inline: true},
-                          {name: "⭐ Docker Hub stars", value: $dockerhubStars, inline: true},
-                          {name: "📦 GHCR package", value: $ghcrUrl, inline: false},
-                          {name: "🐳 Docker Hub", value: $dockerhubUrl, inline: false}
+                          {name: "📚 Cheekbone Repo", value: $repository, inline: true},
+                          {name: "🌿 Posing Ref", value: $ref, inline: true},
+                          {name: "🏷️ Cropped Tags", value: $tags, inline: false},
+                          {name: "🧾 GHCR Sigil", value: $ghcrDigest, inline: false},
+                          {name: "🧾 Hub Sigil", value: $dockerhubDigest, inline: false},
+                          {name: "🪞 Mirror Serving", value: $digestMatch, inline: true},
+                          {name: "🐳 Thirst Count", value: $dockerhubPulls, inline: true},
+                          {name: "⭐ Balcony Stars", value: $dockerhubStars, inline: true},
+                          {name: "📦 GHCR Portal", value: $ghcrUrl, inline: false},
+                          {name: "🐳 Hub Gate", value: $dockerhubUrl, inline: false}
                         ],
-                        footer: {text: "Privateerr registry voyage"},
+                        footer: {text: "Privateerr: gloomy, glossy, punctual"},
                         timestamp: now | todate
                       }]
                     }')"
@@ -434,3 +501,89 @@ jobs:
                     --header "Content-Type: application/json" \
                     --data "${payload}" \
                     "${DISCORD_WEBHOOK_URL}"
+
+            - name: "Notify Hades Discord: build finished 🔥"
+              if: always()
+              env:
+                  DISCORD_HADES_HOOK_URL: ${{ secrets.DISCORD_HADES_HOOK_URL }}
+                  JOB_STATUS: ${{ job.status }}
+                  RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+                  REPOSITORY: ${{ github.repository }}
+                  REF_NAME: ${{ github.ref_name }}
+                  GHCR_IMAGE_REF: ${{ env.PRIVATEERR_IMAGE_REF }}
+                  GHCR_PACKAGE_URL: ${{ github.server_url }}/${{ github.repository }}/pkgs/container/privateerr
+                  DOCKERHUB_URL: https://hub.docker.com/r/${{ github.repository_owner }}/privateerr
+                  PRIVATEERR_TAGS: ${{ steps.publish-summary.outputs.tags }}
+                  GHCR_DIGEST: ${{ steps.publish-summary.outputs.ghcr_digest }}
+                  DOCKERHUB_DIGEST: ${{ steps.publish-summary.outputs.dockerhub_digest }}
+                  DIGEST_MATCH: ${{ steps.publish-summary.outputs.digest_match }}
+                  DOCKERHUB_PULLS: ${{ steps.publish-summary.outputs.dockerhub_pulls }}
+                  DOCKERHUB_STARS: ${{ steps.publish-summary.outputs.dockerhub_stars }}
+              run: |
+                  if [ -z "${DISCORD_HADES_HOOK_URL}" ]; then
+                    echo "DISCORD_HADES_HOOK_URL is not set; skipping Hades Discord notification."
+                    exit 0
+                  fi
+
+                  if [ "${JOB_STATUS}" = "success" ]; then
+                    title="😈 Furnace escaped. Lashes intact."
+                    description="Registry ritual finished. Docker Hub mirror survived despite limited taste."
+                  else
+                    title="💀 Summoning botched. Cauldron suspicious."
+                    description="Infernal pipeline ended ${JOB_STATUS}. Logs need candles and fewer feelings."
+                  fi
+                  embed_colors=(16711884 15961002 11685080 10181046 15844367 16738740)
+                  color="${embed_colors[$((RANDOM % ${#embed_colors[@]}))]}"
+
+                  formatted_tags="$(printf '%s\n' "${PRIVATEERR_TAGS:-none}" \
+                    | sed '/^$/d; s#^'"${GHCR_IMAGE_REF}"':##; s/^/• /')"
+                  [ -n "${formatted_tags}" ] || formatted_tags="none"
+                  ghcr_digest_short="$(printf '%s' "${GHCR_DIGEST:-unavailable}" | sed -E 's/^(sha256:[0-9a-f]{12}).*/\1/')"
+                  dockerhub_digest_short="$(printf '%s' "${DOCKERHUB_DIGEST:-unavailable}" | sed -E 's/^(sha256:[0-9a-f]{12}).*/\1/')"
+
+                  payload="$(jq -n \
+                    --arg title "${title}" \
+                    --arg description "${description}" \
+                    --arg url "${RUN_URL}" \
+                    --arg repository "${REPOSITORY}" \
+                    --arg ref "${REF_NAME}" \
+                    --arg tags "${formatted_tags}" \
+                    --arg ghcrDigest "${ghcr_digest_short}" \
+                    --arg dockerhubDigest "${dockerhub_digest_short}" \
+                    --arg digestMatch "${DIGEST_MATCH:-not checked}" \
+                    --arg dockerhubPulls "${DOCKERHUB_PULLS:-unavailable}" \
+                    --arg dockerhubStars "${DOCKERHUB_STARS:-unavailable}" \
+                    --arg ghcrUrl "${GHCR_PACKAGE_URL}" \
+                    --arg dockerhubUrl "${DOCKERHUB_URL}" \
+                    --argjson color "${color}" \
+                    '{
+                      username: "Hades Build Bureau",
+                      embeds: [{
+                        title: $title,
+                        description: $description,
+                        url: $url,
+                        color: $color,
+                        fields: [
+                          {name: "🏛️ Moisturized Damned", value: $repository, inline: true},
+                          {name: "🩸 Pretty Bloodline", value: $ref, inline: true},
+                          {name: "🏷️ Hemmed Souls", value: $tags, inline: false},
+                          {name: "🧾 GHCR Sigil", value: $ghcrDigest, inline: false},
+                          {name: "🧾 Hub Curse", value: $dockerhubDigest, inline: false},
+                          {name: "🪞 Mirror Flawless", value: $digestMatch, inline: true},
+                          {name: "🐳 Abyss Pulls", value: $dockerhubPulls, inline: true},
+                          {name: "⭐ Infernal Applause", value: $dockerhubStars, inline: true},
+                          {name: "📦 GHCR Portal", value: $ghcrUrl, inline: false},
+                          {name: "🐳 Gloss Gate", value: $dockerhubUrl, inline: false}
+                        ],
+                        footer: {text: "Hades Build Bureau: goth, gay, OCI-compliant"},
+                        timestamp: now | todate
+                      }]
+                    }')"
+
+                  curl \
+                    --fail \
+                    --silent \
+                    --show-error \
+                    --header "Content-Type: application/json" \
+                    --data "${payload}" \
+                    "${DISCORD_HADES_HOOK_URL}"
