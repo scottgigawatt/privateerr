@@ -19,7 +19,7 @@ on:
 
 jobs:
     codeql-actions:
-        name: "Analyze (actions)"
+        name: "Sniff the Workflow Bilge 🔍"
         runs-on: ubuntu-latest
         permissions:
             actions: read
