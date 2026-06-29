@@ -7,6 +7,9 @@ on:
         paths:
             - "**"
 
+permissions:
+    contents: read
+
 jobs:
     validate-pr:
         name: "Validate the Boarding Pass 🧪"
@@ -21,16 +24,16 @@ jobs:
 
         steps:
             - name: "Grab the Treasure Map 🗺️"
-              uses: actions/checkout@v7
+              uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7
               with:
                   submodules: recursive
                   persist-credentials: false
 
             - name: "Summon Cross-Arch Cannons 🧨"
-              uses: docker/setup-qemu-action@v4
+              uses: docker/setup-qemu-action@06116385d9baf250c9f4dcb4858b16962ea869c3  # v4
 
             - name: "Sharpen the Build Axe 🪓"
-              uses: docker/setup-buildx-action@v4.1.0
+              uses: docker/setup-buildx-action@d7f5e7f509e45cec5c76c4d5afdd7de93d0b3df5  # v4.1.0
 
             - name: "Load the Example Cargo 📦"
               run: |
@@ -44,7 +47,7 @@ jobs:
               run: docker compose config --quiet
 
             - name: "Scrub the Deck with Pre-Commit 🧽"
-              uses: pre-commit/action@v3.0.1
+              uses: pre-commit/action@2c7b3805fd2a0fd8c1884dcaebf91fc102a13ecd  # v3.0.1
 
             - name: "Hammer the Docker Hulls ⚒️"
               run: |
@@ -55,7 +58,7 @@ jobs:
               run: make build-multiarch
 
             - name: "Inspect Privateerr for Bilge Rot 🔍"
-              uses: aquasecurity/trivy-action@v0.36.0
+              uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25  # v0.36.0
               with:
                   image-ref: ${{ env.PRIVATEERR_LOCAL_IMAGE_REF }}:latest
                   format: table
@@ -65,7 +68,7 @@ jobs:
                   exit-code: 1
 
             - name: "Inspect Buccaneerr for Bilge Rot 🔍"
-              uses: aquasecurity/trivy-action@v0.36.0
+              uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25  # v0.36.0
               with:
                   image-ref: ${{ env.BUCCANEERR_LOCAL_IMAGE_REF }}:latest
                   format: table
