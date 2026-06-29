@@ -1,0 +1,37 @@
+{
+    "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+    "extends": [
+        "config:recommended",
+        "helpers:pinGitHubActionDigests"
+    ],
+    "timezone": "America/New_York",
+    "schedule": ["before 8am on monday"],
+    "dependencyDashboard": true,
+    "labels": ["dependencies"],
+    "assignees": ["scottgigawatt"],
+    "reviewers": ["scottgigawatt"],
+    "enabledManagers": [
+        "docker-compose",
+        "dockerfile",
+        "git-submodules",
+        "github-actions"
+    ],
+    "packageRules": [
+        {
+            "matchManagers": ["docker-compose", "dockerfile"],
+            "pinDigests": true
+        },
+        {
+            "groupName": "GitHub Actions",
+            "matchManagers": ["github-actions"]
+        },
+        {
+            "groupName": "Docker images",
+            "matchManagers": ["docker-compose", "dockerfile"]
+        },
+        {
+            "groupName": "Submodules",
+            "matchManagers": ["git-submodules"]
+        }
+    ]
+}

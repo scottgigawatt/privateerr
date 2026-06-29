@@ -9,7 +9,7 @@
 #
 # Default Alpine image tag that can be overridden using build args.
 #
-ARG ALPINE_TAG=latest
+ARG ALPINE_TAG=3.22@sha256:14358309a308569c32bdc37e2e0e9694be33a9d99e68afb0f5ff33cc1f695dce
 
 #
 # Use the specified version of the Alpine image.
@@ -19,7 +19,7 @@ FROM alpine:${ALPINE_TAG}
 #
 # Re-declare the Alpine tag after FROM so labels can record the base image.
 #
-ARG ALPINE_TAG=latest
+ARG ALPINE_TAG=3.22@sha256:14358309a308569c32bdc37e2e0e9694be33a9d99e68afb0f5ff33cc1f695dce
 
 #
 # Default install locations and image metadata that can be overridden using build args.

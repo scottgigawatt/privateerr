@@ -19,6 +19,9 @@ on:
         - cron: "17 7 * * 1"
     workflow_dispatch:
 
+permissions:
+    contents: read
+
 jobs:
     build-and-push:
         name: "Pack the Cargo Hold 🧰"
@@ -157,19 +160,19 @@ jobs:
                     "${DISCORD_HADES_HOOK_URL}"
 
             - name: "Grab the Treasure Map 🗺️"
-              uses: actions/checkout@v7
+              uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7
               with:
                   submodules: recursive
                   persist-credentials: false
 
             - name: "Summon Cross-Arch Cannons 🧨"
-              uses: docker/setup-qemu-action@v4
+              uses: docker/setup-qemu-action@06116385d9baf250c9f4dcb4858b16962ea869c3  # v4
 
             - name: "Sharpen the Build Axe 🪓"
-              uses: docker/setup-buildx-action@v4.1.0
+              uses: docker/setup-buildx-action@d7f5e7f509e45cec5c76c4d5afdd7de93d0b3df5  # v4.1.0
 
             - name: "Board the GHCR Galleon 🔐"
-              uses: docker/login-action@v4.2.0
+              uses: docker/login-action@650006c6eb7dba73a995cc03b0b2d7f5ca915bee  # v4.2.0
               with:
                   registry: ${{ env.REGISTRY }}
                   username: ${{ github.actor }}
@@ -210,7 +213,7 @@ jobs:
               run: make test-down
 
             - name: "Inspect Privateerr for Bilge Rot 🔍"
-              uses: aquasecurity/trivy-action@v0.36.0
+              uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25  # v0.36.0
               with:
                   image-ref: ${{ env.PRIVATEERR_LOCAL_IMAGE_REF }}:latest
                   format: table
@@ -220,7 +223,7 @@ jobs:
                   exit-code: 1
 
             - name: "Inspect Buccaneerr for Bilge Rot 🔍"
-              uses: aquasecurity/trivy-action@v0.36.0
+              uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25  # v0.36.0
               with:
                   image-ref: ${{ env.BUCCANEERR_LOCAL_IMAGE_REF }}:latest
                   format: table
@@ -231,7 +234,7 @@ jobs:
 
             - name: "Chart Privateerr Tags 🗺️"
               id: meta-privateerr
-              uses: docker/metadata-action@v6
+              uses: docker/metadata-action@80c7e94dd9b9319bd5eb7a0e0fe9291e23a2a2e9  # v6
               with:
                   images: ${{ env.PRIVATEERR_IMAGE_REF }}
                   tags: |
@@ -242,7 +245,7 @@ jobs:
 
             - name: "Chart Buccaneerr Tags 🗺️"
               id: meta-buccaneerr
-              uses: docker/metadata-action@v6
+              uses: docker/metadata-action@80c7e94dd9b9319bd5eb7a0e0fe9291e23a2a2e9  # v6
               with:
                   images: ${{ env.BUCCANEERR_IMAGE_REF }}
                   tags: |
@@ -253,7 +256,7 @@ jobs:
 
             - name: "Publish Privateerr to GHCR 💰"
               id: publish-privateerr
-              uses: docker/build-push-action@v7
+              uses: docker/build-push-action@f9f3042f7e2789586610d6e8b85c8f03e5195baf  # v7
               with:
                   context: docker
                   file: docker/Dockerfile
@@ -267,7 +270,7 @@ jobs:
                       index:org.opencontainers.image.source=https://github.com/${{ github.repository }}
                       index:org.opencontainers.image.documentation=https://github.com/${{ github.repository }}#readme
                   build-args: |
-                      ALPINE_TAG=latest
+                      ALPINE_TAG=3.22@sha256:14358309a308569c32bdc37e2e0e9694be33a9d99e68afb0f5ff33cc1f695dce
                       PIA_BIN_HOME=/pia
                       PRIVATEERR_BIN_HOME=/privateerr
                       IMAGE_CREATED=${{ steps.build-scroll.outputs.created }}
@@ -308,7 +311,7 @@ jobs:
 
             - name: "Publish Buccaneerr to registries 💰"
               id: publish-buccaneerr
-              uses: docker/build-push-action@v7
+              uses: docker/build-push-action@f9f3042f7e2789586610d6e8b85c8f03e5195baf  # v7
               with:
                   context: test
                   file: test/Dockerfile
@@ -322,7 +325,7 @@ jobs:
                       index:org.opencontainers.image.source=https://github.com/${{ github.repository }}
                       index:org.opencontainers.image.documentation=https://github.com/${{ github.repository }}#readme
                   build-args: |
-                      ALPINE_TAG=latest
+                      ALPINE_TAG=3.22@sha256:14358309a308569c32bdc37e2e0e9694be33a9d99e68afb0f5ff33cc1f695dce
                       BUCCANEERR_BIN_HOME=/buccaneerr
                       IMAGE_CREATED=${{ steps.build-scroll.outputs.created }}
                       IMAGE_REVISION=${{ github.sha }}
@@ -331,14 +334,14 @@ jobs:
                   provenance: true
 
             - name: "Stamp Privateerr's Provenance Scroll 🧾"
-              uses: actions/attest-build-provenance@v4
+              uses: actions/attest-build-provenance@0f67c3f4856b2e3261c31976d6725780e5e4c373  # v4
               with:
                   subject-name: ${{ env.PRIVATEERR_IMAGE_REF }}
                   subject-digest: ${{ steps.publish-privateerr.outputs.digest }}
                   push-to-registry: true
 
             - name: "Stamp Buccaneerr's Provenance Scroll 🧾"
-              uses: actions/attest-build-provenance@v4
+              uses: actions/attest-build-provenance@0f67c3f4856b2e3261c31976d6725780e5e4c373  # v4
               with:
                   subject-name: ${{ env.BUCCANEERR_IMAGE_REF }}
                   subject-digest: ${{ steps.publish-buccaneerr.outputs.digest }}
