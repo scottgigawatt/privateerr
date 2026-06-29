@@ -1,0 +1,43 @@
+name: "Interrogate the Actions Rigging 🔎🏴‍☠️"
+
+on:
+    push:
+        branches:
+            - main
+        paths:
+            - ".github/workflows/**"
+            - ".github/actions/**"
+            - ".github/dependabot.yml"
+    pull_request:
+        branches:
+            - main
+        paths:
+            - ".github/workflows/**"
+            - ".github/actions/**"
+            - ".github/dependabot.yml"
+    workflow_dispatch:
+
+jobs:
+    codeql-actions:
+        name: "Sniff the Workflow Bilge 🔍"
+        runs-on: ubuntu-latest
+        permissions:
+            actions: read
+            contents: read
+            security-events: write
+
+        steps:
+            - name: "Grab the Treasure Map 🗺️"
+              uses: actions/checkout@v7
+              with:
+                  persist-credentials: false
+
+            - name: "Wake the CodeQL Kraken 🐙"
+              uses: github/codeql-action/init@v4
+              with:
+                  languages: actions
+
+            - name: "Read the Cursed Scrolls 📜"
+              uses: github/codeql-action/analyze@v4
+              with:
+                  category: "/language:actions"
