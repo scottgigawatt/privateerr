@@ -21,10 +21,12 @@
             "customType": "regex",
             "managerFilePatterns": [
                 "/(^|/)Dockerfile$/",
-                "/^\\.github/workflows/.*\\.ya?ml$/"
+                "/^\\.github/workflows/.*\\.ya?ml$/",
+                "/^example\\.env$/"
             ],
             "matchStrings": [
-                "ALPINE_TAG[=:]\\s*(?<currentValue>[^@\\s]+)@(?<currentDigest>sha256:[a-f0-9]+)"
+                "ALPINE_TAG[=:]\\s*(?<currentValue>[^@\\s]+)@(?<currentDigest>sha256:[a-f0-9]+)",
+                "ALPINE_TAG=\"\\$\\{ALPINE_TAG:-(?<currentValue>[^@\\s}]+)@(?<currentDigest>sha256:[a-f0-9]+)\\}\""
             ],
             "depNameTemplate": "alpine",
             "datasourceTemplate": "docker",

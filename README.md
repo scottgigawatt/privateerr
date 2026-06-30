@@ -21,7 +21,7 @@
   <img src="https://img.shields.io/docker/pulls/scottgigawatt/privateerr?label=Docker%20Hub%20Privateerr&logo=docker" alt="Docker Hub Privateerr Pulls" />
   <img src="https://img.shields.io/badge/Dockerized-Brig-blue?logo=docker" alt="Dockerized Brig" />
   <img src="https://img.shields.io/badge/Cloaked-by%20PIA%20%26%20WireGuard-green?logo=protonvpn" alt="Cloaked" />
-  <img src="https://img.shields.io/badge/Base-Alpine%20Latest-0D597F?logo=alpinelinux" alt="Alpine Latest" />
+  <img src="https://img.shields.io/badge/Base-Alpine%20Pinned-0D597F?logo=alpinelinux" alt="Alpine Pinned" />
   <img src="https://img.shields.io/badge/Multi--Arch-amd64%20%7C%20arm64%20%7C%20arm%2Fv7-blue?logo=docker" alt="Multi-Arch amd64, arm64, and arm/v7" />
   <img src="https://img.shields.io/badge/Battle--Tested-Synology%20%7C%20macOS-blue" alt="Battle-Tested" />
   <img src="https://img.shields.io/github/last-commit/scottgigawatt/privateerr?label=Last%20Raid&logo=git" alt="Last Raid" />
@@ -116,7 +116,7 @@ Want a port-forwarding-capable PIA server? Change one variable:
 
 PIA port forwarding is usually awkward because the server choice matters after WireGuard is involved. Privateerr makes the handoff simple: with `PIA_PF=true`, it asks PIA for a port-forwarding-capable WireGuard endpoint, generates `wg0.conf`, figures out the matching PIA WireGuard server name, and writes that name into `privateerr.env`.
 
-The metadata in `privateer.env` is what lets a Docker Compose stack establish a fully functioning port forwarded VPN connection in _one single step_, in _less than 1 minute_. Privateerr writes the map, reads `PIA_WG_SERVER_NAME`, exports it as `SERVER_NAMES`, then Gluetun can start immediately with the right server information instead of making you run a second manual step _after_ the VPN connection is established.
+The metadata in `privateerr.env` is what lets a Docker Compose stack establish a fully functioning port forwarded VPN connection in _one single step_, in _less than 1 minute_. Privateerr writes the map, reads `PIA_WG_SERVER_NAME`, exports it as `SERVER_NAMES`, then Gluetun can start immediately with the right server information instead of making you run a second manual step _after_ the VPN connection is established.
 
 > [!TIP]
 > For the simplest use case, take `wg0.conf` and leave. For the powerful use case, pair Privateerr with Gluetun in Compose so config generation, server-name handoff, and VPN startup happen together.
@@ -223,6 +223,18 @@ Images are published to both GHCR and Docker Hub:
 | Docker Hub | `scottgigawatt/privateerr:latest` |
 
 The Docker Hub overview is generated from [docs/DOCKERHUB_README.md](./docs/DOCKERHUB_README.md), which keeps Docker Hub focused on pulling the image and understanding the basic use case. The full project docs stay here in the GitHub README.
+
+## 🛡️ Supply Chain Notes
+
+Privateerr keeps the build deck intentionally locked down:
+
+- GitHub Actions are pinned to full commit SHAs.
+- Alpine build bases are pinned to versioned image digests.
+- Renovate opens update PRs for pinned actions, Docker digests, Compose images, and submodules.
+- Pre-commit, CodeQL, OpenSSF Scorecard, and Trivy guard the repo and image workflow.
+- Release images are built on `main`, scanned with Trivy before publish, attested, and mirrored from GHCR to Docker Hub with digest preservation.
+
+This means a new `main` build does **not** silently float to a newer Alpine base just because Alpine published one. Renovate has to raise the flag, CI has to pass, and the update has to merge before the next published image uses that new base.
 
 ## ⚖️ License And Community
 

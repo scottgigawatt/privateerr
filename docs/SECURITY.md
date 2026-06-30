@@ -57,9 +57,22 @@ If a report is declined, I will try to explain why without leakin' dangerous det
 
 ## Container Image Security 🔎
 
-Privateerr images are built from current Alpine images and scanned during the GitHub workflow. Rebuilds pick up newer base image packages when Alpine publishes fixes.
+Privateerr images are built from pinned Alpine image digests, not floating `latest` bases. GitHub Actions are pinned to full commit SHAs for the same reason: the same source commit should build from the same known cargo unless a dependency update is reviewed and merged.
+
+Renovate watches the pinned Docker bases, GitHub Actions, Compose images, and submodules. When Alpine, an action, or another watched dependency moves, Renovate opens a pull request. The dependency only changes after that PR passes CI and lands on `main`.
+
+The protected build path then:
+
+- Uses pre-commit and CodeQL before pull requests can land.
+- Runs OpenSSF Scorecard on its own schedule and branch-protection events.
+- Builds Privateerr and Buccaneerr for `linux/amd64`, `linux/arm64`, and `linux/arm/v7`.
+- Scans built images with Trivy before publishing.
+- Publishes images from `main` after checks pass.
+- Attests build provenance and mirrors Privateerr from GHCR to Docker Hub with digest preservation.
+
+Rebuilding the same commit does not automatically pick up a newer Alpine base. To pick up patched packages, merge the Renovate update PR first, then pull or publish a fresh image from the updated `main`.
 
 > [!TIP]
-> 🏴‍☠️ For the freshest patched hull, pull or rebuild the latest image before long voyages.
+> 🏴‍☠️ For the freshest patched hull, pull the newest published image after dependency update PRs have merged.
 
 Fair winds, sharp eyes, and may yer secrets stay below deck. ☠️

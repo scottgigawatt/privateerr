@@ -14,14 +14,15 @@
 set -euo pipefail
 
 #
-# Shared Alpine build arg values must stay identical across Dockerfiles and
-# workflow build args so Renovate cannot leave one hull behind.
+# Shared Alpine build arg values must stay identical across Dockerfiles,
+# workflow build args, and example env defaults so Renovate cannot leave one
+# hull behind.
 #
 alpine_tag_values="$(
-    find .github/workflows docker test -type f \
-        \( -name '*.yml' -o -name '*.yaml' -o -name 'Dockerfile' \) \
+    find .github/workflows docker test . -type f \
+        \( -name '*.yml' -o -name '*.yaml' -o -name 'Dockerfile' -o -name 'example.env' \) \
         -exec grep -Eh 'ALPINE_TAG[=:][[:space:]]*[^[:space:]]+@sha256:[a-f0-9]+' {} + \
-        | sed -E 's/.*ALPINE_TAG[=:][[:space:]]*//g' \
+        | sed -E 's/.*ALPINE_TAG[=:][[:space:]]*"?(\$\{ALPINE_TAG:-)?//g; s/\}"?$//g' \
         | sort -u
 )"
 alpine_tag_count="$(printf '%s\n' "${alpine_tag_values}" | sed '/^$/d' | wc -l | tr -d '[:space:]')"

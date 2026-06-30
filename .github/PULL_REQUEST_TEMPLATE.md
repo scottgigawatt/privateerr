@@ -17,6 +17,7 @@
 - [ ] `make build`
 - [ ] `make build-buccaneerr`
 - [ ] `make test-e2e` if VPN behavior changed
+- [ ] Pinned action SHAs and Alpine digest defaults still move together
 - [ ] `make test-down` or `make nuke` restored example config
 - [ ] `git status --short` shows no generated config, logs, or other stray cargo
 
