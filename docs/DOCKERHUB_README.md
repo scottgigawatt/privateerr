@@ -21,6 +21,8 @@ Published tags are multi-architecture manifests for:
 
 Docker should pull the right image for your host automatically.
 
+Images are built from pinned Alpine digests and scanned before publishing. Dependency updates land through Renovate PRs first, so a rebuild of the same source commit does not silently drift to a new base image.
+
 ## ⚡ Fastest Path
 
 Most users should use the GitHub repo because it includes the Compose file, Makefile, example env file, and mounted config directories:

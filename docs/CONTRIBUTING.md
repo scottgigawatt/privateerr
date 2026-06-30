@@ -56,6 +56,8 @@ pre-commit run --all-files
 - Shell scripts written for host use should use `#!/bin/sh` where possible.
 - Shell scripts should use four spaces for indentation.
 - Docker Compose values should come from `.env` defaults instead of inline fallback soup.
+- Keep pinned GitHub Action SHAs and Alpine digests intact unless the change is a dependency update.
+- If ye update `ALPINE_TAG`, update every matching Dockerfile, workflow build arg, and example env default together.
 - Keep service config directories aligned with service names.
 - Leave upstream PIA scripts untouched so users can verify the treasure scrolls were not tampered with.
 
@@ -65,6 +67,7 @@ Before opening a pull request:
 
 - Run relevant `make` targets.
 - Run `pre-commit run --all-files`.
+- Let Renovate handle routine dependency bumps when possible.
 - Restore example config with `make test-down` or `make nuke`.
 - Confirm no secrets, live VPN configs, or logs slipped into the hold.
 - Explain what changed and why.

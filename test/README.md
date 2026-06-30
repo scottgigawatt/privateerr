@@ -18,7 +18,7 @@ Buccaneerr checks the important loot:
 
 ## How It Gets Built 🛠️
 
-The image is built from [Dockerfile](Dockerfile), using Alpine as the base. The build copies [buccaneerr-entrypoint.sh](buccaneerr-entrypoint.sh) into the image and runs that script when the container starts.
+The image is built from [Dockerfile](Dockerfile), using the same pinned Alpine base digest as Privateerr. The build copies [buccaneerr-entrypoint.sh](buccaneerr-entrypoint.sh) into the image and runs that script when the container starts.
 
 Build it directly with:
 

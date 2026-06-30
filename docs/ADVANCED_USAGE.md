@@ -90,6 +90,22 @@ Configure these GitHub Actions values before enabling Docker Hub publishing:
 
 The Docker Hub repository overview is updated by the same workflow from [DOCKERHUB_README.md](./DOCKERHUB_README.md). Keep that file shorter than the GitHub README: Docker Hub readers usually need to know what the image does, how to pull it, what platforms it supports, and where the full project docs live.
 
+## 🧷 Pinned Build Inputs
+
+The release workflow uses pinned GitHub Action SHAs and a pinned Alpine image digest. That makes release builds boring in the best way: the same source commit should use the same action code and base image bits every time.
+
+Renovate keeps those pins from going stale. It tracks:
+
+- GitHub Actions pinned by SHA.
+- Docker image tags and digests.
+- Compose image references.
+- Git submodules.
+
+When Renovate opens a dependency PR, the validation workflow checks that every pinned `ALPINE_TAG` value still matches across Dockerfiles, workflow build args, and the example environment file. If one build arg drifts away from the fleet, `check-alpine-tag-pins.sh` fails before the PR can merge.
+
+> [!NOTE]
+> 🧭 `latest` remains a published image tag for users. It is not used as the release build's Alpine base. The base image is intentionally pinned and moved by reviewed Renovate PRs.
+
 ## 🛠️ Useful Maintenance Commands
 
 | ⚙️ Command | ✅ Purpose |
