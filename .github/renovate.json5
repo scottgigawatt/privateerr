@@ -16,9 +16,24 @@
         "git-submodules",
         "github-actions"
     ],
+    "customManagers": [
+        {
+            "customType": "regex",
+            "managerFilePatterns": [
+                "/(^|/)Dockerfile$/",
+                "/^\\.github/workflows/.*\\.ya?ml$/"
+            ],
+            "matchStrings": [
+                "ALPINE_TAG[=:]\\s*(?<currentValue>[^@\\s]+)@(?<currentDigest>sha256:[a-f0-9]+)"
+            ],
+            "depNameTemplate": "alpine",
+            "datasourceTemplate": "docker",
+            "versioningTemplate": "docker"
+        }
+    ],
     "packageRules": [
         {
-            "matchManagers": ["docker-compose", "dockerfile"],
+            "matchManagers": ["docker-compose", "dockerfile", "custom.regex"],
             "pinDigests": true
         },
         {
