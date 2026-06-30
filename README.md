@@ -15,6 +15,7 @@
 <p align="center">
   <img src="https://img.shields.io/github/v/release/scottgigawatt/privateerr?label=Latest%20Treasure%20Map&logo=github" alt="Latest Treasure Map" />
   <img src="https://github.com/scottgigawatt/privateerr/actions/workflows/build-and-push.yml/badge.svg" alt="🏴‍☠️ Build: Shipshape" />
+  <a href="https://www.bestpractices.dev/projects/13442"><img src="https://www.bestpractices.dev/projects/13442/badge" alt="OpenSSF Best Practices" /></a>
   <img src="https://img.shields.io/badge/Scanned-Trivy%20Bilge%20Check-teal?logo=aqua" alt="Trivy Bilge Check" />
   <img src="https://img.shields.io/github/license/scottgigawatt/privateerr?label=Legal%20Scroll&color=blue" alt="Legal Scroll" />
   <img src="https://img.shields.io/badge/GHCR-Privateerr%20Captain-blue?logo=github" alt="GHCR Privateerr Captain" />
