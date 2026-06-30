@@ -270,7 +270,7 @@ jobs:
                       index:org.opencontainers.image.source=https://github.com/${{ github.repository }}
                       index:org.opencontainers.image.documentation=https://github.com/${{ github.repository }}#readme
                   build-args: |
-                      ALPINE_TAG=3.22@sha256:14358309a308569c32bdc37e2e0e9694be33a9d99e68afb0f5ff33cc1f695dce
+                      ALPINE_TAG=3.24@sha256:28bd5fe8b56d1bd048e5babf5b10710ebe0bae67db86916198a6eec434943f8b
                       PIA_BIN_HOME=/pia
                       PRIVATEERR_BIN_HOME=/privateerr
                       IMAGE_CREATED=${{ steps.build-scroll.outputs.created }}
@@ -325,7 +325,7 @@ jobs:
                       index:org.opencontainers.image.source=https://github.com/${{ github.repository }}
                       index:org.opencontainers.image.documentation=https://github.com/${{ github.repository }}#readme
                   build-args: |
-                      ALPINE_TAG=3.22@sha256:14358309a308569c32bdc37e2e0e9694be33a9d99e68afb0f5ff33cc1f695dce
+                      ALPINE_TAG=3.24@sha256:28bd5fe8b56d1bd048e5babf5b10710ebe0bae67db86916198a6eec434943f8b
                       BUCCANEERR_BIN_HOME=/buccaneerr
                       IMAGE_CREATED=${{ steps.build-scroll.outputs.created }}
                       IMAGE_REVISION=${{ github.sha }}
