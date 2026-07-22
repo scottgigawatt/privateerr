@@ -1,5 +1,17 @@
+#
+# Copyright 2025-2026 Scott Gigawatt
+#
+# Licensed under the Apache License, Version 2.0.
+#
+# validate-pr.yml: Validate Privateerr, Buccaneerr, and their Compose stack.
+#
+
 name: "Inspect the Boarding Pass 🧪🏴‍☠️"
 
+#
+# Run the complete validation voyage for every pull request targeting main. The
+# broad path rule makes this workflow the repository's dependable merge gate.
+#
 on:
     pull_request:
         branches:
@@ -11,6 +23,10 @@ permissions:
     contents: read
 
 jobs:
+    #
+    # Validate configuration, both images, supported architectures, vulnerability
+    # policy, and repository linting without granting write access.
+    #
     validate-pr:
         name: "Validate the Boarding Pass 🧪"
         runs-on: ubuntu-latest
@@ -23,6 +39,10 @@ jobs:
             BUCCANEERR_LOCAL_IMAGE_REF: ghcr.io/scottgigawatt/buccaneerr
 
         steps:
+            #
+            # Check out the project and its upstream PIA submodule without
+            # retaining credentials, then prepare cross-architecture builders.
+            #
             - name: "Grab the Treasure Map 🗺️"
               uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7
               with:
@@ -35,6 +55,10 @@ jobs:
             - name: "Sharpen the Build Axe 🪓"
               uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c  # v4.2.0
 
+            #
+            # Render a CI-specific environment from the checked-in example before
+            # validating Compose and running the repository's complete lint suite.
+            #
             - name: "Load the Example Cargo 📦"
               run: |
                   cp example.env .env
@@ -49,6 +73,10 @@ jobs:
             - name: "Scrub the Deck with Pre-Commit 🧽"
               uses: pre-commit/action@2c7b3805fd2a0fd8c1884dcaebf91fc102a13ecd  # v3.0.1
 
+            #
+            # Build the publishable Privateerr and test-only Buccaneerr images,
+            # then prove every supported target architecture can be assembled.
+            #
             - name: "Hammer the Docker Hulls ⚒️"
               run: |
                   make build
@@ -57,6 +85,10 @@ jobs:
             - name: "Test the Three-Deck Hull Plans 🛠️"
               run: make build-multiarch
 
+            #
+            # Reject fixed HIGH or CRITICAL vulnerabilities in either image while
+            # keeping findings for unfixed upstream packages informational.
+            #
             - name: "Inspect Privateerr for Bilge Rot 🔍"
               uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25  # v0.36.0
               with:

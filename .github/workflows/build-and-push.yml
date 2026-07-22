@@ -1,5 +1,17 @@
+#
+# Copyright 2025-2026 Scott Gigawatt
+#
+# Licensed under the Apache License, Version 2.0.
+#
+# build-and-push.yml: Validate, publish, attest, mirror, and announce Privateerr.
+#
+
 name: "Hoist the Registry Sails 🏴‍☠️"
 
+#
+# Publish relevant changes from main and semantic-version tags. The weekly run
+# refreshes the moving edge images, while manual dispatch supports recovery.
+#
 on:
     push:
         branches:
@@ -23,6 +35,10 @@ permissions:
     contents: read
 
 jobs:
+    #
+    # Build and inspect both images before publishing their multi-architecture
+    # manifests, attestations, registry mirrors, and release notifications.
+    #
     build-and-push:
         name: "Pack the Cargo Hold 🧰"
         if: github.event_name != 'workflow_dispatch' || github.ref == 'refs/heads/main'
@@ -42,6 +58,10 @@ jobs:
             DOCKERHUB_PRIVATEERR_IMAGE_REF: docker.io/${{ github.repository_owner }}/privateerr
 
         steps:
+            #
+            # Announce the start independently to each optional Discord webhook.
+            # Missing webhooks skip cleanly without blocking the build.
+            #
             - name: "Notify Discord: build started 📣"
               env:
                   DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
@@ -63,8 +83,8 @@ jobs:
                   color="${embed_colors[$((RANDOM % ${#embed_colors[@]}))]}"
 
                   payload="$(jq -n \
-                    --arg title "🚢 Privateerr kicked dock door open" \
-                    --arg description "${WORKFLOW_NAME} is in lashes, shipping fresh images with concerning confidence." \
+                    --arg title "🚢 Privateerr left the dock unsupervised" \
+                    --arg description "${WORKFLOW_NAME} is building images. Nobody checked its boating license." \
                     --arg url "${RUN_URL}" \
                     --arg repository "${REPOSITORY}" \
                     --arg ref "${REF_NAME}" \
@@ -81,14 +101,14 @@ jobs:
                         url: $url,
                         color: $color,
                         fields: [
-                          {name: "📚 Eyeliner Repo", value: $repository, inline: true},
-                          {name: "🌿 Drama Ref", value: $ref, inline: true},
-                          {name: "🧑‍✈️ Chaos Captain", value: $actor, inline: true},
-                          {name: "🧱 Platform Era", value: $platforms, inline: false},
-                          {name: "📦 GHCR Coffin", value: $ghcr, inline: false},
-                          {name: "🐳 Docker Side Quest", value: $dockerhub, inline: false}
+                          {name: "📚 Repo", value: $repository, inline: true},
+                          {name: "🌿 Ref", value: $ref, inline: true},
+                          {name: "🧑‍✈️ Captain", value: $actor, inline: true},
+                          {name: "🧱 Platforms", value: $platforms, inline: false},
+                          {name: "📦 GHCR Cargo", value: $ghcr, inline: false},
+                          {name: "🐳 Docker Hub Cargo", value: $dockerhub, inline: false}
                         ],
-                        footer: {text: "Privateerr registry voyage: waterproof mascara"},
+                        footer: {text: "If found adrift, check the logs."},
                         timestamp: now | todate
                       }]
                     }')"
@@ -122,8 +142,8 @@ jobs:
                   color="${embed_colors[$((RANDOM % ${#embed_colors[@]}))]}"
 
                   payload="$(jq -n \
-                    --arg title "🔥 Inferno clocked in. Violence selected." \
-                    --arg description "${WORKFLOW_NAME} entered CI crypt in boots, lashes, and unserious intentions." \
+                    --arg title "🔥 The build furnace is making noises" \
+                    --arg description "${WORKFLOW_NAME} entered the underworld with a clipboard and no supervision." \
                     --arg url "${RUN_URL}" \
                     --arg repository "${REPOSITORY}" \
                     --arg ref "${REF_NAME}" \
@@ -140,14 +160,14 @@ jobs:
                         url: $url,
                         color: $color,
                         fields: [
-                          {name: "🏛️ Crypt Repo", value: $repository, inline: true},
-                          {name: "🩸 Pretty Bloodline", value: $ref, inline: true},
-                          {name: "😈 Booted Summoner", value: $actor, inline: true},
-                          {name: "🧱 Velvet Rack", value: $platforms, inline: false},
+                          {name: "🏛️ Repo", value: $repository, inline: true},
+                          {name: "🩸 Ref", value: $ref, inline: true},
+                          {name: "😈 Summoner", value: $actor, inline: true},
+                          {name: "🧱 Platforms", value: $platforms, inline: false},
                           {name: "📦 GHCR Cauldron", value: $ghcr, inline: false},
-                          {name: "🐳 Lava Lounge", value: $dockerhub, inline: false}
+                          {name: "🐳 Docker Hub", value: $dockerhub, inline: false}
                         ],
-                        footer: {text: "Underworld Release Desk: nails wet"},
+                        footer: {text: "Hades Build Bureau: mostly fire, some paperwork."},
                         timestamp: now | todate
                       }]
                     }')"
@@ -160,6 +180,10 @@ jobs:
                     --data "${payload}" \
                     "${DISCORD_HADES_HOOK_URL}"
 
+            #
+            # Check out complete history and the upstream PIA submodule without
+            # retaining credentials so annotated release tags can be verified.
+            #
             - name: "Grab the Treasure Map 🗺️"
               uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7
               with:
@@ -167,6 +191,10 @@ jobs:
                   fetch-depth: 0
                   persist-credentials: false
 
+            #
+            # Accept only annotated semantic-version tags whose commits already
+            # belong to main before any release image can be published.
+            #
             - name: "Inspect the Release Chart 🧭"
               if: startsWith(github.ref, 'refs/tags/')
               env:
@@ -190,6 +218,10 @@ jobs:
                     exit 1
                   fi
 
+            #
+            # Prepare emulation, Buildx, and registry authentication for one
+            # multi-architecture build across every supported platform.
+            #
             - name: "Summon Cross-Arch Cannons 🧨"
               uses: docker/setup-qemu-action@96fe6ef7f33517b61c61be40b68a1882f3264fb8  # v4
 
@@ -203,6 +235,10 @@ jobs:
                   username: ${{ github.actor }}
                   password: ${{ secrets.GITHUB_TOKEN }}
 
+            #
+            # Create the ephemeral build environment and stamp reproducible OCI
+            # metadata without modifying the checked-in example environment.
+            #
             - name: "Ink the Build Scroll 📜"
               id: build-scroll
               run: |
@@ -213,6 +249,10 @@ jobs:
                   } >> .env
                   echo "created=$(date -u +'%Y-%m-%dT%H:%M:%SZ')" >> "${GITHUB_OUTPUT}"
 
+            #
+            # Build both local images, run live PIA validation when credentials
+            # exist, and always restore the checked-in example configuration.
+            #
             - name: "Hammer the Docker Hulls ⚒️"
               run: |
                   make build
@@ -237,6 +277,10 @@ jobs:
               if: always()
               run: make test-down
 
+            #
+            # Reject fixed HIGH or CRITICAL vulnerabilities before either image
+            # can be tagged or sent to a registry.
+            #
             - name: "Inspect Privateerr for Bilge Rot 🔍"
               uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25  # v0.36.0
               with:
@@ -257,6 +301,10 @@ jobs:
                   ignore-unfixed: true
                   exit-code: 1
 
+            #
+            # Derive matching edge, commit, and semantic-version tags for the
+            # production and test images from the current Git reference.
+            #
             - name: "Chart Privateerr Tags 🗺️"
               id: meta-privateerr
               uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302  # v6
@@ -281,6 +329,10 @@ jobs:
                       type=sha,prefix=sha-
                       type=semver,pattern={{version}}
 
+            #
+            # Build Privateerr once for all supported architectures, publish it
+            # to GHCR, and attach index annotations, SBOM, and provenance data.
+            #
             - name: "Publish Privateerr to GHCR 💰"
               id: publish-privateerr
               uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a  # v7
@@ -306,6 +358,10 @@ jobs:
                   sbom: true
                   provenance: true
 
+            #
+            # Install the registry-native copy tool, then mirror every Privateerr
+            # tag from GHCR to Docker Hub without rebuilding the image.
+            #
             - name: "Install Skopeo 🪞"
               run: |
                   sudo apt-get update
@@ -336,6 +392,10 @@ jobs:
                       "docker://${dockerhub_tag}"
                   done <<< "${PRIVATEERR_TAGS}"
 
+            #
+            # Publish the test-only Buccaneerr image to GHCR for every supported
+            # architecture with its own SBOM and provenance data.
+            #
             - name: "Publish Buccaneerr to registries 💰"
               id: publish-buccaneerr
               uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a  # v7
@@ -360,6 +420,10 @@ jobs:
                   sbom: true
                   provenance: true
 
+            #
+            # Publish registry-backed build attestations for both image digests
+            # after their multi-architecture manifests are available.
+            #
             - name: "Stamp Privateerr's Provenance Scroll 🧾"
               uses: actions/attest-build-provenance@0f67c3f4856b2e3261c31976d6725780e5e4c373  # v4
               with:
@@ -374,6 +438,10 @@ jobs:
                   subject-digest: ${{ steps.publish-buccaneerr.outputs.digest }}
                   push-to-registry: true
 
+            #
+            # Keep Docker Hub's landing page synchronized with the checked-in
+            # public image documentation.
+            #
             - name: "Update Privateerr Docker Hub overview 📘"
               uses: peter-evans/dockerhub-description@1b9a80c056b620d92cedb9d9b5a223409c68ddfa  # v5.0.0
               with:
@@ -383,6 +451,10 @@ jobs:
                   short-description: "Generate PIA WireGuard config and Gluetun port forwarding metadata."
                   readme-filepath: ./docs/DOCKERHUB_README.md
 
+            #
+            # Collect compact tag, digest, mirror, and Docker Hub statistics for
+            # the final notifications even when an earlier step failed.
+            #
             - name: "Collect publish summary 📊"
               id: publish-summary
               if: always()
@@ -446,6 +518,10 @@ jobs:
                     echo "dockerhub_stars=${dockerhub_stars}"
                   } >> "${GITHUB_OUTPUT}"
 
+            #
+            # Report the final job state to both optional Discord destinations.
+            # These steps always run so a failed publication never disappears.
+            #
             - name: "Notify Discord: build finished 📣"
               if: always()
               env:
@@ -470,11 +546,11 @@ jobs:
                   fi
 
                   if [ "${JOB_STATUS}" = "success" ]; then
-                    title="✅ Fresh image couture served"
-                    description="Registry fit is live. Docker Hub mirror checked the look. No embarrassment detected."
+                    title="✅ Images survived the voyage"
+                    description="Registries agree. The containers deny everything."
                   else
-                    title="🔥 Fog machine incident"
-                    description="Registry workflow ended ${JOB_STATUS}. Dramatic. Inconvenient. On brand."
+                    title="💥 The build sank near the dock"
+                    description="Workflow ended ${JOB_STATUS}. The logs saw what happened."
                   fi
                   embed_colors=(16711884 15961002 11685080 10181046 15844367 16738740)
                   color="${embed_colors[$((RANDOM % ${#embed_colors[@]}))]}"
@@ -508,18 +584,18 @@ jobs:
                         url: $url,
                         color: $color,
                         fields: [
-                          {name: "📚 Cheekbone Repo", value: $repository, inline: true},
-                          {name: "🌿 Posing Ref", value: $ref, inline: true},
-                          {name: "🏷️ Cropped Tags", value: $tags, inline: false},
-                          {name: "🧾 GHCR Sigil", value: $ghcrDigest, inline: false},
-                          {name: "🧾 Hub Sigil", value: $dockerhubDigest, inline: false},
-                          {name: "🪞 Mirror Serving", value: $digestMatch, inline: true},
-                          {name: "🐳 Thirst Count", value: $dockerhubPulls, inline: true},
-                          {name: "⭐ Balcony Stars", value: $dockerhubStars, inline: true},
-                          {name: "📦 GHCR Portal", value: $ghcrUrl, inline: false},
-                          {name: "🐳 Hub Gate", value: $dockerhubUrl, inline: false}
+                          {name: "📚 Repo", value: $repository, inline: true},
+                          {name: "🌿 Ref", value: $ref, inline: true},
+                          {name: "🏷️ Tags", value: $tags, inline: false},
+                          {name: "🧾 GHCR Digest", value: $ghcrDigest, inline: false},
+                          {name: "🧾 Hub Digest", value: $dockerhubDigest, inline: false},
+                          {name: "🪞 Digests Match", value: $digestMatch, inline: true},
+                          {name: "🐳 Hub Pulls", value: $dockerhubPulls, inline: true},
+                          {name: "⭐ Hub Stars", value: $dockerhubStars, inline: true},
+                          {name: "📦 GHCR", value: $ghcrUrl, inline: false},
+                          {name: "🐳 Docker Hub", value: $dockerhubUrl, inline: false}
                         ],
-                        footer: {text: "Privateerr: gloomy, glossy, punctual"},
+                        footer: {text: "Privateerr: technically seaworthy."},
                         timestamp: now | todate
                       }]
                     }')"
@@ -556,11 +632,11 @@ jobs:
                   fi
 
                   if [ "${JOB_STATUS}" = "success" ]; then
-                    title="😈 Furnace escaped. Lashes intact."
-                    description="Registry ritual finished. Docker Hub mirror survived despite limited taste."
+                    title="😈 Furnace says done"
+                    description="Images escaped the underworld. Docker Hub accepted the paperwork."
                   else
-                    title="💀 Summoning botched. Cauldron suspicious."
-                    description="Infernal pipeline ended ${JOB_STATUS}. Logs need candles and fewer feelings."
+                    title="💀 The cauldron filed an incident report"
+                    description="Pipeline ended ${JOB_STATUS}. Cerberus blames YAML."
                   fi
                   embed_colors=(16711884 15961002 11685080 10181046 15844367 16738740)
                   color="${embed_colors[$((RANDOM % ${#embed_colors[@]}))]}"
@@ -594,18 +670,18 @@ jobs:
                         url: $url,
                         color: $color,
                         fields: [
-                          {name: "🏛️ Moisturized Damned", value: $repository, inline: true},
-                          {name: "🩸 Pretty Bloodline", value: $ref, inline: true},
-                          {name: "🏷️ Hemmed Souls", value: $tags, inline: false},
-                          {name: "🧾 GHCR Sigil", value: $ghcrDigest, inline: false},
-                          {name: "🧾 Hub Curse", value: $dockerhubDigest, inline: false},
-                          {name: "🪞 Mirror Flawless", value: $digestMatch, inline: true},
+                          {name: "🏛️ Repo", value: $repository, inline: true},
+                          {name: "🩸 Ref", value: $ref, inline: true},
+                          {name: "🏷️ Tags", value: $tags, inline: false},
+                          {name: "🧾 GHCR Digest", value: $ghcrDigest, inline: false},
+                          {name: "🧾 Hub Digest", value: $dockerhubDigest, inline: false},
+                          {name: "🪞 Digests Match", value: $digestMatch, inline: true},
                           {name: "🐳 Abyss Pulls", value: $dockerhubPulls, inline: true},
                           {name: "⭐ Infernal Applause", value: $dockerhubStars, inline: true},
-                          {name: "📦 GHCR Portal", value: $ghcrUrl, inline: false},
-                          {name: "🐳 Gloss Gate", value: $dockerhubUrl, inline: false}
+                          {name: "📦 GHCR", value: $ghcrUrl, inline: false},
+                          {name: "🐳 Docker Hub", value: $dockerhubUrl, inline: false}
                         ],
-                        footer: {text: "Hades Build Bureau: goth, gay, OCI-compliant"},
+                        footer: {text: "Hades Build Bureau: fire in, containers out."},
                         timestamp: now | todate
                       }]
                     }')"

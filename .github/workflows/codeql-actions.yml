@@ -1,5 +1,17 @@
+#
+# Copyright 2025-2026 Scott Gigawatt
+#
+# Licensed under the Apache License, Version 2.0.
+#
+# codeql-actions.yml: Analyze Privateerr's GitHub Actions source.
+#
+
 name: "Interrogate the Actions Rigging 🔎🏴‍☠️"
 
+#
+# Inspect every change entering main, every resulting main commit, and any
+# manually requested security review.
+#
 on:
     push:
         branches:
@@ -13,6 +25,10 @@ permissions:
     contents: read
 
 jobs:
+    #
+    # Run CodeQL with the permissions needed to read workflow metadata and
+    # publish GitHub Actions findings to code scanning.
+    #
     codeql-actions:
         name: "Sniff the Workflow Bilge 🔍"
         runs-on: ubuntu-latest
@@ -22,6 +38,10 @@ jobs:
             security-events: write
 
         steps:
+            #
+            # Check out without retaining credentials before CodeQL inspects the
+            # repository's workflow definitions.
+            #
             - name: "Grab the Treasure Map 🗺️"
               uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7
               with:
@@ -32,6 +52,10 @@ jobs:
               with:
                   languages: actions
 
+            #
+            # Analyze the initialized Actions database and keep its findings in
+            # a dedicated code-scanning category.
+            #
             - name: "Read the Cursed Scrolls 📜"
               uses: github/codeql-action/analyze@7188fc363630916deb702c7fdcf4e481b751f97a  # v4
               with:
