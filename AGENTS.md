@@ -1,10 +1,10 @@
-#
-# Copyright 2025-2026 Scott Gigawatt
-#
-# Licensed under the Apache License, Version 2.0.
-#
-# AGENTS.md: Contributor and AI-agent operating instructions for Privateerr.
-#
+<!--
+  Copyright 2025-2026 Scott Gigawatt
+
+  Licensed under the Apache License, Version 2.0.
+
+  AGENTS.md: Contributor and AI-agent operating instructions for Privateerr.
+  -->
 
 # AGENTS.md
 
