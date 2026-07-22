@@ -25,6 +25,7 @@ permissions:
 jobs:
     build-and-push:
         name: "Pack the Cargo Hold 🧰"
+        if: github.event_name != 'workflow_dispatch' || github.ref == 'refs/heads/main'
         runs-on: ubuntu-latest
         permissions:
             contents: read
@@ -163,7 +164,31 @@ jobs:
               uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7
               with:
                   submodules: recursive
+                  fetch-depth: 0
                   persist-credentials: false
+
+            - name: "Inspect the Release Chart 🧭"
+              if: startsWith(github.ref, 'refs/tags/')
+              env:
+                  RELEASE_TAG: ${{ github.ref_name }}
+              run: |
+                  semver_pattern='^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-((0|[1-9][0-9]*)|([0-9A-Za-z-]*[A-Za-z-][0-9A-Za-z-]*))(\.((0|[1-9][0-9]*)|([0-9A-Za-z-]*[A-Za-z-][0-9A-Za-z-]*)))*)?(\+[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?$'
+
+                  if [[ ! "${RELEASE_TAG}" =~ ${semver_pattern} ]]; then
+                    echo "Release tag ${RELEASE_TAG} is not valid semantic versioning."
+                    exit 1
+                  fi
+
+                  if [ "$(git cat-file -t "refs/tags/${RELEASE_TAG}")" != "tag" ]; then
+                    echo "Release tag ${RELEASE_TAG} must be annotated."
+                    exit 1
+                  fi
+
+                  git fetch --no-tags origin main
+                  if ! git merge-base --is-ancestor "${GITHUB_SHA}" origin/main; then
+                    echo "Release tag ${RELEASE_TAG} does not point to a commit on main."
+                    exit 1
+                  fi
 
             - name: "Summon Cross-Arch Cannons 🧨"
               uses: docker/setup-qemu-action@96fe6ef7f33517b61c61be40b68a1882f3264fb8  # v4
@@ -237,9 +262,10 @@ jobs:
               uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302  # v6
               with:
                   images: ${{ env.PRIVATEERR_IMAGE_REF }}
+                  flavor: |
+                      latest=auto
                   tags: |
-                      type=raw,value=latest,enable={{is_default_branch}}
-                      type=raw,value=latest,enable=${{ startsWith(github.ref, 'refs/tags/v') }}
+                      type=edge,branch=main
                       type=sha,prefix=sha-
                       type=semver,pattern={{version}}
 
@@ -248,9 +274,10 @@ jobs:
               uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302  # v6
               with:
                   images: ${{ env.BUCCANEERR_IMAGE_REF }}
+                  flavor: |
+                      latest=auto
                   tags: |
-                      type=raw,value=latest,enable={{is_default_branch}}
-                      type=raw,value=latest,enable=${{ startsWith(github.ref, 'refs/tags/v') }}
+                      type=edge,branch=main
                       type=sha,prefix=sha-
                       type=semver,pattern={{version}}
 

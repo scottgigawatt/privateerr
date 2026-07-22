@@ -216,12 +216,14 @@ The image builds from Alpine for a small footprint. Alpine is not a distro PIA l
 
 Published Privateerr images support `linux/amd64`, `linux/arm64`, and `linux/arm/v7`.
 
-Images are published to both GHCR and Docker Hub:
+Images are published to both GHCR and Docker Hub. Most users should stay on `latest`; use `edge` only when ye intentionally want the newest successful `main` build before it becomes a stable release.
 
-| 📦 Registry | 🏷️ Image |
-| --- | --- |
-| GHCR | `ghcr.io/scottgigawatt/privateerr:latest` |
-| Docker Hub | `scottgigawatt/privateerr:latest` |
+| 📦 Registry | ✅ Stable | 🧪 Edge |
+| --- | --- | --- |
+| GHCR | `ghcr.io/scottgigawatt/privateerr:latest` | `ghcr.io/scottgigawatt/privateerr:edge` |
+| Docker Hub | `scottgigawatt/privateerr:latest` | `scottgigawatt/privateerr:edge` |
+
+Stable version tags such as `1.0.0` remain available when ye need to pin an exact release. Commit tags such as `sha-cfa2fb5` identify a particular source revision. Prerelease tags keep their own version and never replace `latest`.
 
 The Docker Hub overview is generated from [docs/DOCKERHUB_README.md](./docs/DOCKERHUB_README.md), which keeps Docker Hub focused on pulling the image and understanding the basic use case. The full project docs stay here in the GitHub README.
 
@@ -233,9 +235,10 @@ Privateerr keeps the build deck intentionally locked down:
 - Alpine build bases are pinned to versioned image digests.
 - Renovate opens update PRs for pinned actions, Docker digests, Compose images, and submodules.
 - Pre-commit, CodeQL, OpenSSF Scorecard, and Trivy guard the repo and image workflow.
-- Release images are built on `main`, scanned with Trivy before publish, attested, and mirrored from GHCR to Docker Hub with digest preservation.
+- Successful `main` builds publish `edge`; stable semantic-version tags publish the exact version and move `latest`.
+- Published images are scanned with Trivy, attested, and mirrored from GHCR to Docker Hub with digest preservation.
 
-This means a new `main` build does **not** silently float to a newer Alpine base just because Alpine published one. Renovate has to raise the flag, CI has to pass, and the update has to merge before the next published image uses that new base.
+This means a new `main` build does **not** replace the stable `latest` image or silently float to a newer Alpine base just because Alpine published one. Renovate has to raise the flag, CI has to pass, and the update has to merge before `edge` uses that new base. A reviewed version tag is still required to move `latest`.
 
 ## ⚖️ License And Community
 

@@ -4,13 +4,13 @@ Ahoy, security-minded sailor. If ye spot a cursed leak, a leaky hull, or a suspi
 
 ## Supported Versions ⚓
 
-Privateerr sails mostly by the `main` branch and the latest published container images. Since this project be a small vessel, security fixes target the newest chart instead of older treasure maps.
+Privateerr sails by the stable `latest` image and the `edge` image built from `main`. Since this project be a small vessel, security fixes target those newest charts instead of older treasure maps.
 
 | Version | Supported |
 | ------- | --------- |
-| `latest` image | ✅ |
-| `main` branch | ✅ |
-| Older local builds | ❌ |
+| `latest` stable image | ✅ |
+| `edge` image and `main` branch | ✅ |
+| Older version tags and local builds | ❌ |
 | Forked or modified PIA scripts | ❌ |
 
 > [!IMPORTANT]
@@ -49,8 +49,8 @@ This be a small maintainer ship, not a giant navy. I will do my best to:
 
 - Acknowledge valid private reports within 7 days.
 - Triage severity and scope as soon as possible.
-- Patch accepted issues in `main`.
-- Publish a fresh image after a fix lands.
+- Patch accepted issues in `main` and publish the fix to `edge`.
+- Publish a stable semantic-version release when the fix is ready for `latest`.
 - Credit reporters when requested and safe to do so.
 
 If a report is declined, I will try to explain why without leakin' dangerous details into open waters.
@@ -67,12 +67,13 @@ The protected build path then:
 - Runs OpenSSF Scorecard on its own schedule and branch-protection events.
 - Builds Privateerr and Buccaneerr for `linux/amd64`, `linux/arm64`, and `linux/arm/v7`.
 - Scans built images with Trivy before publishing.
-- Publishes images from `main` after checks pass.
+- Publishes `edge` from `main` after checks pass.
+- Publishes exact versions and `latest` from stable semantic-version tags.
 - Attests build provenance and mirrors Privateerr from GHCR to Docker Hub with digest preservation.
 
-Rebuilding the same commit does not automatically pick up a newer Alpine base. To pick up patched packages, merge the Renovate update PR first, then pull or publish a fresh image from the updated `main`.
+Rebuilding the same commit does not automatically pick up a newer Alpine base. To pick up patched packages, merge the Renovate update PR first, then pull `edge` from the updated `main` or publish a stable version tag when the change is ready for `latest`.
 
 > [!TIP]
-> 🏴‍☠️ For the freshest patched hull, pull the newest published image after dependency update PRs have merged.
+> 🏴‍☠️ Pull `latest` for the newest stable patched hull. Pull `edge` only when ye intentionally want the newest successful `main` build.
 
 Fair winds, sharp eyes, and may yer secrets stay below deck. ☠️
