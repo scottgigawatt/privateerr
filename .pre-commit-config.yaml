@@ -1,9 +1,24 @@
+#
+# Copyright 2025-2026 Scott Gigawatt
+#
+# Licensed under the Apache License, Version 2.0.
+#
+# .pre-commit-config.yaml: Repository lint, secret, workflow, shell, policy,
+#                          YAML, and Dockerfile validation hooks.
+#
+
 repos:
+  #
+  # Scan changed content for hardcoded secrets before it can be committed.
+  #
   - repo: https://github.com/gitleaks/gitleaks
     rev: v8.30.1
     hooks:
       - id: gitleaks
 
+  #
+  # Compare detected secrets against the reviewed repository baseline.
+  #
   - repo: https://github.com/Yelp/detect-secrets
     rev: v1.5.0
     hooks:
@@ -11,6 +26,9 @@ repos:
         args: ["--baseline", ".secrets.baseline"]
         exclude: package.lock.json
 
+  #
+  # Run general file hygiene, syntax, shebang, and whitespace checks.
+  #
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v6.0.0
     hooks:
@@ -24,6 +42,9 @@ repos:
       - id: trailing-whitespace
         args: ["--markdown-linebreak-ext=md"]
 
+  #
+  # Enforce strict YAML style across repository configuration files.
+  #
   - repo: https://github.com/adrienverge/yamllint
     rev: v1.38.0
     hooks:
@@ -33,16 +54,25 @@ repos:
           - "-d"
           - "{extends: default, rules: {document-start: disable, line-length: disable, truthy: disable}}"
 
+  #
+  # Validate GitHub Actions expressions, permissions, and shell fragments.
+  #
   - repo: https://github.com/rhysd/actionlint
     rev: v1.7.12
     hooks:
       - id: actionlint
 
+  #
+  # Check project-owned shell scripts for correctness and portability issues.
+  #
   - repo: https://github.com/shellcheck-py/shellcheck-py
     rev: v0.11.0.1
     hooks:
       - id: shellcheck
 
+  #
+  # Enforce synchronized Alpine pins and the stable versus edge image-tag policy.
+  #
   - repo: local
     hooks:
       - id: check-alpine-tag-pins
@@ -57,6 +87,9 @@ repos:
         language: script
         pass_filenames: false
 
+  #
+  # Lint both project Dockerfiles against container image best practices.
+  #
   - repo: https://github.com/hadolint/hadolint
     rev: v2.14.0
     hooks:
