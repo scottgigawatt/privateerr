@@ -63,6 +63,16 @@ The `build-and-push` GitHub Actions workflow builds and publishes Privateerr to 
 | GHCR | `ghcr.io/${{ github.repository_owner }}/privateerr` | The test-only Buccaneerr image is also published here for CI and release validation. |
 | Docker Hub | `docker.io/${{ github.repository_owner }}/privateerr` | Docker Hub is focused on the user-facing Privateerr image. |
 
+Both registries use the same release channels:
+
+| 🏷️ Source | 📦 Published tags | 🧭 Purpose |
+| --- | --- | --- |
+| Successful `main` build | `edge`, `sha-<commit>` | Preview the newest reviewed code without changing the stable channel. |
+| Stable tag such as `v1.2.3` | `1.2.3`, `latest`, `sha-<commit>` | Publish an exact stable version and advance the recommended channel. |
+| Prerelease tag such as `v1.2.3-rc.1` | `1.2.3-rc.1`, `sha-<commit>` | Publish a testable prerelease without changing `latest`. |
+
+Release tags must use semantic versioning, be annotated, and point to a commit on `main`. A manual workflow run may publish only from `main`. The workflow validates those rules before it logs in to the registries or publishes an image.
+
 The workflow uses Docker Buildx to create the canonical GHCR image:
 
 ```yaml
@@ -104,7 +114,7 @@ Renovate keeps those pins from going stale. It tracks:
 When Renovate opens a dependency PR, the validation workflow checks that every pinned `ALPINE_TAG` value still matches across Dockerfiles, workflow build args, and the example environment file. If one build arg drifts away from the fleet, `check-alpine-tag-pins.sh` fails before the PR can merge.
 
 > [!NOTE]
-> 🧭 `latest` remains a published image tag for users. It is not used as the release build's Alpine base. The base image is intentionally pinned and moved by reviewed Renovate PRs.
+> 🧭 `latest` remains the recommended stable image tag for users, while `edge` follows successful `main` builds. Neither tag is used as the Alpine base. The base image is intentionally pinned and moved by reviewed Renovate PRs.
 
 ## 🛠️ Useful Maintenance Commands
 

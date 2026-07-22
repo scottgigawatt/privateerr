@@ -11,6 +11,21 @@ Privateerr is a tiny Docker wrapper that packages the original, unmodified [pia-
 docker pull scottgigawatt/privateerr:latest
 ```
 
+`latest` is the newest stable release. To test the newest successful build from `main` before it becomes a release, opt in to `edge`:
+
+```console
+docker pull scottgigawatt/privateerr:edge
+```
+
+| 🏷️ Tag | 🧭 Purpose |
+| --- | --- |
+| `latest` | Newest stable semantic-version release; recommended for most users. |
+| `1.0.0` | A specific stable release. |
+| `edge` | Newest successful `main` build; may change before the next release. |
+| `sha-cfa2fb5` | Image built from a specific source commit. |
+
+Prerelease versions keep their own tags and never replace `latest`.
+
 Published tags are multi-architecture manifests for:
 
 | 🧱 Platform | 🖥️ Typical use |

@@ -61,6 +61,16 @@ pre-commit run --all-files
 - Keep service config directories aligned with service names.
 - Leave upstream PIA scripts untouched so users can verify the treasure scrolls were not tampered with.
 
+## Release Tags 🏷️
+
+- Create annotated release tags from commits already on `main`.
+- Use semantic versions such as `v1.2.3` or `v1.2.3-rc.1`.
+- Never move or reuse a published version tag.
+- Successful `main` builds publish `edge`; they do not replace `latest`.
+- Stable version tags publish the exact version and replace `latest`.
+- Prerelease tags publish only the prerelease version and commit SHA tags.
+- Wait for the image workflow, registry mirror, and provenance checks before publishing the GitHub release.
+
 ## Pull Requests 🪝
 
 Before opening a pull request:
