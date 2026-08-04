@@ -216,7 +216,7 @@ The image builds from Alpine for a small footprint. Alpine is not a distro PIA l
 
 Published Privateerr images support `linux/amd64`, `linux/arm64`, and `linux/arm/v7`.
 
-Images are published to both GHCR and Docker Hub. Most users should stay on `latest`; use `edge` only when ye intentionally want the newest successful `main` build before it becomes a stable release.
+Images are published to both [GHCR](https://github.com/scottgigawatt/privateerr/pkgs/container/privateerr) and [Docker Hub](https://hub.docker.com/repository/docker/scottgigawatt/privateerr/general). Most users should stay on `latest`; use `edge` only when ye intentionally want the newest successful `main` build before it becomes a stable release.
 
 | 📦 Registry | ✅ Stable                                  | 🧪 Edge                                 |
 | ----------- | ----------------------------------------- | --------------------------------------- |
