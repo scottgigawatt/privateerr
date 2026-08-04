@@ -11,6 +11,7 @@
     "assignees": ["scottgigawatt"],
     "reviewers": ["scottgigawatt"],
     "enabledManagers": [
+        "custom.regex",
         "docker-compose",
         "dockerfile",
         "git-submodules",
@@ -31,6 +32,18 @@
             "depNameTemplate": "alpine",
             "datasourceTemplate": "docker",
             "versioningTemplate": "docker"
+        },
+        {
+            "customType": "regex",
+            "managerFilePatterns": [
+                "/^\\.pre-commit-config\\.ya?ml$/"
+            ],
+            "matchStrings": [
+                "entry:\\s+ghcr\\.io/hadolint/hadolint:(?<currentValue>[^@\\s]+)@(?<currentDigest>sha256:[a-f0-9]+)"
+            ],
+            "depNameTemplate": "ghcr.io/hadolint/hadolint",
+            "datasourceTemplate": "docker",
+            "versioningTemplate": "docker"
         }
     ],
     "packageRules": [
@@ -44,7 +57,7 @@
         },
         {
             "groupName": "Docker images",
-            "matchManagers": ["docker-compose", "dockerfile"]
+            "matchManagers": ["docker-compose", "dockerfile", "custom.regex"]
         },
         {
             "groupName": "Submodules",

@@ -90,8 +90,12 @@ repos:
   #
   # Lint both project Dockerfiles against container image best practices.
   #
-  - repo: https://github.com/hadolint/hadolint
-    rev: v2.14.0
+  - repo: local
     hooks:
       - id: hadolint-docker
+        name: Lint Dockerfiles
+        description: Runs the digest-pinned Hadolint image against Dockerfiles
+        entry: ghcr.io/hadolint/hadolint:v2.15.1@sha256:32dac94127fd60b7b7e3fbfc65e1383b9b5e25c9bfd7b8536de7a539fe68a12d hadolint
+        language: docker_image
+        types: [dockerfile]
         args: ["--ignore", "DL3018"]

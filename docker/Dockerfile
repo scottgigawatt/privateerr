@@ -25,6 +25,12 @@ ARG ALPINE_TAG=3.24@sha256:28bd5fe8b56d1bd048e5babf5b10710ebe0bae67db86916198a6e
 # Default install locations and image metadata that can be overridden using build args.
 #
 ARG PIA_BIN_HOME=/pia
+
+#
+# Privateerr includes "private", which Hadolint treats as secret-like.
+# This build argument contains only an install path.
+#
+# hadolint ignore=DL3064
 ARG PRIVATEERR_BIN_HOME=/privateerr
 ARG JQ_APK_REPOSITORY=https://dl-cdn.alpinelinux.org/alpine/edge/main
 ARG JQ_APK_MIN_VERSION=1.8.2-r0
@@ -35,6 +41,11 @@ ARG IMAGE_VERSION=latest
 #
 # Set PIA scripts, Privateerr helper, and healthcheck locations.
 #
+
+#
+# This environment block publishes paths, not secrets.
+#
+# hadolint ignore=DL3064
 ENV PIA_BIN_HOME=${PIA_BIN_HOME} \
     PRIVATEERR_BIN_HOME=${PRIVATEERR_BIN_HOME} \
     PRIVATEERR_HEALTHCHECK_MARKER=/healthcheck/privateerr.ready
@@ -90,7 +101,7 @@ WORKDIR ${PIA_BIN_HOME}
 #
 # Report healthy after the wrapper finishes generating the config and metadata.
 #
-HEALTHCHECK CMD test -f "${PRIVATEERR_HEALTHCHECK_MARKER}" || exit 1
+HEALTHCHECK CMD ["/bin/sh", "-c", "test -f \"${PRIVATEERR_HEALTHCHECK_MARKER}\""]
 
 #
 # Run the Privateerr wrapper as PID 1 so it receives Docker stop signals and
