@@ -81,8 +81,8 @@ services:
     healthcheck:
       <<: *default-healthcheck-settings  # Pull in default healthcheck settings
       test:                              # Healthy when healthcheck marker file exists
-        - CMD-SHELL
-        - test -f "$${PRIVATEERR_HEALTHCHECK_MARKER}"
+        - CMD
+        - privateerr-healthcheck
 
     # Mount host directories into the container
     volumes:
@@ -141,8 +141,12 @@ services:
     healthcheck:
       <<: *default-healthcheck-settings  # Pull in default healthcheck settings
       test:                              # Check Gluetun's internal health server
-        - CMD-SHELL
-        - wget -q -O /dev/null "http://127.0.0.1:9999" || exit 1
+        - CMD
+        - wget
+        - -q
+        - -O
+        - /dev/null
+        - http://127.0.0.1:9999
 
     # Specify container service dependencies
     depends_on:

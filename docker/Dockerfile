@@ -75,6 +75,7 @@ COPY LICENSE /LICENSE
 COPY pia-manual-connections/LICENSE /licenses/pia-manual-connections/LICENSE
 COPY pia-manual-connections ${PIA_BIN_HOME}
 COPY privateerr-entrypoint.sh ${PRIVATEERR_BIN_HOME}/privateerr-entrypoint.sh
+COPY privateerr-healthcheck.sh /usr/local/bin/privateerr-healthcheck
 COPY privateerr-date.sh /usr/local/bin/date
 
 #
@@ -94,6 +95,7 @@ RUN apk add --no-cache \
       "nghttp2-libs>=${NGHTTP2_APK_MIN_VERSION}" && \
     chmod +x \
       "${PRIVATEERR_BIN_HOME}/privateerr-entrypoint.sh" \
+      /usr/local/bin/privateerr-healthcheck \
       /usr/local/bin/date
 
 #
@@ -104,7 +106,7 @@ WORKDIR ${PIA_BIN_HOME}
 #
 # Report healthy after the wrapper finishes generating the config and metadata.
 #
-HEALTHCHECK CMD ["/bin/sh", "-c", "test -f \"${PRIVATEERR_HEALTHCHECK_MARKER}\""]
+HEALTHCHECK CMD ["privateerr-healthcheck"]
 
 #
 # Run the Privateerr wrapper as PID 1 so it receives Docker stop signals and
