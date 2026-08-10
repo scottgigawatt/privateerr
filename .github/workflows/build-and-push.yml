@@ -425,14 +425,14 @@ jobs:
             # after their multi-architecture manifests are available.
             #
             - name: "Stamp Privateerr's Provenance Scroll 🧾"
-              uses: actions/attest-build-provenance@0f67c3f4856b2e3261c31976d6725780e5e4c373  # v4
+              uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8  # v4
               with:
                   subject-name: ${{ env.PRIVATEERR_IMAGE_REF }}
                   subject-digest: ${{ steps.publish-privateerr.outputs.digest }}
                   push-to-registry: true
 
             - name: "Stamp Buccaneerr's Provenance Scroll 🧾"
-              uses: actions/attest-build-provenance@0f67c3f4856b2e3261c31976d6725780e5e4c373  # v4
+              uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8  # v4
               with:
                   subject-name: ${{ env.BUCCANEERR_IMAGE_REF }}
                   subject-digest: ${{ steps.publish-buccaneerr.outputs.digest }}
