@@ -11,6 +11,9 @@
 # Usage: docker compose config --environment | scripts/compose/check-pia-credentials.sh
 #
 
+#
+# Fail on errors and unset variables.
+#
 set -eu
 
 #
@@ -21,6 +24,11 @@ color_reset='\033[0m'
 color_error='\033[1;31m'
 color_warning='\033[1;33m'
 color_muted='\033[0;37m'
+
+#
+# Validate that the resolved PIA credentials are not empty or still use the
+# documented example values.
+#
 pia_user=""
 pia_pass=""
 
@@ -65,7 +73,9 @@ print_detail() {
 report_invalid_credential() {
     print_error "☠️  Privateerr cannot sail without valid PIA credentials."
     printf '\n' >&2
-    print_detail "${color_warning}" "Credential  $1"
+    print_detail \
+        "${color_warning}" \
+        "Credential  $1"
     print_detail \
         "${color_warning}" \
         "Problem     Missing or still using the documented example value."
@@ -88,8 +98,8 @@ credential_is_invalid() {
 }
 
 #
-# Read only the required values from Compose's resolved environment. Values
-# remain in memory and are never written to standard output or standard error.
+# Read only the two required values from Docker Compose's resolved environment.
+# Values are retained in memory and never written to stdout or stderr.
 #
 while IFS= read -r environment_line; do
     case "${environment_line}" in
@@ -103,13 +113,16 @@ while IFS= read -r environment_line; do
 done
 
 #
-# Reject missing values and the examples supplied to new operators.
+# Reject missing values and the documented examples supplied to new operators.
 #
 if credential_is_invalid "${pia_user}" "p1234567"; then
     report_invalid_credential "PIA_USER"
     exit 1
 fi
 
+#
+# Reject missing values and the documented examples supplied to new operators.
+#
 if credential_is_invalid "${pia_pass}" "shiverMeTimbers123"; then
     report_invalid_credential "PIA_PASS"
     exit 1

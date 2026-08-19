@@ -10,10 +10,16 @@
 # Usage: scripts/compose/ps.sh --env-file <path> --compose-file <path> [options]
 #
 
+#
+# Variables for the Compose project and its environment.
+#
 compose_file=""
 docker_bin="docker"
 env_file=""
 
+#
+# Fail on errors and unset variables.
+#
 set -eu
 
 #
@@ -50,7 +56,7 @@ require_option_argument() {
 }
 
 #
-# format_status_table: Align status rows and collapse duplicate wildcard ports.
+# format_status_table: Align status rows and stack concise published port lists.
 #
 # Parameters: None. Reads tab-separated Compose status rows from standard input.
 #
@@ -62,6 +68,7 @@ format_status_table() {
             name_width = length("NAME")
             service_width = length("SERVICE")
             status_width = length("STATUS")
+            stack_threshold = 1
         }
 
         {
@@ -71,17 +78,14 @@ format_status_table() {
             statuses[row_count] = $3
             raw_port_count = split($4, raw_ports, /,[[:space:]]*/)
             port_lists[row_count] = ""
-
             for (raw_port = 1; raw_port <= raw_port_count; raw_port++) {
                 normalized_port = raw_ports[raw_port]
                 sub(/^0\.0\.0\.0:/, "", normalized_port)
                 sub(/^\[::\]:/, "", normalized_port)
                 port_key = row_count SUBSEP normalized_port
-
                 if (normalized_port == "" || seen_ports[port_key]++) {
                     continue
                 }
-
                 if (port_lists[row_count] != "") {
                     port_lists[row_count] = port_lists[row_count] ", "
                 }
@@ -109,6 +113,11 @@ format_status_table() {
                     port_count = 0
                 }
 
+                if (port_count <= stack_threshold) {
+                    printf row_format, names[row], services[row], statuses[row], port_lists[row]
+                    continue
+                }
+
                 printf row_format, names[row], services[row], statuses[row], ports[1]
                 for (port = 2; port <= port_count; port++) {
                     printf row_format, "", "", "", ports[port]
@@ -118,6 +127,9 @@ format_status_table() {
     '
 }
 
+#
+# Parse command-line flags and arguments.
+#
 while [ "$#" -gt 0 ]; do
     case "$1" in
         -e | --env-file)
@@ -147,11 +159,17 @@ while [ "$#" -gt 0 ]; do
     esac
 done
 
+#
+# Validate that the required paths were provided.
+#
 if [ ! -f "${env_file}" ]; then
     printf 'Environment file not found: %s\n' "${env_file}" >&2
     exit 1
 fi
 
+#
+# Validate required paths before asking Compose to inspect the project.
+#
 if [ ! -f "${compose_file}" ]; then
     printf 'Compose file not found: %s\n' "${compose_file}" >&2
     exit 1
@@ -159,7 +177,7 @@ fi
 
 #
 # Prefer Docker Compose v2 and retain support for a standalone v1 installation.
-# Compose owns project-name resolution so .env defaults remain authoritative.
+# Compose owns project-name resolution, so repository .env defaults remain correct.
 #
 if "${docker_bin}" compose version >/dev/null 2>&1; then
     compose_status=$("${docker_bin}" compose \

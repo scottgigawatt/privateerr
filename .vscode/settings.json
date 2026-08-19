@@ -119,10 +119,16 @@
         "editor.insertSpaces": true
     },
     "[toml]": {
+        "editor.defaultFormatter": "tamasfe.even-better-toml",
         "editor.detectIndentation": false,
         "editor.tabSize": 2,
         "editor.insertSpaces": true
     },
+
+    //
+    // Keep TOML formatting at two spaces through Even Better TOML.
+    //
+    "evenBetterToml.formatter.indentString": "  ",
 
     //
     // Enable shell diagnostics for every project-owned helper.

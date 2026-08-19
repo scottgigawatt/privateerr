@@ -1,26 +1,41 @@
-# Privateerr Host Helpers 🧰🏴‍☠️
+# Privateerr Script Hold 🏴‍☠️
 
-The `scripts/` hold contains small host-side helpers used by Make. They stay
-outside the production Privateerr image and the upstream PIA submodule.
+These documented host helpers support the Privateerr Compose project. Pick the
+smallest tool for the job and review its header before running it against a live
+deployment.
 
-## Compose helpers
+## Script Chart 🧭
 
-| Helper | Purpose |
-| --- | --- |
-| `compose/check-pia-credentials.sh` | Reject missing or documented example PIA credentials before Privateerr starts. |
-| `compose/ps.sh` | Ask Docker Compose for the selected project and render a compact status table. |
+| Hold       | Script                                                                                                                               | Purpose                                                            |
+| ---------- | -------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------ |
+| 🐳 Compose | [`compose/check-pia-credentials.sh`](https://github.com/scottgigawatt/privateerr/blob/main/scripts/compose/check-pia-credentials.sh) | Report missing or example PIA credentials before Privateerr starts |
+| 🐳 Compose | [`compose/ps.sh`](https://github.com/scottgigawatt/privateerr/blob/main/scripts/compose/ps.sh)                                       | Print a compact status table for the Privateerr Compose project    |
 
-The credential helper reads Docker Compose's resolved environment from standard
-input. It retains only `PIA_USER` and `PIA_PASS` in memory, never sources `.env`,
-and never prints their values.
+## Compose Helpers 🐳
 
-Use the Make interface instead of calling the helpers directly:
+### `compose/check-pia-credentials.sh`
 
-```sh
-make run-privateerr
-make ps
-make test-make-helpers
-```
+Reads resolved Compose environment values from standard input and fails when a
+Privateerr deployment would start without real `PIA_USER` and `PIA_PASS`
+values. Invalid credentials produce a color-aware diagnostic with a corrective
+action; redirected output remains plain text and `NO_COLOR` disables terminal
+color. `make run-privateerr`, `make up`, and `make test-e2e` call it
+automatically.
+
+### `compose/ps.sh`
+
+Resolves the Privateerr Compose project and prints only its containers in a
+terminal-friendly status table. Equivalent IPv4 and IPv6 wildcard bindings are
+collapsed, and each distinct published port receives an aligned continuation
+line. `make ps` is the normal entry point.
+
+> [!TIP]
+>
+> ```sh
+> make run-privateerr
+> make ps
+> make test-make-helpers
+> ```
 
 > [!IMPORTANT]
 > Keep credentials in the ignored `.env` file. Do not pass them as command-line

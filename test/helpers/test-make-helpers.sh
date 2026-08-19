@@ -11,8 +11,14 @@
 # Usage: test/helpers/test-make-helpers.sh
 #
 
+#
+# Directory for test output.
+#
 test_output=""
 
+#
+# Fail on errors and unset variables.
+#
 set -eu
 
 #
@@ -28,39 +34,63 @@ cleanup() {
     fi
 }
 
+#
+# Create a temporary directory for test output and register cleanup on exit.
+#
 test_output=$(mktemp -d)
 trap cleanup 0 1 2 15
 
-credential_output=$(printf '%s\n' \
-    'PIA_USER=p7654321' \
-    'PIA_PASS=not-a-real-secret' \
+#
+# Accept resolved credentials without echoing either value.
+#
+credential_output=$(printf '%s\n' 'PIA_USER=p7654321' 'PIA_PASS=not-a-real-secret' \
     | scripts/compose/check-pia-credentials.sh)
 test -z "${credential_output}"
 
+#
+# Reject missing values.
+#
 if printf '%s\n' 'PIA_USER=' 'PIA_PASS=not-a-real-secret' \
-    | scripts/compose/check-pia-credentials.sh \
-        >"${test_output}/missing.out" 2>&1; then
+    | scripts/compose/check-pia-credentials.sh >"${test_output}/missing.out" 2>&1; then
     echo "Credential helper accepted a missing PIA username." >&2
     exit 1
 fi
 
-grep -F "Credential  PIA_USER" "${test_output}/missing.out" >/dev/null
-grep -F "Set PIA_USER in .env" "${test_output}/missing.out" >/dev/null
+#
+# Confirm the diagnostic identifies the problem and corrective action.
+#
+grep -F "Privateerr cannot sail without valid PIA credentials." \
+    "${test_output}/missing.out" >/dev/null
+grep -F "Credential  PIA_USER" \
+    "${test_output}/missing.out" >/dev/null
+grep -F "Problem     Missing or still using the documented example value." \
+    "${test_output}/missing.out" >/dev/null
+grep -F "Fix         Set PIA_USER in .env, then rerun the requested Make target." \
+    "${test_output}/missing.out" >/dev/null
 
+#
+# Keep redirected diagnostic output free from terminal escape sequences.
+#
 if LC_ALL=C grep "$(printf '\033')" "${test_output}/missing.out" >/dev/null; then
     echo "Credential helper emitted terminal colors into redirected output." >&2
     exit 1
 fi
 
+#
+# Reject missing and documented example values.
+#
 if printf '%s\n' 'PIA_USER=p7654321' 'PIA_PASS=shiverMeTimbers123' \
-    | scripts/compose/check-pia-credentials.sh \
-        >"${test_output}/placeholder.out" 2>&1; then
+    | scripts/compose/check-pia-credentials.sh >"${test_output}/placeholder.out" 2>&1; then
     echo "Credential helper accepted the documented PIA password." >&2
     exit 1
 fi
 
-grep -F "Credential  PIA_PASS" "${test_output}/placeholder.out" >/dev/null
+grep -F "Credential  PIA_PASS" \
+    "${test_output}/placeholder.out" >/dev/null
 
+#
+# Confirm the status helper delegates project selection to Docker Compose.
+#
 : >"${test_output}/compose.yml"
 : >"${test_output}/stack.env"
 PRIVATEERR_TEST_LOG="${test_output}/docker.log" \
@@ -70,10 +100,21 @@ PRIVATEERR_TEST_LOG="${test_output}/docker.log" \
         --compose-file "${test_output}/compose.yml" \
         >"${test_output}/ps.out"
 
+#
+# Confirm the status helper invokes Docker Compose with the expected arguments.
+#
 grep -F -- "compose --env-file ${test_output}/stack.env -f ${test_output}/compose.yml ps --format" \
     "${test_output}/docker.log" >/dev/null
+
+#
+# Confirm the status helper returns the expected Compose output.
+#
 grep -F "privateerr-latest" "${test_output}/ps.out" >/dev/null
 grep -F "gluetun-latest" "${test_output}/ps.out" >/dev/null
+
+#
+# Collapse duplicate wildcard bindings and stack each distinct published port.
+#
 test "$(grep -c '9999->9999/tcp' "${test_output}/ps.out")" -eq 1
 
 if grep -F '[::]' "${test_output}/ps.out" >/dev/null; then
@@ -103,4 +144,7 @@ if LC_ALL=C grep "$(printf '\033')" "${test_output}/help.out" >/dev/null; then
     exit 1
 fi
 
+#
+# Report success.
+#
 echo "Make helper tests passed."

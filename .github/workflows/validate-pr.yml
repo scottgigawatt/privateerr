@@ -49,9 +49,15 @@ jobs:
                   submodules: recursive
                   persist-credentials: false
 
+            #
+            # Set up QEMU for cross-architecture builds and tests.
+            #
             - name: "Summon Cross-Arch Cannons 🧨"
               uses: docker/setup-qemu-action@96fe6ef7f33517b61c61be40b68a1882f3264fb8  # v4
 
+            #
+            # Set up Buildx for cross-architecture builds and tests.
+            #
             - name: "Sharpen the Build Axe 🪓"
               uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c  # v4.2.0
 
@@ -67,11 +73,19 @@ jobs:
                     echo "IMAGE_REVISION=${GITHUB_SHA}"
                   } >> .env
 
+            #
+            # Validate Privateerr's policy scripts, isolated helpers, and rendered
+            # Compose configuration through the contributor-facing Make targets.
+            #
             - name: "Read the Compose Charts 🔎"
               run: |
                   make test
                   make config >/dev/null
 
+            #
+            # Finish with all repository formatting, secret, workflow, YAML, and
+            # shell checks so generated artifacts cannot hide basic quality drift.
+            #
             - name: "Scrub the Deck with Pre-Commit 🧽"
               uses: pre-commit/action@2c7b3805fd2a0fd8c1884dcaebf91fc102a13ecd  # v3.0.1
 
@@ -84,6 +98,10 @@ jobs:
                   make build
                   make build-buccaneerr
 
+            #
+            # Prove every supported target architecture builds before enforcing
+            # the repository's HIGH and CRITICAL vulnerability threshold.
+            #
             - name: "Test the Three-Deck Hull Plans 🛠️"
               run: make build-platforms
 

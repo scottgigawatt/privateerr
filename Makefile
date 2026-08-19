@@ -38,6 +38,9 @@ HELP=help
 START=start
 STOP=stop
 
+#
+# List of all available targets
+#
 TARGETS= \
 	$(ALL) \
 	$(DOWN) \
@@ -193,6 +196,8 @@ DOCKER_COMPOSE := $(shell \
 # Terminal presentation settings. Recipe-time checks enable color only for
 # interactive terminals and honor the standard NO_COLOR opt-out.
 #
+# See https://no-color.org/ for the opt-out convention.
+#
 COLOR_RESET   := \033[0m
 COLOR_TITLE   := \033[1;36m
 COLOR_COMMAND := \033[1;33m
@@ -202,6 +207,11 @@ COLOR_WARNING := \033[1;33m
 COLOR_ERROR   := \033[1;31m
 COLOR_MUTED   := \033[0;37m
 
+#
+# Shell fragments used by user-facing Make output. Test stdout here instead of
+# inside $(shell ...): GNU Make captures expansion output before a recipe sees
+# the caller's terminal.
+#
 define print_line_inline
 if [ -t 1 ] && [ -z "$$NO_COLOR" ]; then \
 	printf '\n%b%s%b\n' "$(1)" "$(2)" "$(COLOR_RESET)"; \
@@ -218,6 +228,9 @@ else \
 fi
 endef
 
+#
+# User-facing Make output helpers.
+#
 define announce
 	@$(call print_line_inline,$(COLOR_INFO),$(1))
 endef
@@ -230,6 +243,10 @@ define announce_warning
 	@$(call print_line_inline,$(COLOR_WARNING),$(1))
 endef
 
+define announce_error
+	@$(call print_line_inline,$(COLOR_ERROR),$(1))
+endef
+
 define announce_title
 	@$(call print_line_inline,$(COLOR_TITLE),$(1))
 endef
@@ -238,6 +255,9 @@ define announce_detail
 	@$(call print_detail_inline,$(COLOR_MUTED),$(1))
 endef
 
+#
+# Help message formatting.
+#
 define help_line
 	@if [ -t 1 ] && [ -z "$$NO_COLOR" ]; then \
 		printf '  %b%-24s%b %s\n' "$(COLOR_COMMAND)" "$(1)" "$(COLOR_RESET)" "$(2)"; \

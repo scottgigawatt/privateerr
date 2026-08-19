@@ -11,8 +11,14 @@
 # Usage: test/helpers/test-workflow-helpers.sh
 #
 
+#
+# Fail on errors and unset variables.
+#
 set -eu
 
+#
+# Resolve the repository root and isolate every generated test artifact.
+#
 REPOSITORY_ROOT=$(CDPATH='' cd -- "$(dirname -- "$0")/../.." && pwd)
 TEST_ROOT=$(mktemp -d)
 SKOPEO_LOG="${TEST_ROOT}/skopeo.log"
@@ -28,6 +34,9 @@ cleanup() {
     rm -rf "${TEST_ROOT}"
 }
 
+#
+# Set up cleanup on exit, hangup, interrupt, or termination.
+#
 trap cleanup EXIT HUP INT TERM
 
 #
@@ -42,6 +51,9 @@ assert_json_value() {
     jq -e "$2" "$1" >/dev/null
 }
 
+#
+# Render deterministic start and verdict payloads through long and short flags.
+#
 sh "${REPOSITORY_ROOT}/.github/scripts/notify-discord.sh" \
     --event start \
     --template deck \
@@ -55,7 +67,7 @@ sh "${REPOSITORY_ROOT}/.github/scripts/notify-discord.sh" \
     --dockerhub-image docker.io/test/privateerr \
     --random-value 2 \
     --dry-run \
-    >"${TEST_ROOT}/build-start.json"
+    > "${TEST_ROOT}/build-start.json"
 
 assert_json_value "${TEST_ROOT}/build-start.json" \
     '.username == "Privateerr Deck Crew" and .embeds[0].color == 3447003'
@@ -74,15 +86,18 @@ sh "${REPOSITORY_ROOT}/.github/scripts/notify-discord.sh" \
     -i sha256:0123456789abcdef \
     -n 3 \
     -x \
-    >"${TEST_ROOT}/build-verdict.json"
+    > "${TEST_ROOT}/build-verdict.json"
 
 assert_json_value "${TEST_ROOT}/build-verdict.json" \
     '.username == "Hades Build Bureau" and .embeds[0].color == 15158332'
 
+#
+# Replace Skopeo with a deterministic recorder for copy and digest operations.
+#
 mkdir -p "${TEST_ROOT}/bin"
 sed "s|@SKOPEO_LOG@|${SKOPEO_LOG}|g" \
     "${REPOSITORY_ROOT}/test/stubs/workflow-skopeo-stub.sh" \
-    >"${TEST_ROOT}/bin/skopeo"
+    > "${TEST_ROOT}/bin/skopeo"
 chmod +x "${TEST_ROOT}/bin/skopeo"
 
 #
@@ -106,14 +121,21 @@ ghcr.io/test/privateerr:sha-test" \
         "$@"
 }
 
+#
+# Run the registry helper to mirror and verify the test Privateerr image without
+# writing to any registry.
+#
 run_registry_helper --mirror
-run_registry_helper --verify
+run_registry_helper -v
 
+#
+# Validate that the Skopeo recorder logged the expected copy and digest operations.
+#
 grep -F -- 'copy --all --preserve-digests' "${SKOPEO_LOG}" >/dev/null
 grep -F -- 'docker://docker.io/test/privateerr:sha-test' "${SKOPEO_LOG}" >/dev/null
-grep -F -- 'inspect --creds test-user:test-token --format {{.Digest}} docker://ghcr.io/test/privateerr:edge' \
-    "${SKOPEO_LOG}" >/dev/null
-grep -F -- 'inspect --creds test-user:test-token --format {{.Digest}} docker://docker.io/test/privateerr:edge' \
-    "${SKOPEO_LOG}" >/dev/null
+grep -F -- 'inspect --creds test-user:test-token --format {{.Digest}} docker://ghcr.io/test/privateerr:edge' "${SKOPEO_LOG}" >/dev/null
+grep -F -- 'inspect --creds test-user:test-token --format {{.Digest}} docker://docker.io/test/privateerr:edge' "${SKOPEO_LOG}" >/dev/null
+grep -F -- 'inspect --creds test-user:test-token --format {{.Digest}} docker://ghcr.io/test/privateerr:sha-test' "${SKOPEO_LOG}" >/dev/null
+grep -F -- 'inspect --creds test-user:test-token --format {{.Digest}} docker://docker.io/test/privateerr:sha-test' "${SKOPEO_LOG}" >/dev/null
 
 echo "Workflow helper tests passed."

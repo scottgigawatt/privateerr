@@ -10,6 +10,7 @@
 
     //
     // Keep recommendations focused on file types and checks owned by Privateerr.
+    // Even Better TOML supplies TOML validation and the workspace formatter.
     //
     "recommendations": [
         "davidanson.vscode-markdownlint",
@@ -19,6 +20,7 @@
         "ms-vscode.makefile-tools",
         "redhat.vscode-yaml",
         "streetsidesoftware.code-spell-checker",
+        "tamasfe.even-better-toml",
         "timonwong.shellcheck"
     ]
 }

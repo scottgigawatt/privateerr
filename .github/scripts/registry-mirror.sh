@@ -14,6 +14,10 @@
 #        --published-tags <tags>
 #
 
+#
+# Keep only registry credentials in the environment. All public workflow
+# metadata and behavior arrive through documented command-line flags.
+#
 : "${DOCKERHUB_TOKEN:=}"
 : "${GHCR_TOKEN:=}"
 dockerhub_image=""
@@ -24,6 +28,9 @@ operation=""
 published_tags=""
 skopeo_bin="skopeo"
 
+#
+# Fail on errors and unset variables.
+#
 set -eu
 
 #
@@ -135,6 +142,7 @@ verify_mirrors() {
             [ -n "${ghcr_tag}" ] || continue
             dockerhub_tag=$(dockerhub_tag_for "${ghcr_tag}")
 
+            # Inspect both registry tags to get their digests.
             ghcr_digest=$("${skopeo_bin}" inspect \
                 --creds "${ghcr_username}:${GHCR_TOKEN}" \
                 --format '{{.Digest}}' \
@@ -144,6 +152,7 @@ verify_mirrors() {
                 --format '{{.Digest}}' \
                 "docker://${dockerhub_tag}")
 
+            # Report the exact tag pair when registry content differs.
             if [ "${ghcr_digest}" != "${dockerhub_digest}" ]; then
                 printf 'Registry digest mismatch for %s: GHCR=%s DockerHub=%s\n' \
                     "${ghcr_tag}" "${ghcr_digest}" "${dockerhub_digest}" >&2
@@ -155,6 +164,9 @@ verify_mirrors() {
         done
 }
 
+#
+# Parse command-line flags and arguments.
+#
 while [ "$#" -gt 0 ]; do
     case "$1" in
         -m | --mirror)
@@ -207,6 +219,9 @@ while [ "$#" -gt 0 ]; do
     esac
 done
 
+#
+# Validate that all required inputs are present.
+#
 require_value --operation "${operation}"
 require_value --ghcr-image "${ghcr_image}"
 require_value --dockerhub-image "${dockerhub_image}"
@@ -216,6 +231,9 @@ require_value --dockerhub-username "${dockerhub_username}"
 require_value DOCKERHUB_TOKEN "${DOCKERHUB_TOKEN}"
 require_value --published-tags "${published_tags}"
 
+#
+# Dispatch the requested operation.
+#
 case "${operation}" in
     mirror)
         mirror_tags

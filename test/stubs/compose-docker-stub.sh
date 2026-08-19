@@ -5,20 +5,33 @@
 #
 # Licensed under the Apache License, Version 2.0.
 #
-# compose-docker-stub.sh: Stand in for Docker during Compose helper tests.
+# compose-docker-stub.sh: Stand in for the Docker CLI during Compose helper
+#                         tests without contacting a Docker daemon.
 #
-# Usage: PRIVATEERR_TEST_LOG=<path> compose-docker-stub.sh compose <args>
+# Usage: PRIVATEERR_TEST_LOG=<path> test/stubs/compose-docker-stub.sh compose <args>
 #
 
+#
+# Fail on errors and unset variables.
+#
 set -eu
 
+#
+# Ensure that the PRIVATEERR_TEST_LOG environment variable is set.
+#
 : "${PRIVATEERR_TEST_LOG:?PRIVATEERR_TEST_LOG is required}"
 
+#
+# Report Docker Compose availability without contacting a daemon.
+#
 if [ "$#" -ge 2 ] && [ "$1" = "compose" ] && [ "$2" = "version" ]; then
     echo "Docker Compose test stub"
     exit 0
 fi
 
+#
+# Record the invocation and return stable tab-separated Compose status rows.
+#
 printf '%s\n' "$*" >"${PRIVATEERR_TEST_LOG}"
 printf '%s\t%s\t%s\t%s\n' \
     "privateerr-latest" \

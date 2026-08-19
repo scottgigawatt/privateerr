@@ -13,6 +13,10 @@
 #        --repository <owner/repository> --ref-name <ref> [event options]
 #
 
+#
+# Keep only the webhook credential in the environment. All public workflow
+# metadata and behavior arrive through documented command-line flags.
+#
 : "${DISCORD_WEBHOOK_URL:=}"
 actor=""
 discord_dry_run=false
@@ -32,11 +36,17 @@ repository=""
 run_url=""
 workflow_name=""
 
+#
+# Discord embed colors stored by visual role instead of opaque decimal values.
+#
 discord_color_failure_red=15158332
 discord_color_hades_purple=10181046
 discord_color_privateerr_blue=3447003
 discord_color_success_green=3066993
 
+#
+# Fail on errors and unset variables.
+#
 set -eu
 
 #
@@ -93,27 +103,104 @@ require_option_argument() {
     fi
 }
 
+#
+# Parse command-line flags and arguments.
+#
 while [ "$#" -gt 0 ]; do
     case "$1" in
-        -e | --event) require_option_argument "$1" "$#"; discord_event=$2; shift 2 ;;
-        -t | --template) require_option_argument "$1" "$#"; discord_template=$2; shift 2 ;;
-        -u | --run-url) require_option_argument "$1" "$#"; run_url=$2; shift 2 ;;
-        -r | --repository) require_option_argument "$1" "$#"; repository=$2; shift 2 ;;
-        -f | --ref-name) require_option_argument "$1" "$#"; ref_name=$2; shift 2 ;;
-        -w | --workflow-name) require_option_argument "$1" "$#"; workflow_name=$2; shift 2 ;;
-        -a | --actor) require_option_argument "$1" "$#"; actor=$2; shift 2 ;;
-        -p | --platforms) require_option_argument "$1" "$#"; image_platforms=$2; shift 2 ;;
-        -g | --ghcr-image) require_option_argument "$1" "$#"; ghcr_image=$2; shift 2 ;;
-        -d | --dockerhub-image) require_option_argument "$1" "$#"; dockerhub_image=$2; shift 2 ;;
-        -s | --job-status) require_option_argument "$1" "$#"; job_status=$2; shift 2 ;;
-        -c | --ghcr-package-url) require_option_argument "$1" "$#"; ghcr_package_url=$2; shift 2 ;;
-        -b | --dockerhub-url) require_option_argument "$1" "$#"; dockerhub_url=$2; shift 2 ;;
-        -l | --published-tags) require_option_argument "$1" "$#"; published_tags=$2; shift 2 ;;
-        -i | --published-digest) require_option_argument "$1" "$#"; published_digest=$2; shift 2 ;;
-        -n | --random-value) require_option_argument "$1" "$#"; discord_random_value=$2; shift 2 ;;
-        -x | --dry-run) discord_dry_run=true; shift ;;
-        -h | --help) usage; exit 0 ;;
-        *) printf 'Unknown option: %s\n' "$1" >&2; usage >&2; exit 2 ;;
+        -e | --event)
+            require_option_argument "$1" "$#"
+            discord_event=$2
+            shift 2
+            ;;
+        -t | --template)
+            require_option_argument "$1" "$#"
+            discord_template=$2
+            shift 2
+            ;;
+        -u | --run-url)
+            require_option_argument "$1" "$#"
+            run_url=$2
+            shift 2
+            ;;
+        -r | --repository)
+            require_option_argument "$1" "$#"
+            repository=$2
+            shift 2
+            ;;
+        -f | --ref-name)
+            require_option_argument "$1" "$#"
+            ref_name=$2
+            shift 2
+            ;;
+        -w | --workflow-name)
+            require_option_argument "$1" "$#"
+            workflow_name=$2
+            shift 2
+            ;;
+        -a | --actor)
+            require_option_argument "$1" "$#"
+            actor=$2
+            shift 2
+            ;;
+        -p | --platforms)
+            require_option_argument "$1" "$#"
+            image_platforms=$2
+            shift 2
+            ;;
+        -g | --ghcr-image)
+            require_option_argument "$1" "$#"
+            ghcr_image=$2
+            shift 2
+            ;;
+        -d | --dockerhub-image)
+            require_option_argument "$1" "$#"
+            dockerhub_image=$2
+            shift 2
+            ;;
+        -s | --job-status)
+            require_option_argument "$1" "$#"
+            job_status=$2
+            shift 2
+            ;;
+        -c | --ghcr-package-url)
+            require_option_argument "$1" "$#"
+            ghcr_package_url=$2
+            shift 2
+            ;;
+        -b | --dockerhub-url)
+            require_option_argument "$1" "$#"
+            dockerhub_url=$2
+            shift 2
+            ;;
+        -l | --published-tags)
+            require_option_argument "$1" "$#"
+            published_tags=$2
+            shift 2
+            ;;
+        -i | --published-digest)
+            require_option_argument "$1" "$#"
+            published_digest=$2
+            shift 2
+            ;;
+        -n | --random-value)
+            require_option_argument "$1" "$#"
+            discord_random_value=$2
+            shift 2
+            ;;
+        -x | --dry-run)
+            discord_dry_run=true
+            shift
+            ;;
+        -h | --help)
+            usage
+            exit 0
+            ;;
+        *)
+            printf 'Unknown option: %s\n' "$1" >&2
+            usage >&2
+            exit 2
+            ;;
     esac
 done
 
@@ -122,7 +209,8 @@ done
 #
 # Parameters: None.
 #
-# Returns: Prints deterministic test input, OS randomness, or a checksum fallback.
+# Returns: Prints deterministic test input, operating-system randomness,
+#          or a portable timestamp checksum fallback.
 #
 random_value() {
     if [ -n "${discord_random_value}" ]; then
@@ -186,17 +274,27 @@ require_value() {
     fi
 }
 
+#
+# Skip optional notifications without revealing whether a secret exists.
+# Dry runs deliberately continue without a webhook for local payload tests.
+#
 if [ -z "${DISCORD_WEBHOOK_URL}" ] && [ "${discord_dry_run}" != "true" ]; then
     echo "Discord webhook is not configured; skipping notification."
     exit 0
 fi
 
+#
+# Validate required inputs for both event types.
+#
 require_value --event "${discord_event}"
 require_value --template "${discord_template}"
 require_value --run-url "${run_url}"
 require_value --repository "${repository}"
 require_value --ref-name "${ref_name}"
 
+#
+# Select the destination's identity and stable field labels.
+#
 case "${discord_template}" in
     deck)
         username="Privateerr Deck Crew"
@@ -214,6 +312,9 @@ case "${discord_template}" in
         ;;
 esac
 
+#
+# Choose a randomized message from the event, destination, and status family.
+#
 case "${discord_event}" in
     start)
         require_value --workflow-name "${workflow_name}"
@@ -228,7 +329,9 @@ case "${discord_event}" in
                 "${workflow_name} is forging VPN paperwork for three architectures and at least one suspicious parrot." \
                 "Privateerr is packing WireGuard charts. Gluetun is outside revving the tunnel." \
                 "The build cannons are loaded with Alpine, provenance, and legally distinct optimism." \
-                "The release bell rang. Every container put on a tiny captain's hat.")
+                "The release bell rang. Every container put on a tiny captain's hat." \
+                "OSHA declined jurisdiction, the YAML retained counsel, and ${workflow_name} sailed anyway." \
+                "Please keep fingers clear of the build cache and emotional-support manifests.")
             footer="Privateerr Deck Crew • generates maps, not tunnels"
             color=${discord_color_privateerr_blue}
         else
@@ -237,7 +340,9 @@ case "${discord_event}" in
                 "${workflow_name} entered Hades carrying source code and a surprisingly detailed risk assessment." \
                 "The furnace is compiling. Cerberus checked all three architecture passports." \
                 "Privateerr descended for a registry blessing and some tasteful smoke effects." \
-                "The underworld build bureau stamped the YAML and misplaced the stapler.")
+                "The underworld build bureau stamped the YAML and misplaced the stapler." \
+                "Every Cerberus head has a task. Unfortunately, two tasks are snacks and one is aggressive jazz hands." \
+                "Hades pressed every button at once. Against all engineering guidance, this begins the build.")
             footer="Hades Build Bureau • fire in, containers out"
             color=${discord_color_hades_purple}
         fi
@@ -254,7 +359,9 @@ case "${discord_event}" in
                     "Both registries agree. The WireGuard cartography department may now exhale." \
                     "Privateerr reached the registries with provenance receipts and no loose credentials." \
                     "The manifests match and the tiny captain hats have been promoted to production." \
-                    "The release sailed cleanly. Gluetun still does the actual tunneling, as union rules require.")
+                    "The release sailed cleanly. Gluetun still does the actual tunneling, as union rules require." \
+                    "The release goblins demand payment in cache layers and tiny sandwiches." \
+                    "The fleet is live. Please applaud quietly; the provenance attestation is sleeping.")
                 footer="Privateerr Deck Crew • technically seaworthy"
             else
                 title="😈 Furnace says done"
@@ -262,7 +369,9 @@ case "${discord_event}" in
                     "Images escaped the underworld. Docker Hub accepted the paperwork." \
                     "Cerberus inspected the manifests and found all three heads in agreement." \
                     "The build returned from Hades with matching digests and excellent cheekbones." \
-                    "Privateerr survived the furnace. The logs have been released on good behavior.")
+                    "Privateerr survived the furnace. The logs have been released on good behavior." \
+                    "Cerberus promoted itself to Senior Principal Manifest Inspector." \
+                    "One shade is already writing a memoir about the successful deployment.")
                 footer="Hades Build Bureau • infernally reproducible"
             fi
         else
@@ -273,7 +382,9 @@ case "${discord_event}" in
                     "Privateerr ended ${job_status}. The logs have assumed command." \
                     "A dependency sneezed and the registry paperwork caught fire." \
                     "The build produced a breathtaking quantity of actionable regret." \
-                    "The voyage stopped early. No credentials were harmed, but morale filed a ticket.")
+                    "The voyage stopped early. No credentials were harmed, but morale filed a ticket." \
+                    "The error message requested a lawyer and better lighting." \
+                    "The release goblins have formed an independent commission.")
                 footer="Privateerr Deck Crew • the logs know what they did"
             else
                 title="🔥 Furnace rejected the offering"
@@ -281,7 +392,9 @@ case "${discord_event}" in
                     "Publication ended ${job_status}. Cerberus is pointing at three different logs." \
                     "The underworld returned the build marked insufficiently cursed." \
                     "The manifest took a wrong turn near the river Styx." \
-                    "Hades declined the release and attached diagnostics in triplicate.")
+                    "Hades declined the release and attached diagnostics in triplicate." \
+                    "Hades classified the crater as an undocumented feature." \
+                    "The underworld build bureau is deleting its browser history with suspicious urgency.")
                 footer="Hades Build Bureau • accountability remains underground"
             fi
         fi
@@ -292,6 +405,10 @@ case "${discord_event}" in
         ;;
 esac
 
+#
+# Build event-specific Discord JSON through jq so workflow metadata remains data
+# instead of executable shell content.
+#
 if [ "${discord_event}" = "start" ]; then
     payload=$(jq -n \
         --arg username "${username}" \
@@ -311,7 +428,10 @@ if [ "${discord_event}" = "start" ]; then
         '{
             username: $username,
             embeds: [{
-                title: $title, description: $description, url: $url, color: $color,
+                title: $title,
+                description: $description,
+                url: $url,
+                color: $color,
                 fields: [
                     {name: $repository_label, value: $repository, inline: true},
                     {name: "🌿 Ref", value: $ref, inline: true},
@@ -320,7 +440,8 @@ if [ "${discord_event}" = "start" ]; then
                     {name: "📦 GHCR", value: $ghcr, inline: false},
                     {name: "🐳 Docker Hub", value: $dockerhub, inline: false}
                 ],
-                footer: {text: $footer}, timestamp: now | todate
+                footer: {text: $footer},
+                timestamp: now | todate
             }]
         }')
 else
@@ -347,7 +468,10 @@ else
         '{
             username: $username,
             embeds: [{
-                title: $title, description: $description, url: $url, color: $color,
+                title: $title,
+                description: $description,
+                url: $url,
+                color: $color,
                 fields: [
                     {name: $repository_label, value: $repository, inline: true},
                     {name: "🌿 Ref", value: $ref, inline: true},
@@ -356,16 +480,23 @@ else
                     {name: "📦 GHCR", value: $ghcr_url, inline: false},
                     {name: "🐳 Docker Hub", value: $dockerhub_url, inline: false}
                 ],
-                footer: {text: $footer}, timestamp: now | todate
+                footer: {text: $footer},
+                timestamp: now | todate
             }]
         }')
 fi
 
+#
+# Dry runs expose only the public payload for deterministic local tests.
+#
 if [ "${discord_dry_run}" = "true" ]; then
     printf '%s\n' "${payload}"
     exit 0
 fi
 
+#
+# Deliver the payload without logging the webhook URL or JSON body.
+#
 curl \
     --fail \
     --silent \
