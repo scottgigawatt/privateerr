@@ -13,64 +13,64 @@ name: "Inspect the Crow's Nest 🦜"
 # weekly schedule and explicit maintainer requests against the default branch.
 #
 on:
-    branch_protection_rule:
-    push:
-        branches:
-            - main
-        paths:
-            - ".github/workflows/**"
-            - ".github/renovate.json5"
-            - ".pre-commit-config.yaml"
-            - "Makefile"
-            - "docker/Dockerfile"
-            - "test/Dockerfile"
-            - "example.env"
-    schedule:
-        - cron: "29 8 * * 1"
-    workflow_dispatch:
+  branch_protection_rule:
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/**"
+      - ".github/renovate.json5"
+      - ".pre-commit-config.yaml"
+      - "Makefile"
+      - "docker/Dockerfile"
+      - "test/Dockerfile"
+      - "example.env"
+  schedule:
+    - cron: "29 8 * * 1"
+  workflow_dispatch:
 
 permissions:
-    contents: read
+  contents: read
 
 jobs:
-    #
-    # Score repository practices and upload the signed SARIF findings to GitHub
-    # code scanning with only the identity and security permissions required.
-    #
-    scorecard:
-        name: "Count the Supply Chain Doubloons 💰"
-        runs-on: ubuntu-latest
-        permissions:
-            contents: read
-            id-token: write
-            security-events: write
+  #
+  # Score repository practices and upload the signed SARIF findings to GitHub
+  # code scanning with only the identity and security permissions required.
+  #
+  scorecard:
+    name: "Count the Supply Chain Doubloons 💰"
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+      security-events: write
 
-        steps:
-            #
-            # Keep credentials out of the checkout before the third-party
-            # Scorecard action examines repository history and configuration.
-            #
-            - name: "Grab the Treasure Map 🗺️"
-              uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
-              with:
-                  persist-credentials: false
+    steps:
+      #
+      # Keep credentials out of the checkout before the third-party
+      # Scorecard action examines repository history and configuration.
+      #
+      - name: "Grab the Treasure Map 🗺️"
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
 
-            #
-            # Produce SARIF for local workflow use and publish the aggregate
-            # Scorecard result through OpenSSF's supported reporting channel.
-            #
-            - name: "Spy the Riggin' for Weak Planks 🔭"
-              uses: ossf/scorecard-action@2d1146689b8cda280b9bc96326124645441f03bc  # v2.4.4
-              with:
-                  results_file: scorecard-results.sarif
-                  results_format: sarif
-                  publish_results: true
+      #
+      # Produce SARIF for local workflow use and publish the aggregate
+      # Scorecard result through OpenSSF's supported reporting channel.
+      #
+      - name: "Spy the Riggin' for Weak Planks 🔭"
+        uses: ossf/scorecard-action@2d1146689b8cda280b9bc96326124645441f03bc  # v2.4.4
+        with:
+          results_file: scorecard-results.sarif
+          results_format: sarif
+          publish_results: true
 
-            #
-            # Upload the generated report so repository-level findings appear
-            # beside Privateerr's other GitHub code-scanning alerts.
-            #
-            - name: "Hoist the Scorecard Scroll 📜"
-              uses: github/codeql-action/upload-sarif@ff2f1c621b7f889edc0d3c761ac2e6a3f8cdb0dd  # v4
-              with:
-                  sarif_file: scorecard-results.sarif
+      #
+      # Upload the generated report so repository-level findings appear
+      # beside Privateerr's other GitHub code-scanning alerts.
+      #
+      - name: "Hoist the Scorecard Scroll 📜"
+        uses: github/codeql-action/upload-sarif@ff2f1c621b7f889edc0d3c761ac2e6a3f8cdb0dd  # v4
+        with:
+          sarif_file: scorecard-results.sarif

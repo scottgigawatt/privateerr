@@ -37,12 +37,6 @@ indent_size = 2
 trim_trailing_whitespace = false
 
 #
-# GitHub Actions workflows retain Privateerr's four-space indentation.
-#
-[.github/workflows/*.{yml,yaml}]
-indent_size = 4
-
-#
 # Web assets use the conventional two-space project style.
 #
 [*.{css,js}]

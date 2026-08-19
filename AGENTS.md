@@ -204,7 +204,7 @@ containers, volumes, images, `.env`, generated VPN state, or checked-in examples
 ## GitHub Workflow Rules
 
 Workflow step names should be pirate-themed and include tasteful emoji.
-Privateerr workflow YAML retains four-space indentation; other YAML uses two.
+All project-owned YAML, including GitHub Actions workflows, uses two-space indentation.
 
 Use current major versions of GitHub Actions where practical.
 

@@ -13,118 +13,118 @@ name: "Inspect the Boarding Pass 🧪🏴‍☠️"
 # broad path rule makes this workflow the repository's dependable merge gate.
 #
 on:
-    pull_request:
-        branches:
-            - main
-        paths:
-            - "**"
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "**"
 
 permissions:
-    contents: read
+  contents: read
 
 jobs:
-    #
-    # Validate configuration, both images, supported architectures, vulnerability
-    # policy, and repository linting without granting write access.
-    #
-    validate-pr:
-        name: "Validate the Boarding Pass 🧪"
-        runs-on: ubuntu-latest
-        permissions:
-            contents: read
+  #
+  # Validate configuration, both images, supported architectures, vulnerability
+  # policy, and repository linting without granting write access.
+  #
+  validate-pr:
+    name: "Validate the Boarding Pass 🧪"
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
 
-        env:
-            IMAGE_PLATFORMS: linux/amd64,linux/arm64,linux/arm/v7
-            PRIVATEERR_LOCAL_IMAGE_REF: ghcr.io/scottgigawatt/privateerr
-            BUCCANEERR_LOCAL_IMAGE_REF: ghcr.io/scottgigawatt/buccaneerr
+    env:
+      IMAGE_PLATFORMS: linux/amd64,linux/arm64,linux/arm/v7
+      PRIVATEERR_LOCAL_IMAGE_REF: ghcr.io/scottgigawatt/privateerr
+      BUCCANEERR_LOCAL_IMAGE_REF: ghcr.io/scottgigawatt/buccaneerr
 
-        steps:
-            #
-            # Check out the project and its upstream PIA submodule without
-            # retaining credentials, then prepare cross-architecture builders.
-            #
-            - name: "Grab the Treasure Map 🗺️"
-              uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
-              with:
-                  submodules: recursive
-                  persist-credentials: false
+    steps:
+      #
+      # Check out the project and its upstream PIA submodule without
+      # retaining credentials, then prepare cross-architecture builders.
+      #
+      - name: "Grab the Treasure Map 🗺️"
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
+        with:
+          submodules: recursive
+          persist-credentials: false
 
-            #
-            # Set up QEMU for cross-architecture builds and tests.
-            #
-            - name: "Summon Cross-Arch Cannons 🧨"
-              uses: docker/setup-qemu-action@96fe6ef7f33517b61c61be40b68a1882f3264fb8  # v4
+      #
+      # Set up QEMU for cross-architecture builds and tests.
+      #
+      - name: "Summon Cross-Arch Cannons 🧨"
+        uses: docker/setup-qemu-action@96fe6ef7f33517b61c61be40b68a1882f3264fb8  # v4
 
-            #
-            # Set up Buildx for cross-architecture builds and tests.
-            #
-            - name: "Sharpen the Build Axe 🪓"
-              uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c  # v4.2.0
+      #
+      # Set up Buildx for cross-architecture builds and tests.
+      #
+      - name: "Sharpen the Build Axe 🪓"
+        uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c  # v4.2.0
 
-            #
-            # Render a CI-specific environment from the checked-in example before
-            # routing repository validation through Make and pre-commit.
-            #
-            - name: "Load the Example Cargo 📦"
-              run: |
-                  cp example.env .env
-                  {
-                    echo "IMAGE_CREATED=$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
-                    echo "IMAGE_REVISION=${GITHUB_SHA}"
-                  } >> .env
+      #
+      # Render a CI-specific environment from the checked-in example before
+      # routing repository validation through Make and pre-commit.
+      #
+      - name: "Load the Example Cargo 📦"
+        run: |
+          cp example.env .env
+          {
+            echo "IMAGE_CREATED=$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+            echo "IMAGE_REVISION=${GITHUB_SHA}"
+          } >> .env
 
-            #
-            # Validate Privateerr's policy scripts, isolated helpers, and rendered
-            # Compose configuration through the contributor-facing Make targets.
-            #
-            - name: "Read the Compose Charts 🔎"
-              run: |
-                  make test
-                  make config >/dev/null
+      #
+      # Validate Privateerr's policy scripts, isolated helpers, and rendered
+      # Compose configuration through the contributor-facing Make targets.
+      #
+      - name: "Read the Compose Charts 🔎"
+        run: |
+          make test
+          make config >/dev/null
 
-            #
-            # Finish with all repository formatting, secret, workflow, YAML, and
-            # shell checks so generated artifacts cannot hide basic quality drift.
-            #
-            - name: "Scrub the Deck with Pre-Commit 🧽"
-              uses: pre-commit/action@2c7b3805fd2a0fd8c1884dcaebf91fc102a13ecd  # v3.0.1
+      #
+      # Finish with all repository formatting, secret, workflow, YAML, and
+      # shell checks so generated artifacts cannot hide basic quality drift.
+      #
+      - name: "Scrub the Deck with Pre-Commit 🧽"
+        uses: pre-commit/action@2c7b3805fd2a0fd8c1884dcaebf91fc102a13ecd  # v3.0.1
 
-            #
-            # Build the publishable Privateerr and test-only Buccaneerr images,
-            # then prove every supported target architecture can be assembled.
-            #
-            - name: "Hammer the Docker Hulls ⚒️"
-              run: |
-                  make build
-                  make build-buccaneerr
+      #
+      # Build the publishable Privateerr and test-only Buccaneerr images,
+      # then prove every supported target architecture can be assembled.
+      #
+      - name: "Hammer the Docker Hulls ⚒️"
+        run: |
+          make build
+          make build-buccaneerr
 
-            #
-            # Prove every supported target architecture builds before enforcing
-            # the repository's HIGH and CRITICAL vulnerability threshold.
-            #
-            - name: "Test the Three-Deck Hull Plans 🛠️"
-              run: make build-platforms
+      #
+      # Prove every supported target architecture builds before enforcing
+      # the repository's HIGH and CRITICAL vulnerability threshold.
+      #
+      - name: "Test the Three-Deck Hull Plans 🛠️"
+        run: make build-platforms
 
-            #
-            # Reject fixed HIGH or CRITICAL vulnerabilities in either image while
-            # keeping findings for unfixed upstream packages informational.
-            #
-            - name: "Inspect Privateerr for Bilge Rot 🔍"
-              uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25  # v0.36.0
-              with:
-                  image-ref: ${{ env.PRIVATEERR_LOCAL_IMAGE_REF }}:latest
-                  format: table
-                  vuln-type: os,library
-                  severity: CRITICAL,HIGH
-                  ignore-unfixed: true
-                  exit-code: 1
+      #
+      # Reject fixed HIGH or CRITICAL vulnerabilities in either image while
+      # keeping findings for unfixed upstream packages informational.
+      #
+      - name: "Inspect Privateerr for Bilge Rot 🔍"
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25  # v0.36.0
+        with:
+          image-ref: ${{ env.PRIVATEERR_LOCAL_IMAGE_REF }}:latest
+          format: table
+          vuln-type: os,library
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+          exit-code: 1
 
-            - name: "Inspect Buccaneerr for Bilge Rot 🔍"
-              uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25  # v0.36.0
-              with:
-                  image-ref: ${{ env.BUCCANEERR_LOCAL_IMAGE_REF }}:latest
-                  format: table
-                  vuln-type: os,library
-                  severity: CRITICAL,HIGH
-                  ignore-unfixed: true
-                  exit-code: 1
+      - name: "Inspect Buccaneerr for Bilge Rot 🔍"
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25  # v0.36.0
+        with:
+          image-ref: ${{ env.BUCCANEERR_LOCAL_IMAGE_REF }}:latest
+          format: table
+          vuln-type: os,library
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+          exit-code: 1

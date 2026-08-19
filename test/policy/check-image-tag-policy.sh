@@ -22,17 +22,27 @@ workflow_path=".github/workflows/build-and-push.yml"
 expected_rule_count=2
 
 #
-# count_rule: Count one exact metadata-action rule in the workflow.
+# count_rule: Count one metadata-action rule without coupling policy to YAML indentation.
 #
-# Parameters: $1 - Exact indented workflow rule.
+# Parameters: $1 - Exact metadata-action rule without leading whitespace.
 #
 # Returns: Prints the number of matches.
 #
 count_rule() {
     local rule="$1"
 
-    # Count the number of exact matches for the rule in the workflow.
-    grep -Fxc "${rule}" "${workflow_path}" || true
+    # Trim surrounding whitespace before comparing each workflow line.
+    awk -v expected_rule="${rule}" '
+        {
+            workflow_rule = $0
+            sub(/^[[:space:]]*/, "", workflow_rule)
+            sub(/[[:space:]]*$/, "", workflow_rule)
+            if (workflow_rule == expected_rule) {
+                rule_count++
+            }
+        }
+        END { print rule_count + 0 }
+    ' "${workflow_path}"
 }
 
 #
@@ -48,8 +58,8 @@ require_rule() {
     local description="$2"
     local rule_count
 
-    # Count the number of exact matches for the rule in the workflow.
-    rule_count="$(count_rule "                      ${rule}")"
+    # Count the number of exact rule matches regardless of YAML indentation.
+    rule_count="$(count_rule "${rule}")"
     if [[ "${rule_count}" -ne "${expected_rule_count}" ]]; then
         echo "Expected ${expected_rule_count} ${description} rules, found ${rule_count}."
         exit 1

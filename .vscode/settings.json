@@ -114,7 +114,7 @@
     },
     "[github-actions-workflow]": {
         "editor.detectIndentation": false,
-        "editor.tabSize": 4,
+        "editor.tabSize": 2,
         "editor.insertSpaces": true
     },
     "[json][jsonc]": {
