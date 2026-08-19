@@ -7,6 +7,8 @@
 #
 # check-alpine-tag-pins.sh: Verify every pinned Alpine build arg sails in formation.
 #
+# Usage: test/policy/check-alpine-tag-pins.sh
+#
 
 #
 # Fail on any error, unset variable, or failed pipe command.

@@ -117,7 +117,7 @@ Renovate keeps those pins from going stale. It tracks:
 - Compose image references.
 - Git submodules.
 
-When Renovate opens a dependency PR, the validation workflow checks that every pinned `ALPINE_TAG` value still matches across Dockerfiles, workflow build args, and the example environment file. If one build arg drifts away from the fleet, `check-alpine-tag-pins.sh` fails before the PR can merge.
+When Renovate opens a dependency PR, the validation workflow checks that every pinned `ALPINE_TAG` value still matches across Dockerfiles, workflow build args, and the example environment file. If one build arg drifts away from the fleet, [check-alpine-tag-pins.sh](../test/policy/check-alpine-tag-pins.sh) fails before the PR can merge.
 
 > [!NOTE]
 >

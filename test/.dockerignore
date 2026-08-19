@@ -6,6 +6,9 @@
 # .dockerignore: Files that do not belong in the Buccaneerr image build context.
 #
 
+#
+# Local workstation metadata and test logs are never image inputs.
+#
 .DS_Store
 *.log
 logs/

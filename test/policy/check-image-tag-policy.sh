@@ -7,6 +7,8 @@
 #
 # check-image-tag-policy.sh: Verify published image tags follow the release channel policy.
 #
+# Usage: test/policy/check-image-tag-policy.sh
+#
 
 #
 # Fail on any error, unset variable, or failed pipe command.

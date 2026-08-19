@@ -3,8 +3,8 @@
 #
 # Licensed under the Apache License, Version 2.0.
 #
-# .pre-commit-config.yaml: Repository lint, secret, workflow, shell, policy,
-#                          YAML, and Dockerfile validation hooks.
+# .pre-commit-config.yaml: Repository lint, secret, Markdown, workflow, shell,
+#                          policy, YAML, and Dockerfile validation hooks.
 #
 
 repos:
@@ -43,6 +43,15 @@ repos:
         args: ["--markdown-linebreak-ext=md"]
 
   #
+  # Validate every Markdown document with the shared repository configuration.
+  #
+  - repo: https://github.com/DavidAnson/markdownlint-cli2
+    rev: v0.22.1
+    hooks:
+      - id: markdownlint-cli2
+        pass_filenames: false
+
+  #
   # Enforce strict YAML style across repository configuration files.
   #
   - repo: https://github.com/adrienverge/yamllint
@@ -77,13 +86,13 @@ repos:
     hooks:
       - id: check-alpine-tag-pins
         name: check Alpine tag pins
-        entry: test/check-alpine-tag-pins.sh
+        entry: test/policy/check-alpine-tag-pins.sh
         language: script
         pass_filenames: false
 
       - id: check-image-tag-policy
         name: check image tag policy
-        entry: test/check-image-tag-policy.sh
+        entry: test/policy/check-image-tag-policy.sh
         language: script
         pass_filenames: false
 

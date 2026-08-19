@@ -9,11 +9,22 @@
 name: "Inspect the Crow's Nest 🦜"
 
 #
-# Re-evaluate repository policy changes, the weekly schedule, and explicit
-# maintainer requests against the current default branch.
+# Re-evaluate repository policy, workflow, and build-input changes plus the
+# weekly schedule and explicit maintainer requests against the default branch.
 #
 on:
     branch_protection_rule:
+    push:
+        branches:
+            - main
+        paths:
+            - ".github/workflows/**"
+            - ".github/renovate.json5"
+            - ".pre-commit-config.yaml"
+            - "Makefile"
+            - "docker/Dockerfile"
+            - "test/Dockerfile"
+            - "example.env"
     schedule:
         - cron: "29 8 * * 1"
     workflow_dispatch:
@@ -40,10 +51,14 @@ jobs:
             # Scorecard action examines repository history and configuration.
             #
             - name: "Grab the Treasure Map 🗺️"
-              uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
+              uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
               with:
                   persist-credentials: false
 
+            #
+            # Produce SARIF for local workflow use and publish the aggregate
+            # Scorecard result through OpenSSF's supported reporting channel.
+            #
             - name: "Spy the Riggin' for Weak Planks 🔭"
               uses: ossf/scorecard-action@2d1146689b8cda280b9bc96326124645441f03bc  # v2.4.4
               with:

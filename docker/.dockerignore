@@ -6,7 +6,14 @@
 # .dockerignore: Files that do not belong in the Privateerr image build context.
 #
 
+#
+# Local workstation metadata and runtime logs are never image inputs.
+#
 .DS_Store
 *.log
 logs/
+
+#
+# Exclude the PIA submodule's Git metadata while retaining its checked-out files.
+#
 pia-manual-connections/.git

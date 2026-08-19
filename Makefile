@@ -145,10 +145,12 @@ COMPOSE_LOGS_OPTIONS  ?= -f
 #
 # Project-owned helpers used by Make and GitHub Actions.
 #
-PIA_CREDENTIAL_CHECK_CMD  ?= scripts/compose/check-pia-credentials.sh
-COMPOSE_STATUS_CMD        ?= scripts/compose/ps.sh
-MAKE_HELPERS_TEST_CMD     ?= test/helpers/test-make-helpers.sh
-WORKFLOW_HELPERS_TEST_CMD ?= test/helpers/test-workflow-helpers.sh
+PIA_CREDENTIAL_CHECK_CMD   ?= scripts/compose/check-pia-credentials.sh
+COMPOSE_STATUS_CMD         ?= scripts/compose/ps.sh
+MAKE_HELPERS_TEST_CMD      ?= test/helpers/test-make-helpers.sh
+WORKFLOW_HELPERS_TEST_CMD  ?= test/helpers/test-workflow-helpers.sh
+ALPINE_TAG_POLICY_TEST_CMD ?= test/policy/check-alpine-tag-pins.sh
+IMAGE_TAG_POLICY_TEST_CMD  ?= test/policy/check-image-tag-policy.sh
 
 #
 # Disposable developer artifacts. Deployment state, generated credentials,
@@ -465,8 +467,8 @@ $(TEST): $(TEST_MAKE_HELPERS) $(TEST_WORKFLOWS)
 		docker/privateerr-healthcheck.sh \
 		config/gluetun/scripts/gluetun-entrypoint-wrapper.sh \
 		test/buccaneerr-entrypoint.sh
-	test/check-alpine-tag-pins.sh
-	test/check-image-tag-policy.sh
+	$(ALPINE_TAG_POLICY_TEST_CMD)
+	$(IMAGE_TAG_POLICY_TEST_CMD)
 	$(call announce_success,Privateerr's local test voyage came back clean. ✅)
 
 #

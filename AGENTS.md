@@ -20,8 +20,11 @@ The companion Buccaneerr image is test-only. It validates the Privateerr + Gluet
 
 - `docker/`: Privateerr image build context and Privateerr-owned entrypoint scripts.
 - `docker/pia-manual-connections/`: PIA upstream scripts as a git submodule. Treat this as third-party code.
-- `test/`: Buccaneerr image build context, e2e validator scripts, isolated helper
-  tests, deterministic command stubs, and example reset files.
+- `test/`: Buccaneerr image build context and organized test support files.
+- `test/policy/`: Static repository policy checks used by Make and pre-commit.
+- `test/helpers/`: Isolated Make and workflow helper tests.
+- `test/stubs/`: Deterministic command stubs used by the helper tests.
+- `test/examples/`: Checked-in example reset files restored after live tests.
 - `scripts/compose/`: Host-side credential preflight and Compose status helpers.
 - `config/`: Checked-in service config directories used by Docker Compose.
 - `config/gluetun/wireguard/`: Generated WireGuard config and metadata location.
@@ -201,6 +204,7 @@ containers, volumes, images, `.env`, generated VPN state, or checked-in examples
 ## GitHub Workflow Rules
 
 Workflow step names should be pirate-themed and include tasteful emoji.
+Privateerr workflow YAML retains four-space indentation; other YAML uses two.
 
 Use current major versions of GitHub Actions where practical.
 

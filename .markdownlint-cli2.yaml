@@ -1,0 +1,58 @@
+#
+# Copyright 2025-2026 Scott Gigawatt
+#
+# Licensed under the Apache License, Version 2.0.
+#
+# .markdownlint-cli2.yaml: Markdown style and file selection for public project
+#                          documentation and repository guidance.
+#
+
+#
+# Check every project-owned Markdown document while excluding Git-owned and
+# third-party files.
+# Markdownlint CLI2 uses a leading hash to negate matching glob patterns.
+#
+globs:
+  - "**/*.md"
+  - "#.git/**"
+
+#
+# Never lint the official PIA submodule because Privateerr keeps that upstream
+# documentation pristine.
+#
+ignores:
+  - "docker/pia-manual-connections/**"
+
+#
+# Honor repository ignore rules so generated and local-only content stays out.
+#
+gitignore: true
+
+#
+# Start with the complete standard rule set, then document only intentional
+# exceptions required by GitHub templates and the established project voice.
+#
+config:
+  default: true
+  line-length: false
+  no-inline-html: false
+  first-line-h1: false
+  list-marker-space: false
+  code-block-style: false
+
+  #
+  # Consecutive GitHub callouts are separate blockquotes divided by a blank.
+  #
+  no-blanks-blockquote: false
+
+  #
+  # Repeated section names are acceptable when they belong to separate topics.
+  #
+  no-duplicate-heading:
+    siblings_only: true
+
+  #
+  # GitHub renders tables independently of source padding. Allow concise source
+  # tables, especially where long URLs and prose are clearer.
+  #
+  table-column-style: false

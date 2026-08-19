@@ -4,11 +4,29 @@ Welcome to the test hold, where Buccaneerr climbs aboard after Privateerr and Gl
 
 The test tree keeps responsibilities separate:
 
+- `policy/` verifies repository-wide dependency and image-tag rules.
 - `helpers/` exercises Make and workflow helpers without external writes.
 - `stubs/` supplies deterministic Docker and Skopeo stand-ins for those tests.
 - `examples/` stores the checked-in WireGuard and metadata examples restored
   after a live voyage.
-- the test-root Dockerfile and entrypoint remain the Buccaneerr build context.
+- the test-root `Dockerfile` and `buccaneerr-entrypoint.sh` remain the
+  Buccaneerr build context.
+
+## Test Script Chart 🗺️
+
+| Hold       | Script                                                | Purpose                                                   |
+| ---------- | ----------------------------------------------------- | --------------------------------------------------------- |
+| 🧭 Policy  | [`policy/check-alpine-tag-pins.sh`](policy/check-alpine-tag-pins.sh) | Keep every pinned Alpine build input synchronized         |
+| 🧭 Policy  | [`policy/check-image-tag-policy.sh`](policy/check-image-tag-policy.sh) | Enforce stable, edge, SHA, and semantic-version tag rules |
+| 🧰 Helpers | [`helpers/test-make-helpers.sh`](helpers/test-make-helpers.sh) | Test credential and Compose helpers without external writes |
+| 🧰 Helpers | [`helpers/test-workflow-helpers.sh`](helpers/test-workflow-helpers.sh) | Test Discord payload and registry helper behavior offline |
+| 🎭 Stubs   | [`stubs/compose-docker-stub.sh`](stubs/compose-docker-stub.sh) | Supply deterministic Docker output to Compose helper tests |
+| 🎭 Stubs   | [`stubs/workflow-skopeo-stub.sh`](stubs/workflow-skopeo-stub.sh) | Simulate registry inspection without network access       |
+
+The subfolders separate static repository policy, reusable helper tests,
+deterministic command stubs, and checked-in reset examples. Make targets remain
+the public interface; invoke individual scripts only while diagnosing a focused
+failure.
 
 ## What Buccaneerr Be 🦜
 
