@@ -96,9 +96,13 @@ PRIVATEERR_GENERATED_PATHS     ?= config/privateerr/logs \
 	config/gluetun/servers
 
 #
-# Dockerfile paths used to discover local base images.
+# Docker image build paths.
 #
-DOCKERFILES ?= docker/Dockerfile test/Dockerfile
+PRIVATEERR_DOCKERFILE      ?= docker/Dockerfile
+PRIVATEERR_BUILD_CONTEXT   ?= docker
+BUCCANEERR_DOCKERFILE      ?= test/Dockerfile
+BUCCANEERR_BUILD_CONTEXT   ?= test
+DOCKERFILES                ?= $(PRIVATEERR_DOCKERFILE) $(BUCCANEERR_DOCKERFILE)
 
 #
 # Extract base FROM images from Dockerfiles and resolve Dockerfile ARG defaults.
@@ -181,11 +185,38 @@ BUILDX_PRIVATEERR_IMAGE_TAG ?= ghcr.io/scottgigawatt/privateerr:multiarch-local
 BUILDX_BUCCANEERR_IMAGE_TAG ?= ghcr.io/scottgigawatt/buccaneerr:multiarch-local
 
 #
+# Docker commands used directly instead of through Compose.
+#
+DOCKER_BIN    ?= docker
+DOCKER_BUILDX ?= $(DOCKER_BIN) buildx
+
+#
+# Reusable Buildx command and complete image-specific platform builds. Keep the
+# target recipe short while leaving every command component overridable.
+#
+BUILDX_BUILD = \
+	$(DOCKER_BUILDX) build \
+	$(BUILDX_BUILD_OPTIONS) \
+	$(BUILDX_PLATFORM_OPTIONS)
+
+PRIVATEERR_PLATFORM_BUILD = \
+	$(BUILDX_BUILD) \
+	--tag "$(BUILDX_PRIVATEERR_IMAGE_TAG)" \
+	--file "$(PRIVATEERR_DOCKERFILE)" \
+	"$(PRIVATEERR_BUILD_CONTEXT)"
+
+BUCCANEERR_PLATFORM_BUILD = \
+	$(BUILDX_BUILD) \
+	--tag "$(BUILDX_BUCCANEERR_IMAGE_TAG)" \
+	--file "$(BUCCANEERR_DOCKERFILE)" \
+	"$(BUCCANEERR_BUILD_CONTEXT)"
+
+#
 # Docker Compose command compatible with 'docker compose' (v2) and 'docker-compose' (v1).
 #
 DOCKER_COMPOSE := $(shell \
-	if docker compose version >/dev/null 2>&1; then \
-		echo "docker compose"; \
+	if $(DOCKER_BIN) compose version >/dev/null 2>&1; then \
+		echo "$(DOCKER_BIN) compose"; \
 	elif command -v docker-compose >/dev/null 2>&1; then \
 		echo "docker-compose"; \
 	else \
@@ -379,14 +410,8 @@ $(BUILD_BUCCANEERR): $(BUILD_DEPENDS) $(CHECK_ENV)
 #
 $(BUILD_PLATFORMS): $(BUILD_DEPENDS)
 	$(call announce,Verifying builds for amd64$(COMMA) arm64$(COMMA) and arm/v7. 🧭)
-	docker buildx build $(BUILDX_BUILD_OPTIONS) $(BUILDX_PLATFORM_OPTIONS) \
-		--tag $(BUILDX_PRIVATEERR_IMAGE_TAG) \
-		--file docker/Dockerfile \
-		docker
-	docker buildx build $(BUILDX_BUILD_OPTIONS) $(BUILDX_PLATFORM_OPTIONS) \
-		--tag $(BUILDX_BUCCANEERR_IMAGE_TAG) \
-		--file test/Dockerfile \
-		test
+	$(PRIVATEERR_PLATFORM_BUILD)
+	$(BUCCANEERR_PLATFORM_BUILD)
 
 #
 # $(RUN_PRIVATEERR): Runs only Privateerr to generate WireGuard config and metadata.
@@ -475,21 +500,21 @@ $(NUKE): $(BUILD_DEPENDS) $(CHECK_ENV)
 	$(call announce_warning,‼️ DANGER ‼️ Removing containers$(COMMA) images$(COMMA) logs$(COMMA) and generated state. 💣)
 	@compose_images="$$( $(NUKE_COMPOSE_IMAGES_COMMAND) || true )"; \
 	$(DOCKER_COMPOSE) -f $(COMPOSE_FILE) down $(COMPOSE_DOWN_OPTIONS) --rmi all; \
-	containers="$$(docker ps -aq $(NUKE_CONTAINER_FILTER_OPTIONS))"; \
+	containers="$$($(DOCKER_BIN) ps -aq $(NUKE_CONTAINER_FILTER_OPTIONS))"; \
 	if [ -n "$${containers}" ]; then \
 		echo "Removing leftover containers. 🧨"; \
-		docker rm -f $${containers}; \
+		$(DOCKER_BIN) rm -f $${containers}; \
 	fi; \
 	if [ -n "$${compose_images}" ]; then \
 		echo "Removing local service images."; \
-		docker image rm -f $${compose_images} >/dev/null 2>&1 || true; \
+		$(DOCKER_BIN) image rm -f $${compose_images} >/dev/null 2>&1 || true; \
 	fi
 
 	@echo "Removing generated logs and Gluetun state. 🧽"
 	rm -rf $(PRIVATEERR_GENERATED_PATHS)
 
 	@echo "Removing base images used by Dockerfiles. ⚓"
-	docker image rm -f $(FROM_IMAGES) >/dev/null 2>&1 || true
+	$(DOCKER_BIN) image rm -f $(FROM_IMAGES) >/dev/null 2>&1 || true
 
 	@$(MAKE) --no-print-directory $(RESTORE_TEST_CONFIG)
 

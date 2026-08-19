@@ -135,6 +135,27 @@ if grep -E 'docker|\.env|wireguard|wg0\.conf|privateerr\.env' \
 fi
 
 #
+# Keep both platform-build recipes composed entirely from overridable variables.
+#
+NO_COLOR=1 make --dry-run build-platforms \
+    DOCKER_COMPOSE=true \
+    DOCKER_BUILDX=privateerr-buildx \
+    BUILDX_BUILD_OPTIONS=--test-build-option \
+    BUILDX_PLATFORM_OPTIONS=--test-platform-option \
+    BUILDX_PRIVATEERR_IMAGE_TAG=test/privateerr \
+    BUILDX_BUCCANEERR_IMAGE_TAG=test/buccaneerr \
+    PRIVATEERR_DOCKERFILE=test-privateerr.Dockerfile \
+    PRIVATEERR_BUILD_CONTEXT=test-privateerr-context \
+    BUCCANEERR_DOCKERFILE=test-buccaneerr.Dockerfile \
+    BUCCANEERR_BUILD_CONTEXT=test-buccaneerr-context \
+    >"${test_output}/build-platforms.out"
+
+grep -F 'privateerr-buildx build --test-build-option --test-platform-option --tag "test/privateerr" --file "test-privateerr.Dockerfile" "test-privateerr-context"' \
+    "${test_output}/build-platforms.out" >/dev/null
+grep -F 'privateerr-buildx build --test-build-option --test-platform-option --tag "test/buccaneerr" --file "test-buccaneerr.Dockerfile" "test-buccaneerr-context"' \
+    "${test_output}/build-platforms.out" >/dev/null
+
+#
 # Redirected help stays color-free and marks the destructive nuke target.
 #
 NO_COLOR=1 make help >"${test_output}/help.out"
