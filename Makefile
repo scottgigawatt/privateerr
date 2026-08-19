@@ -155,7 +155,7 @@ CLEAN_ARTIFACT_PATHS := .pytest_cache .ruff_cache test/logs
 #
 # Docker Compose options for test targets.
 #
-COMPOSE_TEST_OPTIONS  ?= \
+COMPOSE_TEST_OPTIONS ?= \
 	--build \
 	--force-recreate \
 	--remove-orphans \

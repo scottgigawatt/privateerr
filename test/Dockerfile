@@ -40,24 +40,24 @@ ENV BUCCANEERR_BIN_HOME=${BUCCANEERR_BIN_HOME}
 # metadata, source links, and license display.
 #
 LABEL org.opencontainers.image.title="Buccaneerr" \
-      org.opencontainers.image.description="Test-only Buccaneerr validator for Privateerr, Gluetun WireGuard, and PIA port-forwarding e2e checks." \
-      org.opencontainers.image.url="https://github.com/scottgigawatt/privateerr" \
-      org.opencontainers.image.documentation="https://github.com/scottgigawatt/privateerr#readme" \
-      org.opencontainers.image.source="https://github.com/scottgigawatt/privateerr" \
-      org.opencontainers.image.vendor="Scott Gigawatt" \
-      org.opencontainers.image.licenses="Apache-2.0" \
-      org.opencontainers.image.created="${IMAGE_CREATED}" \
-      org.opencontainers.image.revision="${IMAGE_REVISION}" \
-      org.opencontainers.image.version="${IMAGE_VERSION}" \
-      org.opencontainers.image.base.name="docker.io/library/alpine:${ALPINE_TAG}"
+        org.opencontainers.image.description="Test-only Buccaneerr validator for Privateerr, Gluetun WireGuard, and PIA port-forwarding e2e checks." \
+        org.opencontainers.image.url="https://github.com/scottgigawatt/privateerr" \
+        org.opencontainers.image.documentation="https://github.com/scottgigawatt/privateerr#readme" \
+        org.opencontainers.image.source="https://github.com/scottgigawatt/privateerr" \
+        org.opencontainers.image.vendor="Scott Gigawatt" \
+        org.opencontainers.image.licenses="Apache-2.0" \
+        org.opencontainers.image.created="${IMAGE_CREATED}" \
+        org.opencontainers.image.revision="${IMAGE_REVISION}" \
+        org.opencontainers.image.version="${IMAGE_VERSION}" \
+        org.opencontainers.image.base.name="docker.io/library/alpine:${ALPINE_TAG}"
 
 #
 # Install validation tools. These stay out of the production image.
 #
 RUN apk add --no-cache \
-      bash \
-      ca-certificates \
-      curl
+        bash \
+        ca-certificates \
+        curl
 
 #
 # Copy over the project license and Buccaneerr script, then make the script executable.

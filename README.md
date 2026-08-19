@@ -61,19 +61,19 @@ There are already excellent VPN clients. One of the best container-friendly opti
 
 Clone the repo with submodules, copy the example environment file, then pass your PIA credentials inline:
 
-```console
-❯ git clone --recurse-submodules git@github.com:scottgigawatt/privateerr.git
-❯ cd privateerr
-❯ cp example.env .env
-❯ PIA_USER="p1234567" PIA_PASS="p0rtRoya1" PIA_PF="false" make run-privateerr
+```sh
+git clone --recurse-submodules git@github.com:scottgigawatt/privateerr.git
+cd privateerr
+cp example.env .env
+PIA_USER="p1234567" PIA_PASS="p0rtRoya1" PIA_PF="false" make run-privateerr
 ```
 
 You don't even need to look at or update the `.env` file to get a fully functioning WireGuard configuration file _in seconds!_ Now, the `.env` file is intentionally roomy, but the defaults are ready to go; just use inline variables to override anything in the `.env` file for that run.
 
 When the command finishes, the main file you came for is here:
 
-```console
-❯ cat config/gluetun/wireguard/wg0.conf
+```sh
+cat config/gluetun/wireguard/wg0.conf
 [Interface]
 Address = 10.10.10.10
 PrivateKey = shiverMeTimbers123
@@ -88,8 +88,8 @@ Endpoint = 10.10.10.10:1234
 
 Privateerr also writes a tiny metadata file beside the WireGuard config:
 
-```console
-❯ cat config/gluetun/wireguard/privateerr.env
+```sh
+cat config/gluetun/wireguard/privateerr.env
 PIA_WG_SERVER_NAME=jolly-roger-401
 PIA_WG_ENDPOINT_IP=10.10.10.10
 PIA_WG_ENDPOINT_PORT=1234
@@ -111,8 +111,8 @@ PIA_GEOLOCATED_REGION=false
 
 Want a port-forwarding-capable PIA server? Change one variable:
 
-```console
-❯ PIA_USER="p1234567" PIA_PASS="p0rtRoya1" PIA_PF="true" make run-privateerr
+```sh
+PIA_USER="p1234567" PIA_PASS="p0rtRoya1" PIA_PF="true" make run-privateerr
 ```
 
 PIA port forwarding is usually awkward because the server choice matters after WireGuard is involved. Privateerr makes the handoff simple: with `PIA_PF=true`, it asks PIA for a port-forwarding-capable WireGuard endpoint, generates `wg0.conf`, figures out the matching PIA WireGuard server name, and writes that name into `privateerr.env`.
@@ -128,14 +128,14 @@ For the wired-together version, see the included [Compose file](./docker-compose
 
 Curious about every variable available in this project? Run:
 
-```console
-❯ make env
+```sh
+make env
 ```
 
 If you only care about the PIA settings, anchor the grep at the start of the line:
 
-```console
-❯ make env | grep ^PIA
+```sh
+make env | grep ^PIA
 PIA_BIN_HOME=/pia
 PIA_VPN_PROTOCOL=wireguard
 PIA_DISABLE_IPV6=yes
@@ -144,8 +144,8 @@ PIA_DISABLE_IPV6=yes
 
 If you want to see the Gluetun side:
 
-```console
-❯ make env | grep ^GLUETUN
+```sh
+make env | grep ^GLUETUN
 GLUETUN_TAG=latest
 GLUETUN_CONFIG_PATH=./config/gluetun
 GLUETUN_WRAPPER_SCRIPT_PATH=./config/gluetun/scripts/gluetun-entrypoint-wrapper.sh
@@ -184,31 +184,31 @@ Use these commands when you want Docker Compose to show you what it sees:
 
 So if you want to inspect the template, run:
 
-```console
-❯ make print-config
+```sh
+make print-config
 ```
 
 If you want to see the actual Compose configuration Docker will run:
 
-```console
-❯ make config
+```sh
+make config
 ```
 
 ## ⚙️ Useful Commands
 
-| ⚙️ Command | ✅ Use it when |
-| --- | --- |
-| `make run-privateerr` | You only want fresh `wg0.conf` and `privateerr.env`. |
-| `make up` | You want the full Privateerr + Gluetun Compose stack. |
-| `make down` | You want to stop and remove the stack. |
-| `make ps` | You want a compact container status table. |
-| `make logs` | You want to inspect container output. |
-| `make test` | You want the local policy and automation-helper suite. |
-| `make print-config` | You want the Compose template without comments. |
-| `make config` | You want the fully rendered Compose model. |
-| `make clean` | You want to remove only disposable developer artifacts. |
-| `make clean-test` | You want to stop tests and restore example config. |
-| `make restore-test-config` | You want to restore only the checked-in examples. |
+| ⚙️ Command                 | ✅ Use it when                                          |
+| -------------------------- | ------------------------------------------------------- |
+| `make run-privateerr`      | You only want fresh `wg0.conf` and `privateerr.env`.    |
+| `make up`                  | You want the full Privateerr + Gluetun Compose stack.   |
+| `make down`                | You want to stop and remove the stack.                  |
+| `make ps`                  | You want a compact container status table.              |
+| `make logs`                | You want to inspect container output.                   |
+| `make test`                | You want the local policy and automation-helper suite.  |
+| `make print-config`        | You want the Compose template without comments.         |
+| `make config`              | You want the fully rendered Compose model.              |
+| `make clean`               | You want to remove only disposable developer artifacts. |
+| `make clean-test`          | You want to stop tests and restore example config.      |
+| `make restore-test-config` | You want to restore only the checked-in examples.       |
 
 > [!TIP]
 > More build, test, and release details live in [Advanced Usage](./docs/ADVANCED_USAGE.md).

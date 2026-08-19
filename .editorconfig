@@ -78,5 +78,8 @@ indent_size = 4
 [.gitmodules]
 indent_style = tab
 
+#
+# Make recipes require literal tabs.
+#
 [Makefile]
 indent_style = tab

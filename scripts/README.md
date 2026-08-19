@@ -7,7 +7,7 @@ deployment.
 ## Script Chart 🧭
 
 | Hold       | Script                                                                                                                               | Purpose                                                            |
-| ---------- | -------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------ |
+| ---------- | ------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------ |
 | 🐳 Compose | [`compose/check-pia-credentials.sh`](https://github.com/scottgigawatt/privateerr/blob/main/scripts/compose/check-pia-credentials.sh) | Report missing or example PIA credentials before Privateerr starts |
 | 🐳 Compose | [`compose/ps.sh`](https://github.com/scottgigawatt/privateerr/blob/main/scripts/compose/ps.sh)                                       | Print a compact status table for the Privateerr Compose project    |
 

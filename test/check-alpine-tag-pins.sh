@@ -25,13 +25,23 @@ alpine_tag_values="$(
         | sed -E 's/.*ALPINE_TAG[=:][[:space:]]*"?(\$\{ALPINE_TAG:-)?//g; s/\}"?$//g' \
         | sort -u
 )"
+
+#
+# Count the number of unique pinned ALPINE_TAG values found.
+#
 alpine_tag_count="$(printf '%s\n' "${alpine_tag_values}" | sed '/^$/d' | wc -l | tr -d '[:space:]')"
 
+#
+# Fail if no pinned ALPINE_TAG values were found.
+#
 if [[ "${alpine_tag_count}" -eq 0 ]]; then
     echo "No pinned ALPINE_TAG values found. The cargo hold is suspiciously empty."
     exit 1
 fi
 
+#
+# Verify all pinned ALPINE_TAG values are identical.
+#
 if [[ "${alpine_tag_count}" -ne 1 ]]; then
     echo "Mismatched pinned ALPINE_TAG values found:"
     printf '%s\n' "${alpine_tag_values}" | sed 's/^/  /'

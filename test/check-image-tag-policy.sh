@@ -29,6 +29,7 @@ expected_rule_count=2
 count_rule() {
     local rule="$1"
 
+    # Count the number of exact matches for the rule in the workflow.
     grep -Fxc "${rule}" "${workflow_path}" || true
 }
 
@@ -45,6 +46,7 @@ require_rule() {
     local description="$2"
     local rule_count
 
+    # Count the number of exact matches for the rule in the workflow.
     rule_count="$(count_rule "                      ${rule}")"
     if [[ "${rule_count}" -ne "${expected_rule_count}" ]]; then
         echo "Expected ${expected_rule_count} ${description} rules, found ${rule_count}."
@@ -52,6 +54,9 @@ require_rule() {
     fi
 }
 
+#
+# Require each expected rule to be present in both image metadata blocks.
+#
 require_rule "latest=auto" "stable latest"
 require_rule "type=edge,branch=main" "main edge"
 require_rule "type=sha,prefix=sha-" "commit SHA"
