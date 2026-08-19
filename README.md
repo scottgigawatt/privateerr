@@ -221,7 +221,7 @@ Published Privateerr images support `linux/amd64`, `linux/arm64`, and `linux/arm
 
 Images are published to both [GHCR](https://github.com/scottgigawatt/privateerr/pkgs/container/privateerr) and [Docker Hub](https://hub.docker.com/repository/docker/scottgigawatt/privateerr/general). Most users should stay on `latest`; use `edge` only when ye intentionally want the newest successful `main` build before it becomes a stable release.
 
-| 📦 Registry | ✅ Stable                                  | 🧪 Edge                                 |
+| 📦 Registry | ✅ Stable                                 | 🧪 Edge                                 |
 | ----------- | ----------------------------------------- | --------------------------------------- |
 | GHCR        | `ghcr.io/scottgigawatt/privateerr:latest` | `ghcr.io/scottgigawatt/privateerr:edge` |
 | Docker Hub  | `scottgigawatt/privateerr:latest`         | `scottgigawatt/privateerr:edge`         |

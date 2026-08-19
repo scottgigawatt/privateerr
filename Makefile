@@ -98,11 +98,11 @@ PRIVATEERR_GENERATED_PATHS     ?= config/privateerr/logs \
 #
 # Docker image build paths.
 #
-PRIVATEERR_DOCKERFILE      ?= docker/Dockerfile
-PRIVATEERR_BUILD_CONTEXT   ?= docker
-BUCCANEERR_DOCKERFILE      ?= test/Dockerfile
-BUCCANEERR_BUILD_CONTEXT   ?= test
-DOCKERFILES                ?= $(PRIVATEERR_DOCKERFILE) $(BUCCANEERR_DOCKERFILE)
+PRIVATEERR_DOCKERFILE    ?= docker/Dockerfile
+PRIVATEERR_BUILD_CONTEXT ?= docker
+BUCCANEERR_DOCKERFILE    ?= test/Dockerfile
+BUCCANEERR_BUILD_CONTEXT ?= test
+DOCKERFILES              ?= $(PRIVATEERR_DOCKERFILE) $(BUCCANEERR_DOCKERFILE)
 
 #
 # Extract base FROM images from Dockerfiles and resolve Dockerfile ARG defaults.

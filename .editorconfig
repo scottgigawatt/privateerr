@@ -3,18 +3,19 @@
 #
 # Licensed under the Apache License, Version 2.0.
 #
-# .editorconfig: Shared editor formatting rules for Privateerr-owned files.
+# .editorconfig: Keep repository text files and source code consistently
+#                formatted across supported editors.
 #
 
 #
-# This is the top-most EditorConfig file. Ignore EditorConfig files outside the
-# repository when formatting Privateerr-owned files.
+# Indicates that this is the top-most EditorConfig file and that all
+# other EditorConfig files in subdirectories should be ignored.
 #
 root = true
 
 #
-# Repository-wide text encoding, line endings, whitespace, and indentation
-# defaults.
+# Repository-wide text encoding, line endings, whitespace, and space-based
+# indentation defaults.
 #
 [*]
 charset = utf-8
@@ -24,34 +25,15 @@ trim_trailing_whitespace = true
 indent_style = space
 
 #
-# Markdown uses two-space indentation and preserves intentional line breaks.
+# Documentation and YAML use two-space indentation for compact nested content.
 #
-[*.md]
-indent_size = 2
-trim_trailing_whitespace = false
-
-#
-# Compose and other YAML use two-space indentation.
-#
-[*.{yml,yaml}]
+[*.{md,yml,yaml}]
 indent_size = 2
 
 #
-# GitHub Actions workflows retain the repository's four-space indentation.
+# Web assets use the conventional two-space project style.
 #
-[.github/workflows/*.{yml,yaml}]
-indent_size = 4
-
-#
-# JSON and JSON-with-comments files use four-space indentation.
-#
-[*.{json,json5}]
-indent_size = 4
-
-#
-# The detect-secrets baseline is generated as two-space JSON.
-#
-[.secrets.baseline]
+[*.{css,js}]
 indent_size = 2
 
 #
@@ -61,22 +43,16 @@ indent_size = 2
 indent_size = 2
 
 #
-# Project-owned shell source uses four-space indentation.
+# JSON, Python, and shell source use four-space indentation.
 #
-[*.sh]
+[*.{json,json5,py,sh}]
 indent_size = 4
 
 #
 # Dockerfile continuations use four-space indentation.
 #
-[{Dockerfile,**/Dockerfile}]
+[Dockerfile,**/Dockerfile]
 indent_size = 4
-
-#
-# Git submodule configuration and Make recipes require literal tabs.
-#
-[.gitmodules]
-indent_style = tab
 
 #
 # Make recipes require literal tabs.

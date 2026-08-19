@@ -29,14 +29,13 @@ terminal-friendly status table. Equivalent IPv4 and IPv6 wildcard bindings are
 collapsed, and each distinct published port receives an aligned continuation
 line. `make ps` is the normal entry point.
 
-> [!TIP]
->
-> ```sh
-> make run-privateerr
-> make ps
-> make test-make-helpers
-> ```
+```sh
+make run-privateerr
+make ps
+make test-make-helpers
+```
 
 > [!IMPORTANT]
+>
 > Keep credentials in the ignored `.env` file. Do not pass them as command-line
 > arguments, paste them into issues, or commit generated WireGuard state.

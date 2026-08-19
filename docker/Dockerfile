@@ -58,16 +58,16 @@ ENV PIA_BIN_HOME=${PIA_BIN_HOME} \
 # license details, and identify the image in registries.
 #
 LABEL org.opencontainers.image.title="Privateerr" \
-      org.opencontainers.image.description="Privateerr generates PIA WireGuard configs and Gluetun metadata from unmodified PIA manual connection scripts." \
-      org.opencontainers.image.url="https://github.com/scottgigawatt/privateerr" \
-      org.opencontainers.image.documentation="https://github.com/scottgigawatt/privateerr#readme" \
-      org.opencontainers.image.source="https://github.com/scottgigawatt/privateerr" \
-      org.opencontainers.image.vendor="Scott Gigawatt" \
-      org.opencontainers.image.licenses="Apache-2.0" \
-      org.opencontainers.image.created="${IMAGE_CREATED}" \
-      org.opencontainers.image.revision="${IMAGE_REVISION}" \
-      org.opencontainers.image.version="${IMAGE_VERSION}" \
-      org.opencontainers.image.base.name="docker.io/library/alpine:${ALPINE_TAG}"
+        org.opencontainers.image.description="Privateerr generates PIA WireGuard configs and Gluetun metadata from unmodified PIA manual connection scripts." \
+        org.opencontainers.image.url="https://github.com/scottgigawatt/privateerr" \
+        org.opencontainers.image.documentation="https://github.com/scottgigawatt/privateerr#readme" \
+        org.opencontainers.image.source="https://github.com/scottgigawatt/privateerr" \
+        org.opencontainers.image.vendor="Scott Gigawatt" \
+        org.opencontainers.image.licenses="Apache-2.0" \
+        org.opencontainers.image.created="${IMAGE_CREATED}" \
+        org.opencontainers.image.revision="${IMAGE_REVISION}" \
+        org.opencontainers.image.version="${IMAGE_VERSION}" \
+        org.opencontainers.image.base.name="docker.io/library/alpine:${ALPINE_TAG}"
 
 #
 # Copy license files, upstream PIA scripts, and Privateerr-owned helpers as one
@@ -86,19 +86,19 @@ COPY privateerr-date.sh /usr/local/bin/date
 # stable has the required versions.
 #
 RUN apk add --no-cache \
-      bash \
-      ca-certificates \
-      curl \
-      openresolv \
-      wireguard-tools && \
+        bash \
+        ca-certificates \
+        curl \
+        openresolv \
+        wireguard-tools && \
     apk add --no-cache \
-      --repository="${EDGE_APK_REPOSITORY}" \
-      "jq>=${JQ_APK_MIN_VERSION}" \
-      "nghttp2-libs>=${NGHTTP2_APK_MIN_VERSION}" && \
+        --repository="${EDGE_APK_REPOSITORY}" \
+        "jq>=${JQ_APK_MIN_VERSION}" \
+        "nghttp2-libs>=${NGHTTP2_APK_MIN_VERSION}" && \
     chmod +x \
-      "${PRIVATEERR_BIN_HOME}/privateerr-entrypoint.sh" \
-      /usr/local/bin/privateerr-healthcheck \
-      /usr/local/bin/date
+        "${PRIVATEERR_BIN_HOME}/privateerr-entrypoint.sh" \
+        /usr/local/bin/privateerr-healthcheck \
+        /usr/local/bin/date
 
 #
 # Set the working directory to the PIA scripts install location.

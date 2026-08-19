@@ -7,7 +7,6 @@
     // settings.json: Keep the Privateerr workspace aligned with repository
     //                formatting, spelling, schema, and validation rules.
     //
-
     //
     // Accept project names, dependencies, and intentional pirate vocabulary.
     //
@@ -15,12 +14,15 @@
         "actionlint",
         "adjustin",
         "aquasecurity",
+        "avoidin",
         "buccaneerr",
         "buildin",
         "buildx",
         "CDPATH",
         "centurylinklabs",
         "Chartin",
+        "cksum",
+        "clingin",
         "Cloudant",
         "clutterin",
         "CODEOWNERS",
@@ -42,18 +44,25 @@
         "Gluetun",
         "gsub",
         "healthcheck",
+        "hoistin",
         "KEEPALIVE",
+        "leakin",
         "likin",
         "linebreak",
+        "missin",
         "multiarch",
         "Navigatin",
+        "NGHTTP",
+        "opencontainers",
         "openresolv",
         "piaportforward",
+        "pkgs",
         "Plundarr",
         "Privateerr",
         "Pypi",
         "pytest",
         "qmcgaw",
+        "reportin",
         "resolvconf",
         "Roya",
         "sailin",
@@ -68,6 +77,7 @@
         "skopeo",
         "Sonoma",
         "SUBSEP",
+        "todate",
         "tostring",
         "updatin",
         "Usin",

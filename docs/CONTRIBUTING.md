@@ -50,6 +50,7 @@ pre-commit run --all-files
 ```
 
 > [!IMPORTANT]
+>
 > 🧪 `make test-e2e` uses real PIA credentials from `.env`. That voyage should happen locally, not with secrets flung into random public waters.
 
 ## Style Rules 📜
