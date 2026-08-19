@@ -19,4 +19,4 @@ config/gluetun/wireguard/privateerr.env
 ```
 
 > [!CAUTION]
-> 💣 Live `wg0.conf` and `privateerr.env` can contain sensitive voyage details. Run `make reset-config` before committing.
+> 💣 Live `wg0.conf` and `privateerr.env` can contain sensitive voyage details. Run `make restore-test-config` before committing.

@@ -28,7 +28,7 @@ Questionable cargo includes:
 
 ## Local Setup 🛠️
 
-```bash
+```sh
 git clone --recurse-submodules git@github.com:scottgigawatt/privateerr.git
 cd privateerr
 cp example.env .env
@@ -38,11 +38,14 @@ Edit `.env` with yer own values. Keep that file private.
 
 Useful commands:
 
-```bash
+```sh
+make test
+make test-workflows
 make build
 make build-buccaneerr
+make build-platforms
 make test-e2e
-make test-down
+make clean-test
 pre-commit run --all-files
 ```
 
@@ -78,7 +81,7 @@ Before opening a pull request:
 - Run relevant `make` targets.
 - Run `pre-commit run --all-files`.
 - Let Renovate handle routine dependency bumps when possible.
-- Restore example config with `make test-down` or `make nuke`.
+- Restore example config with `make clean-test` or `make nuke`.
 - Confirm no secrets, live VPN configs, or logs slipped into the hold.
 - Explain what changed and why.
 

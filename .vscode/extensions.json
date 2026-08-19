@@ -1,0 +1,24 @@
+{
+    //
+    // Copyright 2025-2026 Scott Gigawatt
+    //
+    // Licensed under the Apache License, Version 2.0.
+    //
+    // extensions.json: Recommend workspace tools for consistent editing,
+    //                  validation, spelling, and linting.
+    //
+
+    //
+    // Keep recommendations focused on file types and checks owned by Privateerr.
+    //
+    "recommendations": [
+        "davidanson.vscode-markdownlint",
+        "EditorConfig.EditorConfig",
+        "github.vscode-github-actions",
+        "ms-azuretools.vscode-docker",
+        "ms-vscode.makefile-tools",
+        "redhat.vscode-yaml",
+        "streetsidesoftware.code-spell-checker",
+        "timonwong.shellcheck"
+    ]
+}

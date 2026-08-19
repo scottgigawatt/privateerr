@@ -12,7 +12,8 @@
 ARG ALPINE_TAG=3.24@sha256:28bd5fe8b56d1bd048e5babf5b10710ebe0bae67db86916198a6eec434943f8b
 
 #
-# Use the specified version of the Alpine image.
+# Stage 1 of 1: Build the test-only Buccaneerr validator on pinned Alpine.
+# Keeping this separate prevents validation tools entering the production image.
 #
 FROM alpine:${ALPINE_TAG}
 

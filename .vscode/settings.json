@@ -1,4 +1,16 @@
 {
+    //
+    // Copyright 2025-2026 Scott Gigawatt
+    //
+    // Licensed under the Apache License, Version 2.0.
+    //
+    // settings.json: Keep the Privateerr workspace aligned with repository
+    //                formatting, spelling, schema, and validation rules.
+    //
+
+    //
+    // Accept project names, dependencies, and intentional pirate vocabulary.
+    //
     "cSpell.words": [
         "actionlint",
         "adjustin",
@@ -53,5 +65,86 @@
         "Usin",
         "wonderin"
     ],
-    "makefile.configureOnOpen": false
+
+    //
+    // Keep Makefile Tools from inventing a configure step for this project.
+    //
+    "makefile.configureOnOpen": false,
+
+    //
+    // Associate special repository files with their correct language modes.
+    //
+    "files.associations": {
+        ".secrets.baseline": "jsonc",
+        "**/CODEOWNERS": "plaintext",
+        "Dockerfile*": "dockerfile"
+    },
+
+    //
+    // Mirror EditorConfig indentation while disabling VS Code auto-detection.
+    //
+    "[dockerfile]": {
+        "editor.detectIndentation": false,
+        "editor.tabSize": 4,
+        "editor.insertSpaces": true
+    },
+    "[yaml]": {
+        "editor.detectIndentation": false,
+        "editor.tabSize": 2,
+        "editor.insertSpaces": true
+    },
+    "[github-actions-workflow]": {
+        "editor.detectIndentation": false,
+        "editor.tabSize": 4,
+        "editor.insertSpaces": true
+    },
+    "[json][jsonc]": {
+        "editor.detectIndentation": false,
+        "editor.tabSize": 4,
+        "editor.insertSpaces": true
+    },
+    "[makefile]": {
+        "editor.detectIndentation": false,
+        "editor.tabSize": 4,
+        "editor.insertSpaces": false
+    },
+    "[markdown]": {
+        "editor.detectIndentation": false,
+        "editor.tabSize": 2,
+        "editor.insertSpaces": true
+    },
+    "[shellscript]": {
+        "editor.detectIndentation": false,
+        "editor.tabSize": 4,
+        "editor.insertSpaces": true
+    },
+    "[toml]": {
+        "editor.detectIndentation": false,
+        "editor.tabSize": 2,
+        "editor.insertSpaces": true
+    },
+
+    //
+    // Enable shell diagnostics for every project-owned helper.
+    //
+    "shellcheck.enable": true,
+
+    //
+    // Validate repository YAML with SchemaStore and the Compose specification.
+    //
+    "yaml.format.enable": true,
+    "yaml.schemaStore.enable": true,
+    "yaml.schemas": {
+        "https://json.schemastore.org/github-workflow.json": [
+            "**/.github/workflows/*.yml",
+            "**/.github/workflows/*.yaml"
+        ],
+        "https://raw.githubusercontent.com/compose-spec/compose-spec/main/schema/compose-spec.json": [
+            "**/docker-compose*.yml",
+            "**/docker-compose*.yaml"
+        ],
+        "https://json.schemastore.org/pre-commit-config.json": ".pre-commit-config.yaml"
+    },
+    "yaml.validate": true,
+    "yaml.yamlVersion": "1.2"
 }

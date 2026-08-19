@@ -12,7 +12,8 @@
 ARG ALPINE_TAG=3.24@sha256:28bd5fe8b56d1bd048e5babf5b10710ebe0bae67db86916198a6eec434943f8b
 
 #
-# Use the specified version of the Alpine image.
+# Stage 1 of 1: Build the production Privateerr image on the pinned Alpine base.
+# The single stage contains only the runtime needed to generate WireGuard data.
 #
 FROM alpine:${ALPINE_TAG}
 
@@ -69,7 +70,8 @@ LABEL org.opencontainers.image.title="Privateerr" \
       org.opencontainers.image.base.name="docker.io/library/alpine:${ALPINE_TAG}"
 
 #
-# Copy license files, PIA manual connection scripts, and Privateerr helper scripts.
+# Copy license files, upstream PIA scripts, and Privateerr-owned helpers as one
+# reviewable source boundary before installing the runtime.
 #
 COPY LICENSE /LICENSE
 COPY pia-manual-connections/LICENSE /licenses/pia-manual-connections/LICENSE

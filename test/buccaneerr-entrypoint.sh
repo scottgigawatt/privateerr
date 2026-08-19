@@ -41,7 +41,11 @@ mkdir -p "$(dirname "${BUCCANEERR_LOG_PATH}")"
 : > "${BUCCANEERR_LOG_PATH}"
 
 #
-# Print a consistent status line for CI logs and the persisted log file.
+# log: Print one status line to CI output and the persisted log file.
+#
+# Parameters: $* - Message fragments to write as one log line.
+#
+# Returns: tee's exit status.
 #
 log() {
     printf '[%s] %s\n' "${buccaneerr_script_name}" "$*" \
@@ -49,7 +53,12 @@ log() {
 }
 
 #
-# Make sure a file exists and is not empty.
+# require_file: Ensure one required file exists and is not empty.
+#
+# Parameters: $1 - File path.
+#             $2 - Human-readable file label.
+#
+# Returns: 0 when the file exists; exits nonzero otherwise.
 #
 require_file() {
     file_path="$1"

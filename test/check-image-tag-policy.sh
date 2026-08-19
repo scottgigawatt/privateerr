@@ -20,7 +20,11 @@ workflow_path=".github/workflows/build-and-push.yml"
 expected_rule_count=2
 
 #
-# Count exact metadata-action rules without treating punctuation as expressions.
+# count_rule: Count one exact metadata-action rule in the workflow.
+#
+# Parameters: $1 - Exact indented workflow rule.
+#
+# Returns: Prints the number of matches.
 #
 count_rule() {
     local rule="$1"
@@ -29,7 +33,12 @@ count_rule() {
 }
 
 #
-# Require the same release channel rule in both image metadata blocks.
+# require_rule: Require one release rule in both image metadata blocks.
+#
+# Parameters: $1 - Unindented metadata-action rule.
+#             $2 - Human-readable rule description.
+#
+# Returns: 0 when both blocks contain the rule; exits nonzero otherwise.
 #
 require_rule() {
     local rule="$1"

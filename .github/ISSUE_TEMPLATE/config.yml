@@ -1,5 +1,19 @@
+#
+# Copyright 2025-2026 Scott Gigawatt
+#
+# Licensed under the Apache License, Version 2.0.
+#
+# config.yml: Configure repository issue intake and support links.
+#
+
+#
+# Require a purpose-built issue form so reports include actionable details.
+#
 blank_issues_enabled: false
 
+#
+# Offer the community Discord for troubleshooting and voyage planning.
+#
 contact_links:
   - name: "🔥HADES🔥"
     url: https://discord.gg/BpEGzWwGYf

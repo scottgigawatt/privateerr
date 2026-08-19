@@ -196,16 +196,19 @@ If you want to see the actual Compose configuration Docker will run:
 
 ## ⚙️ Useful Commands
 
-| ⚙️ Command            | ✅ Use it when                                               |
-| --------------------- | ------------------------------------------------------------ |
-| `make run-privateerr` | You only want fresh `wg0.conf` and `privateerr.env`.         |
-| `make up`             | You want the full Privateerr + Gluetun Compose stack.        |
-| `make down`           | You want to stop and remove the stack.                       |
-| `make logs`           | You want to inspect container output.                        |
-| `make print-config`   | You want the Compose template without comments.              |
-| `make config`         | You want the fully rendered Compose model.                   |
-| `make reset-config`   | You want to restore the checked-in example config files.     |
-| `make clean`          | You want to stop the stack and restore example config files. |
+| ⚙️ Command | ✅ Use it when |
+| --- | --- |
+| `make run-privateerr` | You only want fresh `wg0.conf` and `privateerr.env`. |
+| `make up` | You want the full Privateerr + Gluetun Compose stack. |
+| `make down` | You want to stop and remove the stack. |
+| `make ps` | You want a compact container status table. |
+| `make logs` | You want to inspect container output. |
+| `make test` | You want the local policy and automation-helper suite. |
+| `make print-config` | You want the Compose template without comments. |
+| `make config` | You want the fully rendered Compose model. |
+| `make clean` | You want to remove only disposable developer artifacts. |
+| `make clean-test` | You want to stop tests and restore example config. |
+| `make restore-test-config` | You want to restore only the checked-in examples. |
 
 > [!TIP]
 > More build, test, and release details live in [Advanced Usage](./docs/ADVANCED_USAGE.md).

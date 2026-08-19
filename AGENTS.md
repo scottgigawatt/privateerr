@@ -20,11 +20,14 @@ The companion Buccaneerr image is test-only. It validates the Privateerr + Gluet
 
 - `docker/`: Privateerr image build context and Privateerr-owned entrypoint scripts.
 - `docker/pia-manual-connections/`: PIA upstream scripts as a git submodule. Treat this as third-party code.
-- `test/`: Buccaneerr image build context, e2e validator scripts, and example reset files.
+- `test/`: Buccaneerr image build context, e2e validator scripts, isolated helper
+  tests, deterministic command stubs, and example reset files.
+- `scripts/compose/`: Host-side credential preflight and Compose status helpers.
 - `config/`: Checked-in service config directories used by Docker Compose.
 - `config/gluetun/wireguard/`: Generated WireGuard config and metadata location.
 - `docs/`: Supporting project documentation.
-- `.github/`: Workflows, issue templates, PR template, Dependabot, and CODEOWNERS.
+- `.github/`: Workflows, reusable workflow helpers, issue templates, PR template,
+  Renovate policy, and CODEOWNERS.
 - `docker-compose.yml`: Single Compose stack used for local development, Synology-style one-file deployments, and e2e validation.
 - `example.env`: Complete example environment file. Keep ordering aligned with `docker-compose.yml`.
 
@@ -136,7 +139,7 @@ Live runs overwrite:
 Never commit real generated secrets. Restore checked-in examples with:
 
 ```sh
-make reset-config
+make restore-test-config
 ```
 
 The source example files live in:
@@ -176,11 +179,13 @@ Important commands:
 make help
 make build
 make build-buccaneerr
-make build-multiarch
+make build-platforms
 make run-privateerr
+make test
+make test-workflows
 make test-e2e
-make test-down
-make reset-config
+make clean-test
+make restore-test-config
 make clean
 make nuke
 make config
@@ -189,7 +194,9 @@ make print-config
 make print-env
 ```
 
-Run `make test-down` after live e2e tests to stop containers and restore example files.
+Run `make clean-test` after live e2e tests to stop containers and restore example files.
+`make clean` removes only disposable developer artifacts; it must never touch
+containers, volumes, images, `.env`, generated VPN state, or checked-in examples.
 
 ## GitHub Workflow Rules
 
@@ -230,7 +237,9 @@ make help
 make config
 make build
 make build-buccaneerr
-make build-multiarch
+make build-platforms
+make test
+make test-workflows
 pre-commit run --all-files
 ```
 
@@ -238,7 +247,7 @@ For behavior changes touching Privateerr, Gluetun handoff, WireGuard config gene
 
 ```sh
 make test-e2e
-make test-down
+make clean-test
 ```
 
 Do not leave live generated VPN config or metadata in the working tree.

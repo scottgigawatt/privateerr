@@ -2,6 +2,14 @@
 
 Welcome to the test hold, where Buccaneerr climbs aboard after Privateerr and Gluetun to make sure the whole WireGuard voyage did not spring a leak. ☠️
 
+The test tree keeps responsibilities separate:
+
+- `helpers/` exercises Make and workflow helpers without external writes.
+- `stubs/` supplies deterministic Docker and Skopeo stand-ins for those tests.
+- `examples/` stores the checked-in WireGuard and metadata examples restored
+  after a live voyage.
+- the test-root Dockerfile and entrypoint remain the Buccaneerr build context.
+
 ## What Buccaneerr Be 🦜
 
 Buccaneerr is the test-only image for this repo. It does not ship with the production Privateerr image, and it does not generate WireGuard config. Instead, it joins the running test stack after Privateerr has written its files and Gluetun has raised the VPN sails.
@@ -22,13 +30,13 @@ The image is built from [Dockerfile](Dockerfile), using the same pinned Alpine b
 
 Build it directly with:
 
-```bash
+```sh
 make build-buccaneerr
 ```
 
 Run the full end-to-end voyage with:
 
-```bash
+```sh
 make test-e2e
 ```
 
@@ -57,9 +65,9 @@ These files contain fake pirate-flavored data. Cleanup targets copy them back in
 
 Useful cleanup commands:
 
-```bash
-make test-down
-make reset-config
+```sh
+make clean-test
+make restore-test-config
 make nuke
 ```
 

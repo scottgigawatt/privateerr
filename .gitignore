@@ -1,9 +1,36 @@
+#
+# Copyright 2025-2026 Scott Gigawatt
+#
+# Licensed under the Apache License, Version 2.0.
+#
+# .gitignore: Exclude local secrets, generated VPN state, logs, caches, and
+#             test artifacts from version control.
+#
+
+#
+# Local workstation metadata and secret-bearing files.
+#
 .DS_Store
 .secrets
 .env
+
+#
+# Generated Gluetun runtime and PIA port-forwarding state.
+#
 config/gluetun/forwarded_port
 config/gluetun/ip
 config/gluetun/piaportforward.json
 config/gluetun/servers/
+
+#
+# Privateerr and Buccaneerr runtime logs.
+#
 config/privateerr/logs/
 config/buccaneerr/logs/
+
+#
+# Local test and tool caches.
+#
+test/logs/
+.pytest_cache/
+.ruff_cache/

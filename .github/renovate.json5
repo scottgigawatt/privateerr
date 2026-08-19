@@ -1,22 +1,47 @@
+//
+// Copyright 2025-2026 Scott Gigawatt
+//
+// Licensed under the Apache License, Version 2.0.
+//
+// renovate.json5: Automated dependency update policy for Privateerr.
+//
 {
+    //
+    // Renovate schema and shared safe defaults.
+    //
     "$schema": "https://docs.renovatebot.com/renovate-schema.json",
     "extends": [
         "config:recommended",
-        "helpers:pinGitHubActionDigests"
+        "helpers:pinGitHubActionDigests",
+        ":enablePreCommit"
     ],
+
+    //
+    // Keep dependency work predictable for a single-maintainer repository.
+    //
     "timezone": "America/New_York",
     "schedule": ["before 8am on monday"],
     "dependencyDashboard": true,
     "labels": ["dependencies"],
     "assignees": ["scottgigawatt"],
     "reviewers": ["scottgigawatt"],
+
+    //
+    // Renovate owns every supported dependency surface in this repository.
+    //
     "enabledManagers": [
         "custom.regex",
         "docker-compose",
         "dockerfile",
         "git-submodules",
-        "github-actions"
+        "github-actions",
+        "pre-commit"
     ],
+
+    //
+    // Track Alpine pins across Dockerfiles, workflows, and the example
+    // environment, plus the digest-pinned Hadolint image in pre-commit.
+    //
     "customManagers": [
         {
             "customType": "regex",
@@ -56,6 +81,10 @@
             "versioningTemplate": "docker"
         }
     ],
+
+    //
+    // Keep related update types grouped and image pins deterministic.
+    //
     "packageRules": [
         {
             "matchManagers": ["docker-compose", "dockerfile", "custom.regex"],
@@ -64,6 +93,10 @@
         {
             "groupName": "GitHub Actions",
             "matchManagers": ["github-actions"]
+        },
+        {
+            "groupName": "pre-commit hooks",
+            "matchManagers": ["pre-commit"]
         },
         {
             "groupName": "Docker images",

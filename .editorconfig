@@ -6,47 +6,75 @@
 # .editorconfig: Shared editor formatting rules for Privateerr-owned files.
 #
 
+#
+# This is the top-most EditorConfig file. Ignore EditorConfig files outside the
+# repository when formatting Privateerr-owned files.
+#
 root = true
 
+#
+# Repository-wide text encoding, line endings, whitespace, and indentation
+# defaults.
+#
 [*]
 charset = utf-8
 end_of_line = lf
 insert_final_newline = true
 trim_trailing_whitespace = true
-
-[*.md]
 indent_style = space
+
+#
+# Markdown uses two-space indentation and preserves intentional line breaks.
+#
+[*.md]
 indent_size = 2
 trim_trailing_whitespace = false
 
+#
+# Compose and other YAML use two-space indentation.
+#
 [*.{yml,yaml}]
-indent_style = space
 indent_size = 2
 
+#
+# GitHub Actions workflows retain the repository's four-space indentation.
+#
 [.github/workflows/*.{yml,yaml}]
-indent_style = space
 indent_size = 4
 
+#
+# JSON and JSON-with-comments files use four-space indentation.
+#
 [*.{json,json5}]
-indent_style = space
 indent_size = 4
 
+#
+# The detect-secrets baseline is generated as two-space JSON.
+#
 [.secrets.baseline]
-indent_style = space
 indent_size = 2
 
+#
+# TOML arrays and nested values use two-space indentation.
+#
 [*.toml]
-indent_style = space
 indent_size = 2
 
+#
+# Project-owned shell source uses four-space indentation.
+#
 [*.sh]
-indent_style = space
 indent_size = 4
 
+#
+# Dockerfile continuations use four-space indentation.
+#
 [{Dockerfile,**/Dockerfile}]
-indent_style = space
 indent_size = 4
 
+#
+# Git submodule configuration and Make recipes require literal tabs.
+#
 [.gitmodules]
 indent_style = tab
 

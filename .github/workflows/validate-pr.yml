@@ -57,7 +57,7 @@ jobs:
 
             #
             # Render a CI-specific environment from the checked-in example before
-            # validating Compose and running the repository's complete lint suite.
+            # routing repository validation through Make and pre-commit.
             #
             - name: "Load the Example Cargo 📦"
               run: |
@@ -68,7 +68,9 @@ jobs:
                   } >> .env
 
             - name: "Read the Compose Charts 🔎"
-              run: docker compose config --quiet
+              run: |
+                  make test
+                  make config >/dev/null
 
             - name: "Scrub the Deck with Pre-Commit 🧽"
               uses: pre-commit/action@2c7b3805fd2a0fd8c1884dcaebf91fc102a13ecd  # v3.0.1
@@ -83,7 +85,7 @@ jobs:
                   make build-buccaneerr
 
             - name: "Test the Three-Deck Hull Plans 🛠️"
-              run: make build-multiarch
+              run: make build-platforms
 
             #
             # Reject fixed HIGH or CRITICAL vulnerabilities in either image while
