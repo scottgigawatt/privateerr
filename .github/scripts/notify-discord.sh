@@ -286,11 +286,11 @@ fi
 #
 # Validate required inputs for both event types.
 #
-require_value --event "${discord_event}"
-require_value --template "${discord_template}"
-require_value --run-url "${run_url}"
+require_value --event      "${discord_event}"
+require_value --template   "${discord_template}"
+require_value --run-url    "${run_url}"
 require_value --repository "${repository}"
-require_value --ref-name "${ref_name}"
+require_value --ref-name   "${ref_name}"
 
 #
 # Select the destination's identity and stable field labels.
@@ -317,10 +317,10 @@ esac
 #
 case "${discord_event}" in
     start)
-        require_value --workflow-name "${workflow_name}"
-        require_value --actor "${actor}"
-        require_value --platforms "${image_platforms}"
-        require_value --ghcr-image "${ghcr_image}"
+        require_value --workflow-name   "${workflow_name}"
+        require_value --actor           "${actor}"
+        require_value --platforms       "${image_platforms}"
+        require_value --ghcr-image      "${ghcr_image}"
         require_value --dockerhub-image "${dockerhub_image}"
 
         if [ "${discord_template}" = "deck" ]; then
