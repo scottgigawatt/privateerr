@@ -29,6 +29,11 @@ config/privateerr/logs/
 config/buccaneerr/logs/
 
 #
+# Local archives created by make backup.
+#
+backups/
+
+#
 # Local test and tool caches.
 #
 test/logs/

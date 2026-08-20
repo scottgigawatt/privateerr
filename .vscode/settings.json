@@ -103,6 +103,7 @@
     // Associate special repository files with their correct language modes.
     //
     "files.associations": {
+        ".prettierrc.json5": "jsonc",
         ".secrets.baseline": "jsonc",
         "**/CODEOWNERS": "plaintext",
         "Dockerfile*": "dockerfile"
@@ -110,9 +111,12 @@
 
     //
     // Mirror EditorConfig indentation while disabling VS Code auto-detection.
-    // Keep YAML format-on-save off because its formatter collapses the two
-    // spaces required before inline comments by the repository lint policy.
     //
+    "[awk]": {
+        "editor.detectIndentation": false,
+        "editor.tabSize": 2,
+        "editor.insertSpaces": true
+    },
     "[dockerfile]": {
         "editor.detectIndentation": false,
         "editor.tabSize": 4,
@@ -130,10 +134,24 @@
         "editor.insertSpaces": true,
         "editor.formatOnSave": false
     },
-    "[json][jsonc]": {
+    "[json]": {
+        "editor.defaultFormatter": "esbenp.prettier-vscode",
         "editor.detectIndentation": false,
         "editor.tabSize": 4,
-        "editor.insertSpaces": true
+        "editor.insertSpaces": true,
+        "editor.formatOnSave": false
+    },
+    "[jsonc]": {
+        "editor.detectIndentation": false,
+        "editor.tabSize": 4,
+        "editor.insertSpaces": true,
+        "editor.formatOnSave": false
+    },
+    "[jq]": {
+        "editor.detectIndentation": false,
+        "editor.tabSize": 2,
+        "editor.insertSpaces": true,
+        "editor.formatOnSave": false
     },
     "[makefile]": {
         "editor.detectIndentation": false,
@@ -141,9 +159,11 @@
         "editor.insertSpaces": false
     },
     "[markdown]": {
+        "editor.defaultFormatter": "esbenp.prettier-vscode",
         "editor.detectIndentation": false,
         "editor.tabSize": 2,
-        "editor.insertSpaces": true
+        "editor.insertSpaces": true,
+        "editor.formatOnSave": false
     },
     "[shellscript]": {
         "editor.detectIndentation": false,
@@ -156,6 +176,20 @@
         "editor.tabSize": 2,
         "editor.insertSpaces": true
     },
+
+    //
+    // Validate project AWK programs against the portable POSIX language mode.
+    //
+    "awk.mode": "awk",
+    "awk.stylisticWarnings.missingSemicolon": false,
+
+    //
+    // Use the checked-in Prettier configuration only for supported languages.
+    // Keep global module discovery disabled so formatting stays workspace-safe.
+    //
+    "prettier.requireConfig": true,
+    "prettier.resolveGlobalModules": false,
+    "prettier.useEditorConfig": true,
 
     //
     // Keep TOML formatting at two spaces through Even Better TOML.

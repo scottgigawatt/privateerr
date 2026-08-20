@@ -8,6 +8,8 @@
 # privateerr-date.sh: This script provides the small GNU date compatibility
 #                     surface needed by the upstream PIA scripts on Alpine.
 #
+# Usage: docker/privateerr-date.sh [date arguments]
+#
 # The script:
 #   - Accepts GNU-style '--date=VALUE' and '--date VALUE' arguments.
 #   - Supports the PIA token expiration value '1 day'.

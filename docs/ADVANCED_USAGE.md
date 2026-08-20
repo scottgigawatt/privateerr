@@ -119,7 +119,11 @@ Renovate keeps those pins from going stale. It tracks:
 - Compose image references.
 - Git submodules.
 
-When Renovate opens a dependency PR, the validation workflow checks that every pinned `ALPINE_TAG` value still matches across Dockerfiles, workflow build args, and the example environment file. If one build arg drifts away from the fleet, [check-alpine-tag-pins.sh](../test/policy/check-alpine-tag-pins.sh) fails before the PR can merge.
+When Renovate opens a dependency PR, the validation workflow checks that every
+digest-pinned build dependency matches across Dockerfiles, workflow build args,
+and the example environment file. If one build arg drifts away from the fleet,
+[check-build-pin-policy.sh](../test/policy/check-build-pin-policy.sh) fails
+before the PR can merge.
 
 > [!NOTE]
 >
@@ -134,6 +138,7 @@ When Renovate opens a dependency PR, the validation workflow checks that every p
 | `make print-config`     | Print uncommented Compose YAML.                                        |
 | `make print-env`        | Print uncommented Compose environment values.                          |
 | `make ps`               | Show a compact Compose status table.                                   |
+| `make backup`           | Archive the complete config directory without replacing older cargo.  |
 | `make test`             | Run policy checks plus Make and workflow helper tests.                 |
 | `make test-workflows`   | Test release, Discord, and registry helpers without external writes.   |
 | `make build`            | Build only the Privateerr image.                                       |

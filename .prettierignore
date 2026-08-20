@@ -1,0 +1,21 @@
+#
+# Copyright 2025-2026 Scott Gigawatt
+#
+# Licensed under the Apache License, Version 2.0.
+#
+# .prettierignore: Keep unsupported languages and YAML comment alignment under
+#                  their repository-owned validators and formatters.
+#
+
+# Prettier has no jq parser; jq source remains syntax-checked by repository tests.
+**/*.jq
+
+# Preserve intentionally aligned explanatory comments in workspace JSONC files.
+.vscode/*.json
+
+# Preserve two spaces before pinned-action comments and other aligned YAML notes.
+**/*.yaml
+**/*.yml
+
+# Even Better TOML owns TOML formatting in this workspace.
+**/*.toml

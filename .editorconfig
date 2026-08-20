@@ -37,6 +37,18 @@ indent_size = 2
 trim_trailing_whitespace = false
 
 #
+# AWK programs use two-space indentation for readable rules and action blocks.
+#
+[*.awk]
+indent_size = 2
+
+#
+# jq filters use two-space indentation for readable pipelines and objects.
+#
+[*.jq]
+indent_size = 2
+
+#
 # Web assets use the conventional two-space project style.
 #
 [*.{css,js}]

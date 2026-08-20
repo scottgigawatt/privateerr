@@ -5,8 +5,8 @@
 #
 # Licensed under the Apache License, Version 2.0.
 #
-# test-make-helpers.sh: Validate secret-safe credential and Compose status
-#                       helpers without mutating a deployment.
+# test-make-helpers.sh: Validate Make's AWK, backup, credential, and Compose
+#                       status helpers without mutating a deployment.
 #
 # Usage: test/helpers/test-make-helpers.sh
 #
@@ -39,6 +39,129 @@ cleanup() {
 #
 test_output=$(mktemp -d)
 trap cleanup 0 1 2 15
+
+#
+# Preserve resolved Compose values while restoring selected environment order.
+#
+printf '%s\n' \
+    'THIRD=resolved-third' \
+    'FIRST=resolved-first' \
+    'IGNORED=resolved-ignored' \
+    'SECOND=resolved-second' \
+    >"${test_output}/resolved.env"
+printf '%s\n' \
+    '# Selected environment order.' \
+    'FIRST=generated-first' \
+    'SECOND=generated-second' \
+    'THIRD=generated-third' \
+    >"${test_output}/selected.env"
+printf '%s\n' \
+    'FIRST=resolved-first' \
+    'SECOND=resolved-second' \
+    'THIRD=resolved-third' \
+    >"${test_output}/ordered.expected"
+
+awk -F = -f scripts/awk/order-environment.awk \
+    - "${test_output}/selected.env" \
+    <"${test_output}/resolved.env" \
+    >"${test_output}/ordered.actual"
+cmp "${test_output}/ordered.expected" "${test_output}/ordered.actual"
+
+#
+# Resolve Dockerfile ARG defaults used by base-image instructions.
+#
+printf '%s\n' \
+    'ARG ALPINE_IMAGE=alpine:3.23.3' \
+    "FROM \${ALPINE_IMAGE}" \
+    'FROM scratch' \
+    >"${test_output}/Dockerfile"
+printf '%s\n' \
+    'alpine:3.23.3' \
+    'scratch' \
+    >"${test_output}/base-images.expected"
+
+awk -f scripts/awk/collect-dockerfile-base-images.awk \
+    "${test_output}/Dockerfile" \
+    >"${test_output}/base-images.actual"
+cmp "${test_output}/base-images.expected" "${test_output}/base-images.actual"
+
+#
+# Share one raw-output filter for Compose and environment configuration.
+#
+printf '%s\n' \
+    '# Full-line comment.' \
+    'services:  ' \
+    '  privateerr:  # Inline guidance.' \
+    '' \
+    'IMAGE_TAG=latest  # Generated default.' \
+    >"${test_output}/commented.conf"
+printf '%s\n' \
+    'services:' \
+    '  privateerr:' \
+    'IMAGE_TAG=latest' \
+    >"${test_output}/stripped.expected"
+
+make --no-print-directory print-config \
+    COMPOSE_FILE="${test_output}/commented.conf" \
+    >"${test_output}/stripped-config.actual"
+make --no-print-directory print-env \
+    ENV_FILE="${test_output}/commented.conf" \
+    COMPOSE_ENV_FILE="${test_output}/commented.conf" \
+    >"${test_output}/stripped-env.actual"
+cmp "${test_output}/stripped.expected" "${test_output}/stripped-config.actual"
+cmp "${test_output}/stripped.expected" "${test_output}/stripped-env.actual"
+
+#
+# Archive a complete config tree through Make without overwriting backups.
+#
+mkdir -p "${test_output}/config/service"
+printf '%s\n' 'preserved application state' \
+    >"${test_output}/config/service/state.txt"
+
+make --no-print-directory backup \
+    CONFIG_PATH="${test_output}/config" \
+    CONFIG_BACKUP_PATH="${test_output}/backups" \
+    CONFIG_BACKUP_NAME=test \
+    >"${test_output}/backup-first.out"
+make --no-print-directory backup \
+    CONFIG_PATH="${test_output}/config" \
+    CONFIG_BACKUP_PATH="${test_output}/backups" \
+    CONFIG_BACKUP_NAME=test \
+    >"${test_output}/backup-second.out"
+
+backup_count=$(find "${test_output}/backups" \
+    -type f -name 'test-config-*.tar.gz' \
+    | wc -l \
+    | tr -d ' ')
+test "${backup_count}" -eq 2
+grep -F "Config cargo archived at ${test_output}/backups/test-config-" \
+    "${test_output}/backup-first.out" >/dev/null
+grep -F "Config cargo archived at ${test_output}/backups/test-config-" \
+    "${test_output}/backup-second.out" >/dev/null
+
+#
+# Confirm every archive contains the original config state.
+#
+for archive in "${test_output}"/backups/test-config-*.tar.gz; do
+    tar -tzf "${archive}" \
+        | grep -F "${test_output#/}/config/service/state.txt" >/dev/null
+done
+
+#
+# Reject a missing config directory without creating a backup destination.
+#
+if make --no-print-directory backup \
+    CONFIG_PATH="${test_output}/missing-config" \
+    CONFIG_BACKUP_PATH="${test_output}/missing-backups" \
+    CONFIG_BACKUP_NAME=test \
+    >"${test_output}/backup-missing.out" 2>&1; then
+    echo "Config backup helper accepted a missing config directory." >&2
+    exit 1
+fi
+
+grep -F "No ${test_output}/missing-config directory found to archive." \
+    "${test_output}/backup-missing.out" >/dev/null
+test ! -e "${test_output}/missing-backups"
 
 #
 # Accept resolved credentials without echoing either value.
@@ -103,7 +226,7 @@ PRIVATEERR_TEST_LOG="${test_output}/docker.log" \
 #
 # Confirm the status helper invokes Docker Compose with the expected arguments.
 #
-grep -F -- "compose --env-file ${test_output}/stack.env -f ${test_output}/compose.yml ps --format" \
+grep -F -- "compose --env-file ${test_output}/stack.env --file ${test_output}/compose.yml ps --format" \
     "${test_output}/docker.log" >/dev/null
 
 #

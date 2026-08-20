@@ -81,6 +81,10 @@ Top-of-file comments for project-owned scripts and config-style files should inc
 
 Shell scripts with a shebang should have one blank line after the shebang before the top-of-file comment.
 
+Inline Compose comments use two spaces before `#`. Align the `#` characters for
+logically grouped lines. Use two-space indentation in YAML, TOML, AWK, and jq;
+use four-space indentation in shell and JSON-with-comments workspace files.
+
 ## Shell Script Rules
 
 Project-owned host scripts should prefer:
@@ -92,6 +96,11 @@ Project-owned host scripts should prefer:
 Container-only scripts may use Bash when the container image intentionally installs Bash and the Dockerfile/Compose entrypoint expects it.
 
 Keep shell error messages clear enough to diagnose failures quickly. User-facing status logs may use the project voice, but actual diagnostic errors should be direct.
+
+Document each shell function immediately above its declaration with its
+purpose, parameters, and return behavior. Use `Parameters: None.` when a
+function accepts nothing, keep one parameter per comment line, and use one
+space after `Returns:`.
 
 ## Docker Rules
 

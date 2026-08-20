@@ -11,6 +11,7 @@
 # Makefile target names.
 #
 ALL=all
+BACKUP=backup
 DOWN=down
 CLEAN=clean
 CLEAN_TEST=clean-test
@@ -43,6 +44,7 @@ STOP=stop
 #
 TARGETS= \
 	$(ALL) \
+	$(BACKUP) \
 	$(DOWN) \
 	$(CLEAN) \
 	$(CLEAN_TEST) \
@@ -84,6 +86,9 @@ BUCCANEERR_SERVICE ?= buccaneerr
 #
 # Config reset paths.
 #
+CONFIG_PATH                   ?= config
+CONFIG_BACKUP_PATH            ?= backups
+CONFIG_BACKUP_NAME            ?= privateerr
 PRIVATEERR_EXAMPLE_WG_CONFIG   ?= test/examples/example-wg0.conf
 PRIVATEERR_EXAMPLE_METADATA    ?= test/examples/example-privateerr.env
 PRIVATEERR_GENERATED_WG_CONFIG ?= config/gluetun/wireguard/wg0.conf
@@ -105,23 +110,31 @@ BUCCANEERR_BUILD_CONTEXT ?= test
 DOCKERFILES              ?= $(PRIVATEERR_DOCKERFILE) $(BUCCANEERR_DOCKERFILE)
 
 #
+# AWK command and reusable program options.
+#
+AWK_BIN                ?= awk
+AWK_FILE_OPTION        ?= -f
+AWK_ASSIGNMENT_OPTIONS ?= -F =
+
+#
+# Reusable AWK programs used by Make and Compose helpers.
+#
+DOCKERFILE_BASE_IMAGES_AWK ?= scripts/awk/collect-dockerfile-base-images.awk
+ORDER_ENVIRONMENT_AWK      ?= scripts/awk/order-environment.awk
+STRIP_COMMENTS_AWK         ?= scripts/awk/strip-comments.awk
+
+#
 # Extract base FROM images from Dockerfiles and resolve Dockerfile ARG defaults.
 #
-FROM_IMAGES ?= $(shell awk '\
-	/^ARG / { split($$2, arg_parts, "="); docker_args[arg_parts[1]] = arg_parts[2] } \
-	/^FROM / { \
-		from_image = $$2; \
-		for (arg_name in docker_args) { \
-			gsub("\\$$[{]" arg_name "[}]", docker_args[arg_name], from_image); \
-		} \
-		print from_image; \
-	}' $(DOCKERFILES) | sort -u)
+FROM_IMAGES ?= $(shell \
+	$(AWK_BIN) $(AWK_FILE_OPTION) $(DOCKERFILE_BASE_IMAGES_AWK) $(DOCKERFILES) \
+		| sort -u)
 
 #
 # Docker Compose command to list all images used by the stack, sorted and unique.
 #
 NUKE_COMPOSE_IMAGES_COMMAND ?= \
-	$(DOCKER_COMPOSE) -f $(COMPOSE_FILE) config --images 2>/dev/null | sort -u
+	$(DOCKER_COMPOSE) --file $(COMPOSE_FILE) config --images 2>/dev/null | sort -u
 
 #
 # Docker container filter options used by the nuke target to identify containers to remove.
@@ -140,13 +153,14 @@ COMPOSE_ENV_FILE      ?= $(ENV_FILE)
 COMPOSE_DOWN_OPTIONS  ?= --timeout $(COMPOSE_DOWN_TIMEOUT) --volumes --remove-orphans
 COMPOSE_BUILD_OPTIONS ?= --pull --no-cache
 COMPOSE_UP_OPTIONS    ?= --build --force-recreate --pull always --remove-orphans
-COMPOSE_LOGS_OPTIONS  ?= -f
+COMPOSE_LOGS_OPTIONS  ?= --follow
 
 #
 # Project-owned helpers used by Make and GitHub Actions.
 #
 PIA_CREDENTIAL_CHECK_CMD   ?= scripts/compose/check-pia-credentials.sh
 COMPOSE_STATUS_CMD         ?= scripts/compose/ps.sh
+CONFIG_BACKUP_CMD          ?= scripts/compose/backup.sh
 MAKE_HELPERS_TEST_CMD      ?= test/helpers/test-make-helpers.sh
 WORKFLOW_HELPERS_TEST_CMD  ?= test/helpers/test-workflow-helpers.sh
 POLICY_HELPERS_TEST_CMD    ?= test/helpers/test-policy-checks.sh
@@ -376,7 +390,7 @@ $(CHECK_ENV):
 #   $(CHECK_ENV) - Ensure .env exists.
 #
 $(CHECK_PIA): $(BUILD_DEPENDS) $(CHECK_ENV)
-	@$(DOCKER_COMPOSE) --env-file $(COMPOSE_ENV_FILE) -f $(COMPOSE_FILE) \
+	@$(DOCKER_COMPOSE) --env-file $(COMPOSE_ENV_FILE) --file $(COMPOSE_FILE) \
 		config --environment | $(PIA_CREDENTIAL_CHECK_CMD)
 
 #
@@ -388,7 +402,7 @@ $(CHECK_PIA): $(BUILD_DEPENDS) $(CHECK_ENV)
 #
 $(DOWN): $(BUILD_DEPENDS) $(CHECK_ENV)
 	$(call announce,Droppin' anchor for the Privateerr test stack. ⚓)
-	$(DOCKER_COMPOSE) -f $(COMPOSE_FILE) down $(COMPOSE_DOWN_OPTIONS)
+	$(DOCKER_COMPOSE) --file $(COMPOSE_FILE) down $(COMPOSE_DOWN_OPTIONS)
 
 #
 # $(BUILD): Builds only the Privateerr image.
@@ -399,7 +413,7 @@ $(DOWN): $(BUILD_DEPENDS) $(CHECK_ENV)
 #
 $(BUILD): $(BUILD_DEPENDS) $(CHECK_ENV)
 	$(call announce,Building the Privateerr image. ⚒️)
-	$(DOCKER_COMPOSE) -f $(COMPOSE_FILE) build $(COMPOSE_BUILD_OPTIONS) $(PRIVATEERR_SERVICE)
+	$(DOCKER_COMPOSE) --file $(COMPOSE_FILE) build $(COMPOSE_BUILD_OPTIONS) $(PRIVATEERR_SERVICE)
 
 #
 # $(BUILD_BUCCANEERR): Builds only the Buccaneerr image.
@@ -410,7 +424,7 @@ $(BUILD): $(BUILD_DEPENDS) $(CHECK_ENV)
 #
 $(BUILD_BUCCANEERR): $(BUILD_DEPENDS) $(CHECK_ENV)
 	$(call announce,Building the Buccaneerr image. 🔎)
-	$(DOCKER_COMPOSE) -f $(COMPOSE_FILE) build $(COMPOSE_BUILD_OPTIONS) $(BUCCANEERR_SERVICE)
+	$(DOCKER_COMPOSE) --file $(COMPOSE_FILE) build $(COMPOSE_BUILD_OPTIONS) $(BUCCANEERR_SERVICE)
 
 #
 # $(BUILD_PLATFORMS): Verifies both images build for published architectures.
@@ -432,7 +446,7 @@ $(BUILD_PLATFORMS): $(BUILD_DEPENDS)
 #
 $(RUN_PRIVATEERR): $(CHECK_PIA)
 	$(call announce,Generating WireGuard config and Gluetun metadata. 📜)
-	PRIVATEERR_KEEPALIVE=false $(DOCKER_COMPOSE) -f $(COMPOSE_FILE) up \
+	PRIVATEERR_KEEPALIVE=false $(DOCKER_COMPOSE) --file $(COMPOSE_FILE) up \
 		$(COMPOSE_PRIVATEERR_ONLY_OPTIONS) \
 		$(PRIVATEERR_SERVICE)
 
@@ -445,6 +459,17 @@ $(RESTORE_TEST_CONFIG):
 	$(call announce,Restoring example config files. 🧭)
 	cp $(PRIVATEERR_EXAMPLE_WG_CONFIG) $(PRIVATEERR_GENERATED_WG_CONFIG)
 	cp $(PRIVATEERR_EXAMPLE_METADATA) $(PRIVATEERR_GENERATED_METADATA)
+
+#
+# $(BACKUP): Archives the complete Privateerr config directory.
+#
+# Dependencies: None.
+#
+$(BACKUP):
+	@$(CONFIG_BACKUP_CMD) \
+		"$(CONFIG_PATH)" \
+		"$(CONFIG_BACKUP_PATH)" \
+		"$(CONFIG_BACKUP_NAME)"
 
 #
 # $(TEST_MAKE_HELPERS): Tests credential and Compose status helpers locally.
@@ -490,7 +515,7 @@ $(TEST): $(TEST_MAKE_HELPERS) $(TEST_WORKFLOWS)
 #
 $(TEST_E2E): $(CHECK_PIA)
 	$(call announce,Starting Privateerr$(COMMA) Gluetun$(COMMA) and Buccaneerr for e2e validation. 🌊)
-	$(DOCKER_COMPOSE) -f $(COMPOSE_FILE) up $(COMPOSE_TEST_OPTIONS)
+	$(DOCKER_COMPOSE) --file $(COMPOSE_FILE) up $(COMPOSE_TEST_OPTIONS)
 
 #
 # $(CLEAN_TEST): Stops and removes containers, then restores example config files.
@@ -511,22 +536,22 @@ $(CLEAN_TEST): $(DOWN) $(RESTORE_TEST_CONFIG)
 $(NUKE): $(BUILD_DEPENDS) $(CHECK_ENV)
 	$(call announce_warning,‼️ DANGER ‼️ Removing containers$(COMMA) images$(COMMA) logs$(COMMA) and generated state. 💣)
 	@compose_images="$$( $(NUKE_COMPOSE_IMAGES_COMMAND) || true )"; \
-	$(DOCKER_COMPOSE) -f $(COMPOSE_FILE) down $(COMPOSE_DOWN_OPTIONS) --rmi all; \
-	containers="$$($(DOCKER_BIN) ps -aq $(NUKE_CONTAINER_FILTER_OPTIONS))"; \
+	$(DOCKER_COMPOSE) --file $(COMPOSE_FILE) down $(COMPOSE_DOWN_OPTIONS) --rmi all; \
+	containers="$$($(DOCKER_BIN) ps --all --quiet $(NUKE_CONTAINER_FILTER_OPTIONS))"; \
 	if [ -n "$${containers}" ]; then \
 		echo "Removing leftover containers. 🧨"; \
-		$(DOCKER_BIN) rm -f $${containers}; \
+		$(DOCKER_BIN) rm --force $${containers}; \
 	fi; \
 	if [ -n "$${compose_images}" ]; then \
 		echo "Removing local service images."; \
-		$(DOCKER_BIN) image rm -f $${compose_images} >/dev/null 2>&1 || true; \
+		$(DOCKER_BIN) image rm --force $${compose_images} >/dev/null 2>&1 || true; \
 	fi
 
 	@echo "Removing generated logs and Gluetun state. 🧽"
 	rm -rf $(PRIVATEERR_GENERATED_PATHS)
 
 	@echo "Removing base images used by Dockerfiles. ⚓"
-	$(DOCKER_BIN) image rm -f $(FROM_IMAGES) >/dev/null 2>&1 || true
+	$(DOCKER_BIN) image rm --force $(FROM_IMAGES) >/dev/null 2>&1 || true
 
 	@$(MAKE) --no-print-directory $(RESTORE_TEST_CONFIG)
 
@@ -539,7 +564,7 @@ $(NUKE): $(BUILD_DEPENDS) $(CHECK_ENV)
 #
 $(UP): $(CHECK_PIA)
 	$(call announce,Building and starting the full service stack. 🚀)
-	$(DOCKER_COMPOSE) -f $(COMPOSE_FILE) up $(COMPOSE_UP_OPTIONS)
+	$(DOCKER_COMPOSE) --file $(COMPOSE_FILE) up $(COMPOSE_UP_OPTIONS)
 
 #
 # $(CONFIG): Renders the Docker Compose model.
@@ -549,7 +574,7 @@ $(UP): $(CHECK_PIA)
 #   $(CHECK_ENV) - Ensure .env exists before running Compose commands.
 #
 $(CONFIG): $(BUILD_DEPENDS) $(CHECK_ENV)
-	$(DOCKER_COMPOSE) --env-file $(COMPOSE_ENV_FILE) -f $(COMPOSE_FILE) config
+	$(DOCKER_COMPOSE) --env-file $(COMPOSE_ENV_FILE) --file $(COMPOSE_FILE) config
 
 #
 # $(ENV): Prints the evaluated docker compose default env configuration.
@@ -559,17 +584,10 @@ $(CONFIG): $(BUILD_DEPENDS) $(CHECK_ENV)
 #   $(CHECK_ENV) - Ensure .env exists before running Compose commands.
 #
 $(ENV): $(BUILD_DEPENDS) $(CHECK_ENV)
-	@$(DOCKER_COMPOSE) --env-file $(COMPOSE_ENV_FILE) -f $(COMPOSE_FILE) \
+	@$(DOCKER_COMPOSE) --env-file $(COMPOSE_ENV_FILE) --file $(COMPOSE_FILE) \
 		config --environment | \
-	awk -F '=' ' \
-		NR == FNR { \
-			if ($$0 ~ /^[A-Za-z_][A-Za-z0-9_]*=/) values[$$1] = $$0; \
-			next; \
-		} \
-		$$0 ~ /^[A-Za-z_][A-Za-z0-9_]*=/ && $$1 in values { \
-			print values[$$1] \
-		} \
-	' - $(COMPOSE_ENV_FILE)
+	$(AWK_BIN) $(AWK_ASSIGNMENT_OPTIONS) $(AWK_FILE_OPTION) \
+		$(ORDER_ENVIRONMENT_AWK) - $(COMPOSE_ENV_FILE)
 
 #
 # $(PRINT_CONFIG): Prints the raw uncommented docker compose yaml configuration.
@@ -577,11 +595,7 @@ $(ENV): $(BUILD_DEPENDS) $(CHECK_ENV)
 # Dependencies: None.
 #
 $(PRINT_CONFIG):
-	@awk '{ \
-		sub(/#.*/, ""); \
-		sub(/[[:space:]]+$$/, ""); \
-		if (NF) print \
-	}' $(COMPOSE_FILE)
+	@$(AWK_BIN) $(AWK_FILE_OPTION) $(STRIP_COMMENTS_AWK) $(COMPOSE_FILE)
 
 #
 # $(PRINT_ENV): Prints the raw uncommented docker compose env configuration.
@@ -590,11 +604,7 @@ $(PRINT_CONFIG):
 #   $(CHECK_ENV) - Ensure .env exists before running Compose commands.
 #
 $(PRINT_ENV): $(CHECK_ENV)
-	@awk '{ \
-		sub(/#.*/, ""); \
-		sub(/[[:space:]]+$$/, ""); \
-		if (NF) print \
-	}' $(COMPOSE_ENV_FILE)
+	@$(AWK_BIN) $(AWK_FILE_OPTION) $(STRIP_COMMENTS_AWK) $(COMPOSE_ENV_FILE)
 
 #
 # $(PS): Displays the current Compose project in a compact status table.
@@ -605,8 +615,8 @@ $(PRINT_ENV): $(CHECK_ENV)
 #
 $(PS): $(BUILD_DEPENDS) $(CHECK_ENV)
 	$(COMPOSE_STATUS_CMD) \
-		--docker-bin "$(DOCKER_BIN)" \
-		--env-file "$(COMPOSE_ENV_FILE)" \
+		--docker-bin   "$(DOCKER_BIN)" \
+		--env-file     "$(COMPOSE_ENV_FILE)" \
 		--compose-file "$(COMPOSE_FILE)"
 
 #
@@ -617,7 +627,7 @@ $(PS): $(BUILD_DEPENDS) $(CHECK_ENV)
 #
 $(LOGS): $(CHECK_ENV)
 	$(call announce,Showing service stack logs. 🔎)
-	$(DOCKER_COMPOSE) -f $(COMPOSE_FILE) logs $(COMPOSE_LOGS_OPTIONS)
+	$(DOCKER_COMPOSE) --file $(COMPOSE_FILE) logs $(COMPOSE_LOGS_OPTIONS)
 
 #
 # $(HELP): Print help information.
@@ -647,11 +657,12 @@ $(HELP):
 	$(call help_line,$(BUILD_BUCCANEERR),Build the Buccaneerr test image.)
 	$(call help_line,$(BUILD_PLATFORMS),Check every published image architecture.)
 	$(call help_heading,🧹 Maintenance)
+	$(call help_line,$(BACKUP),Archive the complete config directory.)
 	$(call help_line,$(CLEAN),Remove only disposable developer artifacts.)
 	$(call help_line,$(CLEAN_TEST),Stop the stack and restore example test config.)
 	$(call help_line,$(RESTORE_TEST_CONFIG),Restore checked-in example VPN config.)
 	$(call help_line,$(NUKE),‼️ DANGER ‼️ remove containers$(COMMA) volumes$(COMMA) images$(COMMA) and generated state.)
-	$(call announce_warning,⚠️  Destructive targets never run automatically. Back up config before using them.)
+	$(call announce_warning,⚠️  Destructive targets never run automatically. Run make backup first.)
 
 #
 # $(CLEAN): Removes only disposable developer artifacts.

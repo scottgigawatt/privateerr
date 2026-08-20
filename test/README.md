@@ -12,19 +12,36 @@ The test tree keeps responsibilities separate:
 
 ## Test Script Chart 🗺️
 
-| Hold       | Script                                                                 | Purpose                                                     |
-| ---------- | ---------------------------------------------------------------------- | ----------------------------------------------------------- |
-| 🧭 Policy  | [`policy/check-alpine-tag-pins.sh`](policy/check-alpine-tag-pins.sh)   | Keep every pinned Alpine build input synchronized           |
-| 🧭 Policy  | [`policy/check-image-tag-policy.sh`](policy/check-image-tag-policy.sh) | Enforce stable, edge, SHA, and semantic-version tag rules   |
-| 🧰 Helpers | [`helpers/test-make-helpers.sh`](helpers/test-make-helpers.sh)         | Test credential and Compose helpers without external writes |
-| 🧰 Helpers | [`helpers/test-workflow-helpers.sh`](helpers/test-workflow-helpers.sh) | Test Discord payload and registry helper behavior offline   |
-| 🎭 Stubs   | [`stubs/compose-docker-stub.sh`](stubs/compose-docker-stub.sh)         | Supply deterministic Docker output to Compose helper tests  |
-| 🎭 Stubs   | [`stubs/workflow-skopeo-stub.sh`](stubs/workflow-skopeo-stub.sh)       | Simulate registry inspection without network access         |
+| Hold       | Script                                                                   | Purpose                                                            |
+| ---------- | ------------------------------------------------------------------------ | ------------------------------------------------------------------ |
+| 🛡️ Policy | [`policy/check-build-pin-policy.sh`](policy/check-build-pin-policy.sh)   | Keep digest-pinned build dependency tags synchronized               |
+| 🛡️ Policy | [`policy/check-image-tag-policy.sh`](policy/check-image-tag-policy.sh)   | Enforce canonical image tags in every metadata-action block         |
+| 🧮 Policy | [`policy/awk/check-image-tags.awk`](policy/awk/check-image-tags.awk)     | Parse and validate workflow image-tag metadata blocks               |
+| 🧮 Policy | [`policy/awk/collect-build-pins.awk`](policy/awk/collect-build-pins.awk) | Extract and validate digest-pinned build dependency values          |
+| 🧰 Helpers | [`helpers/test-make-helpers.sh`](helpers/test-make-helpers.sh)           | Test AWK, backup, credential, and Compose helpers offline           |
+| 🧰 Helpers | [`helpers/test-policy-checks.sh`](helpers/test-policy-checks.sh)         | Test valid and invalid publishing-policy fixtures offline           |
+| 🧰 Helpers | [`helpers/test-workflow-helpers.sh`](helpers/test-workflow-helpers.sh)   | Test release, Discord, and registry helper behavior offline         |
+| 🎭 Stubs   | [`stubs/compose-docker-stub.sh`](stubs/compose-docker-stub.sh)           | Supply deterministic Docker output to Compose helper tests          |
+| 🎭 Stubs   | [`stubs/workflow-skopeo-stub.sh`](stubs/workflow-skopeo-stub.sh)         | Simulate registry inspection without network access                 |
 
 The subfolders separate static repository policy, reusable helper tests,
 deterministic command stubs, and checked-in reset examples. Make targets remain
 the public interface; invoke individual scripts only while diagnosing a focused
 failure.
+
+## Offline Policy and Helper Checks 🧭
+
+> [!TIP]
+>
+> ```sh
+> make test
+> make test-workflows
+> ```
+
+The complete local target checks reusable AWK and Compose helpers, config
+backups, release tags, every structured Discord profile, registry mirroring,
+synchronized SHA-256 build pins, and canonical image-tag channels. Disposable
+negative fixtures prove that mismatched pins and unsafe tag rules are rejected.
 
 ## What Buccaneerr Be 🦜
 

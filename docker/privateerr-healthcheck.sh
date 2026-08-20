@@ -7,6 +7,8 @@
 #
 # privateerr-healthcheck.sh: Report whether Privateerr generated its output successfully.
 #
+# Usage: docker/privateerr-healthcheck.sh
+#
 
 #
 # Set the default path for the healthcheck marker file if not already set.

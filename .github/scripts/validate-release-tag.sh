@@ -84,7 +84,7 @@ require_value() {
 # Returns: 0 for valid semantic versioning; otherwise returns 1.
 #
 validate_semver() {
-    if ! printf '%s\n' "$1" | grep -Eq "${semver_pattern}"; then
+    if ! printf '%s\n' "$1" | grep --extended-regexp --quiet "${semver_pattern}"; then
         printf 'Release tag %s is not valid semantic versioning.\n' "$1" >&2
         return 1
     fi

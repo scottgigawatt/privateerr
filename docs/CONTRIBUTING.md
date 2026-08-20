@@ -59,11 +59,28 @@ pre-commit run --all-files
 - Code comments should use plain English.
 - Shell scripts written for host use should use `#!/bin/sh` where possible.
 - Shell scripts should use four spaces for indentation.
+- YAML, TOML, AWK, and jq use two-space indentation; JSON and
+  JSON-with-comments use four.
 - Docker Compose values should come from `.env` defaults instead of inline fallback soup.
 - Keep pinned GitHub Action SHAs and Alpine digests intact unless the change is a dependency update.
 - If ye update `ALPINE_TAG`, update every matching Dockerfile, workflow build arg, and example env default together.
 - Keep service config directories aligned with service names.
 - Leave upstream PIA scripts untouched so users can verify the treasure scrolls were not tampered with.
+
+### Editor Tooling 🧰
+
+`.editorconfig` is the portable source of truth for indentation, line endings,
+final newlines, and trailing whitespace. Install the recommendations from
+`.vscode/extensions.json` when using VS Code; each entry carries an aligned
+comment explaining whether it formats, validates, or only highlights a file
+type.
+
+Workspace format-on-save is deliberately disabled. Prettier is available only
+for explicit formatting of supported JSON and Markdown files through the
+checked-in `.prettierrc.json5`. It does not parse jq, and the repository excludes
+jq, YAML, TOML, and aligned workspace JSONC from Prettier so specialized tools
+cannot undo project-owned spacing. Keep two spaces before pinned-action
+comments in workflow YAML.
 
 ## Release Tags 🏷️
 
@@ -81,6 +98,7 @@ pre-commit run --all-files
 Before opening a pull request:
 
 - Run relevant `make` targets.
+- Run `make test-workflows` for workflow, release, build-pin, or image-tag changes.
 - Run `pre-commit run --all-files`.
 - Let Renovate handle routine dependency bumps when possible.
 - Restore example config with `make clean-test` or `make nuke`.

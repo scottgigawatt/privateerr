@@ -28,6 +28,8 @@ docker pull scottgigawatt/privateerr:edge
 | `sha-cfa2fb5` | Image built from a specific source commit.                          |
 
 Major version zero omits the broad `0` alias. Prerelease versions keep only their own version and commit tags, never replacing movable stable aliases.
+Release publication accepts only `v`-prefixed annotated SemVer tags whose
+commits already belong to `main`.
 
 Published tags are multi-architecture manifests for:
 

@@ -10,17 +10,21 @@
 
     //
     // Keep recommendations focused on file types and checks owned by Privateerr.
-    // Even Better TOML supplies TOML validation and the workspace formatter.
+    // End-of-line notes distinguish formatters from validators and highlighting.
     //
     "recommendations": [
-        "davidanson.vscode-markdownlint",
-        "EditorConfig.EditorConfig",
-        "github.vscode-github-actions",
-        "ms-azuretools.vscode-docker",
-        "ms-vscode.makefile-tools",
-        "redhat.vscode-yaml",
-        "streetsidesoftware.code-spell-checker",
-        "tamasfe.even-better-toml",
-        "timonwong.shellcheck"
+        "davidanson.vscode-markdownlint",                  // Lint Markdown structure and style.
+        "EditorConfig.EditorConfig",                       // Apply portable repository whitespace rules.
+        "esbenp.prettier-vscode",                          // Format supported languages on explicit request.
+        "github.vscode-github-actions",                    // Validate and navigate GitHub Actions workflows.
+        "jq-syntax-highlighting.jq-syntax-highlighting",   // Highlight jq source; this is not a formatter.
+        "luggage66.awk",                                   // Highlight AWK syntax and provide language snippets.
+        "ms-azuretools.vscode-docker",                     // Navigate Dockerfiles, images, and Compose projects.
+        "ms-vscode.makefile-tools",                        // Discover and run documented Make targets.
+        "redhat.vscode-yaml",                              // Validate YAML with repository-specific schemas.
+        "streetsidesoftware.code-spell-checker",           // Check prose and identifiers for spelling errors.
+        "tamasfe.even-better-toml",                        // Validate and format TOML configuration.
+        "timonwong.shellcheck",                            // Surface ShellCheck diagnostics in shell scripts.
+        "TGV.awk-language-client"                          // Add portable AWK diagnostics and navigation.
     ]
 }

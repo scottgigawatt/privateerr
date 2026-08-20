@@ -110,10 +110,14 @@ trap cleanup EXIT HUP INT TERM
 mkdir -p \
     "${FIXTURE_ROOT}/.github/workflows" \
     "${FIXTURE_ROOT}/docker" \
+    "${FIXTURE_ROOT}/test/policy/awk" \
     "${FIXTURE_ROOT}/test/policy"
 cp "${REPOSITORY_ROOT}/test/policy/check-build-pin-policy.sh" \
     "${REPOSITORY_ROOT}/test/policy/check-image-tag-policy.sh" \
     "${FIXTURE_ROOT}/test/policy/"
+cp "${REPOSITORY_ROOT}/test/policy/awk/collect-build-pins.awk" \
+    "${REPOSITORY_ROOT}/test/policy/awk/check-image-tags.awk" \
+    "${FIXTURE_ROOT}/test/policy/awk/"
 
 cat > "${FIXTURE_ROOT}/docker/Dockerfile" <<'EOF'
 ARG ALPINE_TAG=3.24@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa

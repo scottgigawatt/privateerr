@@ -8,6 +8,8 @@
 # privateerr-entrypoint.sh: This script launches the unmodified PIA manual connection
 #                           scripts, then writes a dotenv metadata file for Gluetun.
 #
+# Usage: docker/privateerr-entrypoint.sh
+#
 # The script:
 #   - Runs the PIA setup script from the configured PIA script directory.
 #   - Expects PIA_CONNECT=false so PIA writes a WireGuard config instead of starting a tunnel.

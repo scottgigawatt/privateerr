@@ -22,15 +22,14 @@ set -eu
 printf '%s\n' "$*" >> "@SKOPEO_LOG@"
 
 #
-# Return a stable digest for the test Privateerr image when Skopeo copies or
-# inspects it.
+# Return a stable digest for the test image when Skopeo copies or inspects it.
 #
 case "${1:-}" in
-    # Return a stable digest for the test Privateerr image when Skopeo copies it.
+    # Return a stable digest for the test image when Skopeo copies it.
     copy)
         exit 0
         ;;
-    # Return a stable digest for the test Privateerr image when Skopeo inspects it.
+    # Return a stable digest for the test image when Skopeo inspects it.
     inspect)
         printf '%s\n' 'sha256:0123456789abcdef'
         ;;

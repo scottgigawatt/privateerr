@@ -206,6 +206,7 @@ make config
 | `make down`                | You want to stop and remove the stack.                  |
 | `make ps`                  | You want a compact container status table.              |
 | `make logs`                | You want to inspect container output.                   |
+| `make backup`              | You want a recoverable archive of the config directory. |
 | `make test`                | You want the local policy and automation-helper suite.  |
 | `make print-config`        | You want the Compose template without comments.         |
 | `make config`              | You want the fully rendered Compose model.              |

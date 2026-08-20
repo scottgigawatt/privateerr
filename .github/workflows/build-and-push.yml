@@ -19,6 +19,7 @@ on:
     tags:
       - "v*.*.*"
     paths:
+      - ".github/discord/**"
       - ".github/scripts/**"
       - ".github/workflows/build-and-push.yml"
       - "Makefile"
@@ -64,51 +65,11 @@ jobs:
       # retaining credentials. Helper scripts are invoked from this checkout.
       #
       - name: "Grab the Treasure Map 🗺️"
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
           submodules: recursive
           fetch-depth: 0
           persist-credentials: false
-
-      #
-      # Announce the start independently to each optional webhook. Only the
-      # credential stays in the environment; public metadata uses flags.
-      #
-      - name: "Notify Discord: build started 📣"
-        env:
-          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
-        run: |
-          .github/scripts/notify-discord.sh \
-            --event           start \
-            --template        deck \
-            --run-url         "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
-            --repository      "${{ github.repository }}" \
-            --ref-name        "${{ github.ref_name }}" \
-            --workflow-name   "${{ github.workflow }}" \
-            --actor           "${{ github.actor }}" \
-            --platforms       "${{ env.IMAGE_PLATFORMS }}" \
-            --ghcr-image      "${{ env.PRIVATEERR_IMAGE_REF }}" \
-            --dockerhub-image "${{ env.DOCKERHUB_PRIVATEERR_IMAGE_REF }}"
-
-      #
-      # Send the same start event to the optional Hades destination with its
-      # distinct presentation template and independently scoped secret.
-      #
-      - name: "Notify Hades Discord: build started 🔥"
-        env:
-          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_HADES_HOOK_URL }}
-        run: |
-          .github/scripts/notify-discord.sh \
-            --event           start \
-            --template        hades \
-            --run-url         "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
-            --repository      "${{ github.repository }}" \
-            --ref-name        "${{ github.ref_name }}" \
-            --workflow-name   "${{ github.workflow }}" \
-            --actor           "${{ github.actor }}" \
-            --platforms       "${{ env.IMAGE_PLATFORMS }}" \
-            --ghcr-image      "${{ env.PRIVATEERR_IMAGE_REF }}" \
-            --dockerhub-image "${{ env.DOCKERHUB_PRIVATEERR_IMAGE_REF }}"
 
       #
       # Accept only annotated semantic-version tags whose commits already
@@ -120,6 +81,62 @@ jobs:
           .github/scripts/validate-release-tag.sh \
             --release-tag "${{ github.ref_name }}" \
             --release-sha "${{ github.sha }}"
+
+      #
+      # Announce the start independently to each optional webhook. Only the
+      # credential stays secret; public workflow metadata uses explicit flags.
+      #
+      - name: "Notify Primary Discord: build opened 📣"
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          WORKFLOW_NAME: ${{ github.workflow }}
+          REF_NAME: ${{ github.ref_name }}
+          ACTOR: ${{ github.actor }}
+          REPOSITORY: ${{ github.repository }}
+          GHCR_IMAGE: ${{ env.PRIVATEERR_IMAGE_REF }}
+          DOCKERHUB_IMAGE: ${{ env.DOCKERHUB_PRIVATEERR_IMAGE_REF }}
+          IMAGE_PLATFORMS: ${{ env.IMAGE_PLATFORMS }}
+        run: |
+          sh .github/scripts/discord-notifier.sh \
+              --type            image-start \
+              --profile         image-primary \
+              --run-url         "${RUN_URL}" \
+              --repository      "${REPOSITORY}" \
+              --ref-name        "${REF_NAME}" \
+              --workflow-name   "${WORKFLOW_NAME}" \
+              --actor           "${ACTOR}" \
+              --platforms       "${IMAGE_PLATFORMS}" \
+              --ghcr-image      "${GHCR_IMAGE}" \
+              --dockerhub-image "${DOCKERHUB_IMAGE}"
+
+      #
+      # Send the same opening state through the secondary destination profile
+      # so future presentation changes remain isolated from workflow logic.
+      #
+      - name: "Notify Secondary Discord: build opened 📣"
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_HADES_HOOK_URL }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          WORKFLOW_NAME: ${{ github.workflow }}
+          REF_NAME: ${{ github.ref_name }}
+          ACTOR: ${{ github.actor }}
+          REPOSITORY: ${{ github.repository }}
+          GHCR_IMAGE: ${{ env.PRIVATEERR_IMAGE_REF }}
+          DOCKERHUB_IMAGE: ${{ env.DOCKERHUB_PRIVATEERR_IMAGE_REF }}
+          IMAGE_PLATFORMS: ${{ env.IMAGE_PLATFORMS }}
+        run: |
+          sh .github/scripts/discord-notifier.sh \
+              --type            image-start \
+              --profile         image-secondary \
+              --run-url         "${RUN_URL}" \
+              --repository      "${REPOSITORY}" \
+              --ref-name        "${REF_NAME}" \
+              --workflow-name   "${WORKFLOW_NAME}" \
+              --actor           "${ACTOR}" \
+              --platforms       "${IMAGE_PLATFORMS}" \
+              --ghcr-image      "${GHCR_IMAGE}" \
+              --dockerhub-image "${DOCKERHUB_IMAGE}"
 
       #
       # Prepare emulation, Buildx, and registry authentication for one
@@ -396,41 +413,60 @@ jobs:
       # Report the final job state to both optional Discord destinations.
       # These steps always run so a failed publication never disappears.
       #
-      - name: "Notify Discord: build finished 📣"
+      - name: "Notify Primary Discord: build verdict 📣"
         if: always()
         env:
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          JOB_STATUS: ${{ job.status }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          REPOSITORY: ${{ github.repository }}
+          REF_NAME: ${{ github.ref_name }}
+          GHCR_IMAGE: ${{ env.PRIVATEERR_IMAGE_REF }}
+          GHCR_PACKAGE_URL: ${{ github.server_url }}/${{ github.repository }}/pkgs/container/privateerr
+          DOCKERHUB_URL: https://hub.docker.com/r/${{ github.repository_owner }}/privateerr
+          PUBLISHED_TAGS: ${{ steps.meta-privateerr.outputs.tags }}
+          PUBLISHED_DIGEST: ${{ steps.publish-privateerr.outputs.digest }}
         run: |
-          .github/scripts/notify-discord.sh \
-            --event            verdict \
-            --template         deck \
-            --run-url          "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
-            --repository       "${{ github.repository }}" \
-            --ref-name         "${{ github.ref_name }}" \
-            --job-status       "${{ job.status }}" \
-            --ghcr-image       "${{ env.PRIVATEERR_IMAGE_REF }}" \
-            --ghcr-package-url "${{ github.server_url }}/${{ github.repository }}/pkgs/container/privateerr" \
-            --dockerhub-url    "https://hub.docker.com/r/${{ github.repository_owner }}/privateerr" \
-            --published-tags   "${{ steps.meta-privateerr.outputs.tags }}" \
-            --published-digest "${{ steps.publish-privateerr.outputs.digest }}"
+          sh .github/scripts/discord-notifier.sh \
+              --type             image-verdict \
+              --profile          image-primary \
+              --run-url          "${RUN_URL}" \
+              --repository       "${REPOSITORY}" \
+              --ref-name         "${REF_NAME}" \
+              --job-status       "${JOB_STATUS}" \
+              --ghcr-image       "${GHCR_IMAGE}" \
+              --ghcr-package-url "${GHCR_PACKAGE_URL}" \
+              --dockerhub-url    "${DOCKERHUB_URL}" \
+              --published-tags   "${PUBLISHED_TAGS}" \
+              --published-digest "${PUBLISHED_DIGEST}"
 
       #
-      # Report the same final state to Hades even when an earlier step failed.
+      # Send the same final state to the optional secondary destination even
+      # when an earlier publication step failed.
       #
-      - name: "Notify Hades Discord: build finished 🔥"
+      - name: "Notify Secondary Discord: build verdict 📣"
         if: always()
         env:
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_HADES_HOOK_URL }}
+          JOB_STATUS: ${{ job.status }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          REPOSITORY: ${{ github.repository }}
+          REF_NAME: ${{ github.ref_name }}
+          GHCR_IMAGE: ${{ env.PRIVATEERR_IMAGE_REF }}
+          GHCR_PACKAGE_URL: ${{ github.server_url }}/${{ github.repository }}/pkgs/container/privateerr
+          DOCKERHUB_URL: https://hub.docker.com/r/${{ github.repository_owner }}/privateerr
+          PUBLISHED_TAGS: ${{ steps.meta-privateerr.outputs.tags }}
+          PUBLISHED_DIGEST: ${{ steps.publish-privateerr.outputs.digest }}
         run: |
-          .github/scripts/notify-discord.sh \
-            --event            verdict \
-            --template         hades \
-            --run-url          "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
-            --repository       "${{ github.repository }}" \
-            --ref-name         "${{ github.ref_name }}" \
-            --job-status       "${{ job.status }}" \
-            --ghcr-image       "${{ env.PRIVATEERR_IMAGE_REF }}" \
-            --ghcr-package-url "${{ github.server_url }}/${{ github.repository }}/pkgs/container/privateerr" \
-            --dockerhub-url    "https://hub.docker.com/r/${{ github.repository_owner }}/privateerr" \
-            --published-tags   "${{ steps.meta-privateerr.outputs.tags }}" \
-            --published-digest "${{ steps.publish-privateerr.outputs.digest }}"
+          sh .github/scripts/discord-notifier.sh \
+              --type             image-verdict \
+              --profile          image-secondary \
+              --run-url          "${RUN_URL}" \
+              --repository       "${REPOSITORY}" \
+              --ref-name         "${REF_NAME}" \
+              --job-status       "${JOB_STATUS}" \
+              --ghcr-image       "${GHCR_IMAGE}" \
+              --ghcr-package-url "${GHCR_PACKAGE_URL}" \
+              --dockerhub-url    "${DOCKERHUB_URL}" \
+              --published-tags   "${PUBLISHED_TAGS}" \
+              --published-digest "${PUBLISHED_DIGEST}"

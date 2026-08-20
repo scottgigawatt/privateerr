@@ -7,6 +7,8 @@
 #
 # buccaneerr-entrypoint.sh: This script validates the Privateerr e2e stack.
 #
+# Usage: test/buccaneerr-entrypoint.sh
+#
 # The script:
 #   - Verifies Privateerr generated wg0.conf.
 #   - Verifies Privateerr generated privateerr.env.

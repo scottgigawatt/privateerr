@@ -9,6 +9,8 @@
 #                                then starts Gluetun with the generated PIA
 #                                WireGuard server name.
 #
+# Usage: gluetun-entrypoint-wrapper.sh
+#
 # The script:
 #   - Waits for Privateerr to write privateerr.env.
 #   - Reads PIA_WG_SERVER_NAME from the generated metadata file.

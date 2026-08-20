@@ -19,6 +19,7 @@ set -eu
 # Resolve the repository root so the policy works from any directory.
 #
 REPOSITORY_ROOT=$(CDPATH='' cd -- "$(dirname -- "$0")/../.." && pwd)
+PIN_COLLECTOR="${REPOSITORY_ROOT}/test/policy/awk/collect-build-pins.awk"
 cd "${REPOSITORY_ROOT}"
 
 #
@@ -57,49 +58,9 @@ collect_pins() {
 
         awk \
             -v surface="${policy_surface}" \
-            -v expected_pins="${policy_expected_pins}" '
-            match($0, /[A-Z][A-Z0-9_]*_TAG[=:]/) {
-                assignment = substr($0, RSTART, RLENGTH)
-                pin_name = assignment
-                sub(/[=:]$/, "", pin_name)
-
-                if (expected_pins != "" && \
-                    index(" " expected_pins " ", " " pin_name " ") == 0) {
-                    next
-                }
-
-                remainder = substr($0, RSTART + RLENGTH)
-                sub(/^[[:space:]"]*/, "", remainder)
-                wrapper = "${" pin_name ":-"
-                if (index(remainder, wrapper) == 1) {
-                    remainder = substr(remainder, length(wrapper) + 1)
-                }
-
-                if (!match(remainder, /^[A-Za-z0-9][A-Za-z0-9._+\/:=-]*@sha256:[a-f0-9]+/)) {
-                    printf "Invalid or missing digest pin for %s in %s.\n", \
-                        pin_name, FILENAME > "/dev/stderr"
-                    invalid = 1
-                    next
-                }
-
-                pin_value = substr(remainder, RSTART, RLENGTH)
-                digest = pin_value
-                sub(/^.*@sha256:/, "", digest)
-                if (length(digest) != 64) {
-                    printf "Digest pin for %s in %s must contain 64 hexadecimal characters.\n", \
-                        pin_name, FILENAME > "/dev/stderr"
-                    invalid = 1
-                    next
-                }
-
-                print surface "|" pin_name "|" pin_value
-            }
-            END {
-                if (invalid) {
-                    exit 1
-                }
-            }
-        ' "${policy_path}"
+            -v expected_pins="${policy_expected_pins}" \
+            -f "${PIN_COLLECTOR}" \
+            "${policy_path}"
     done <<EOF
 ${policy_paths}
 EOF
