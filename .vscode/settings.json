@@ -110,6 +110,8 @@
 
     //
     // Mirror EditorConfig indentation while disabling VS Code auto-detection.
+    // Keep YAML format-on-save off because its formatter collapses the two
+    // spaces required before inline comments by the repository lint policy.
     //
     "[dockerfile]": {
         "editor.detectIndentation": false,
@@ -119,12 +121,14 @@
     "[yaml]": {
         "editor.detectIndentation": false,
         "editor.tabSize": 2,
-        "editor.insertSpaces": true
+        "editor.insertSpaces": true,
+        "editor.formatOnSave": false
     },
     "[github-actions-workflow]": {
         "editor.detectIndentation": false,
         "editor.tabSize": 2,
-        "editor.insertSpaces": true
+        "editor.insertSpaces": true,
+        "editor.formatOnSave": false
     },
     "[json][jsonc]": {
         "editor.detectIndentation": false,
