@@ -26,8 +26,8 @@ color_warning='\033[1;33m'
 color_muted='\033[0;37m'
 
 #
-# Validate that the resolved PIA credentials are not empty or still use the
-# documented example values.
+# Validate that the resolved PIA credentials are not empty or still use a
+# known example value.
 #
 pia_user=""
 pia_pass=""
@@ -71,30 +71,43 @@ print_detail() {
 # Returns: Nothing.
 #
 report_invalid_credential() {
-    print_error "☠️  Privateerr cannot sail without valid PIA credentials."
+    print_error "☠️  This deployment cannot start without valid PIA credentials."
     printf '\n' >&2
     print_detail \
         "${color_warning}" \
         "Credential  $1"
     print_detail \
         "${color_warning}" \
-        "Problem     Missing or still using the documented example value."
+        "Problem     Missing or still using a known example value."
     print_detail \
         "${color_muted}" \
-        "Fix         Set $1 in .env, then rerun the requested Make target."
+        "Fix         Set $1 in the active deployment's .env file, then rerun the requested Make target."
     printf '\n' >&2
 }
 
 #
-# credential_is_invalid: Identify an empty or documented example credential.
+# credential_is_invalid: Identify an empty credential or known example value.
 #
 # Parameters: $1 - Resolved credential value.
-#             $2 - Documented example value.
+#             $2... - One or more known example values.
 #
 # Returns: 0 when invalid; otherwise returns 1.
 #
 credential_is_invalid() {
-    [ -z "$1" ] || [ "$1" = "$2" ]
+    checked_credential=$1
+    shift
+
+    if [ -z "${checked_credential}" ]; then
+        return 0
+    fi
+
+    for known_example_value in "$@"; do
+        if [ "${checked_credential}" = "${known_example_value}" ]; then
+            return 0
+        fi
+    done
+
+    return 1
 }
 
 #
@@ -113,7 +126,7 @@ while IFS= read -r environment_line; do
 done
 
 #
-# Reject missing values and the documented examples supplied to new operators.
+# Reject missing values and known examples supplied to new operators.
 #
 if credential_is_invalid "${pia_user}" "p1234567"; then
     report_invalid_credential "PIA_USER"
@@ -121,9 +134,9 @@ if credential_is_invalid "${pia_user}" "p1234567"; then
 fi
 
 #
-# Reject missing values and the documented examples supplied to new operators.
+# Reject missing values and known examples supplied to new operators.
 #
-if credential_is_invalid "${pia_pass}" "shiverMeTimbers123"; then
+if credential_is_invalid "${pia_pass}" "abc123" "shiverMeTimbers123"; then
     report_invalid_credential "PIA_PASS"
     exit 1
 fi

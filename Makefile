@@ -472,7 +472,7 @@ $(BACKUP):
 		"$(CONFIG_BACKUP_NAME)"
 
 #
-# $(TEST_MAKE_HELPERS): Tests credential and Compose status helpers locally.
+# $(TEST_MAKE_HELPERS): Tests reusable Make and Compose helpers locally.
 #
 # Dependencies: None.
 #
@@ -495,7 +495,7 @@ $(TEST_WORKFLOWS):
 # $(TEST): Runs policy scripts and isolated automation-helper tests.
 #
 # Dependencies:
-#   $(TEST_MAKE_HELPERS) - Test secret-safe Make helpers.
+#   $(TEST_MAKE_HELPERS) - Test reusable Make and Compose helpers.
 #   $(TEST_WORKFLOWS) - Test workflow payload and registry helpers.
 #
 $(TEST): $(TEST_MAKE_HELPERS) $(TEST_WORKFLOWS)
@@ -647,7 +647,7 @@ $(HELP):
 	$(call help_line,$(PRINT_ENV),Print raw environment settings without comments.)
 	$(call help_heading,🧪 Test and build)
 	$(call help_line,$(TEST),Run policy and automation-helper tests.)
-	$(call help_line,$(TEST_MAKE_HELPERS),Test credential and status helpers.)
+	$(call help_line,$(TEST_MAKE_HELPERS),Test reusable Make and Compose helpers.)
 	$(call help_line,$(TEST_WORKFLOWS),Test workflow helpers and shared publishing policies.)
 	$(call help_line,$(TEST_E2E),Run the live Privateerr and Gluetun test.)
 	$(call help_line,$(BUILD),Build the Privateerr image.)

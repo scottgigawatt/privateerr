@@ -62,6 +62,7 @@ BEGIN {
   # Expand only the fixed-width columns; the final ports column remains free
   # to use one continuation row per additional publication.
   #
+
   # Expand the name column for the longest container name.
   if (length(names[row_count]) > name_width) {
     name_width = length($1)

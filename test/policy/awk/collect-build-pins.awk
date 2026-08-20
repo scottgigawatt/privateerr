@@ -63,6 +63,7 @@ match($0, /[A-Z][A-Z0-9_]*_TAG[=:]/) {
 # Return a failing status after processing so every malformed pin is reported.
 #
 END {
+
   # Propagate validation failures to the calling policy script.
   if (invalid) {
     exit 1

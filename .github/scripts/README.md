@@ -20,9 +20,9 @@ manifest digests instead of trusting a successful transfer alone.
 ## Workflow Consumers 🧵
 
 `build-and-push.yml` uses all three helpers for guarded multi-registry image
-publication. The notifier also understands the shared documentation profile so
-the same byte-identical helper and structured assets can serve repositories
-that publish a documentation site.
+publication. The notifier also supports a documentation profile for workflows
+that publish a site. Keeping the helpers and structured assets byte-identical
+lets sibling repositories reuse them while reviewing each workflow locally.
 
 ## Offline Validation 🧪
 

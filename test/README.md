@@ -35,6 +35,7 @@ failure.
 >
 > ```sh
 > make test
+> make test-make-helpers
 > make test-workflows
 > ```
 

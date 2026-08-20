@@ -38,6 +38,7 @@ function reset_block() {
 # Returns: Records a validation failure when the count is not exactly one.
 #
 function require_single_rule(rule_count, description) {
+
   # Report missing and duplicate canonical rules with the same clear message.
   if (rule_count != 1) {
     printf "Metadata block %d must contain exactly one %s rule; found %d.\n", \
@@ -84,6 +85,7 @@ function validate_block() {
 # Returns: Updates the matching counter and returns no value.
 #
 function classify_type_rule(rule) {
+
   # Count the main-branch edge channel.
   if (rule == edge_rule) {
     edge_count++
@@ -128,6 +130,7 @@ function classify_type_rule(rule) {
 
   # Start a new independent validation block at each metadata-action step.
   if (workflow_rule ~ /^uses: docker\/metadata-action@/) {
+
     # Validate a preceding block when consecutive metadata steps are encountered.
     if (in_metadata_block) {
       validate_block()
@@ -177,6 +180,7 @@ function classify_type_rule(rule) {
 # Validate a final open block and propagate the aggregate policy result.
 #
 END {
+
   # Validate a metadata block that reaches the end of the workflow file.
   if (in_metadata_block) {
     validate_block()
