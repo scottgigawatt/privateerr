@@ -240,6 +240,8 @@ jobs:
             type=edge,branch=main
             type=sha,prefix=sha-
             type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}},enable=${{ !startsWith(github.ref, 'refs/tags/v0.') }}
 
       #
       # Derive the matching release-channel tags for the Buccaneerr image.
@@ -255,6 +257,8 @@ jobs:
             type=edge,branch=main
             type=sha,prefix=sha-
             type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}},enable=${{ !startsWith(github.ref, 'refs/tags/v0.') }}
 
       #
       # Build Privateerr once for all supported architectures, publish it

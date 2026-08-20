@@ -70,7 +70,7 @@ The protected build path then:
 - Builds Privateerr and Buccaneerr for `linux/amd64`, `linux/arm64`, and `linux/arm/v7`.
 - Scans built images with Trivy before publishing.
 - Publishes `edge` from `main` after checks pass.
-- Publishes exact versions and `latest` from stable semantic-version tags.
+- Publishes exact, minor, major, and `latest` aliases from stable semantic-version tags.
 - Attests build provenance and mirrors Privateerr from GHCR to Docker Hub with digest preservation.
 
 Rebuilding the same commit does not automatically pick up a newer Alpine base. To pick up patched packages, merge the Renovate update PR first, then pull `edge` from the updated `main` or publish a stable version tag when the change is ready for `latest`.

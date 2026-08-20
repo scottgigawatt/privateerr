@@ -149,7 +149,8 @@ PIA_CREDENTIAL_CHECK_CMD   ?= scripts/compose/check-pia-credentials.sh
 COMPOSE_STATUS_CMD         ?= scripts/compose/ps.sh
 MAKE_HELPERS_TEST_CMD      ?= test/helpers/test-make-helpers.sh
 WORKFLOW_HELPERS_TEST_CMD  ?= test/helpers/test-workflow-helpers.sh
-ALPINE_TAG_POLICY_TEST_CMD ?= test/policy/check-alpine-tag-pins.sh
+POLICY_HELPERS_TEST_CMD    ?= test/helpers/test-policy-checks.sh
+BUILD_PIN_POLICY_TEST_CMD  ?= test/policy/check-build-pin-policy.sh
 IMAGE_TAG_POLICY_TEST_CMD  ?= test/policy/check-image-tag-policy.sh
 
 #
@@ -454,13 +455,16 @@ $(TEST_MAKE_HELPERS):
 	$(MAKE_HELPERS_TEST_CMD)
 
 #
-# $(TEST_WORKFLOWS): Tests release, Discord, and registry workflow helpers
+# $(TEST_WORKFLOWS): Tests workflow helpers and shared publishing policies
 #                    locally.
 #
 # Dependencies: None.
 #
 $(TEST_WORKFLOWS):
 	$(WORKFLOW_HELPERS_TEST_CMD)
+	$(BUILD_PIN_POLICY_TEST_CMD)
+	$(IMAGE_TAG_POLICY_TEST_CMD)
+	$(POLICY_HELPERS_TEST_CMD)
 
 #
 # $(TEST): Runs policy scripts and isolated automation-helper tests.
@@ -475,8 +479,6 @@ $(TEST): $(TEST_MAKE_HELPERS) $(TEST_WORKFLOWS)
 		docker/privateerr-healthcheck.sh \
 		config/gluetun/scripts/gluetun-entrypoint-wrapper.sh \
 		test/buccaneerr-entrypoint.sh
-	$(ALPINE_TAG_POLICY_TEST_CMD)
-	$(IMAGE_TAG_POLICY_TEST_CMD)
 	$(call announce_success,Privateerr's local test voyage came back clean. ✅)
 
 #
@@ -639,7 +641,7 @@ $(HELP):
 	$(call help_heading,🧪 Test and build)
 	$(call help_line,$(TEST),Run policy and automation-helper tests.)
 	$(call help_line,$(TEST_MAKE_HELPERS),Test credential and status helpers.)
-	$(call help_line,$(TEST_WORKFLOWS),Test release$(COMMA) Discord$(COMMA) and registry workflow helpers.)
+	$(call help_line,$(TEST_WORKFLOWS),Test workflow helpers and shared publishing policies.)
 	$(call help_line,$(TEST_E2E),Run the live Privateerr and Gluetun test.)
 	$(call help_line,$(BUILD),Build the Privateerr image.)
 	$(call help_line,$(BUILD_BUCCANEERR),Build the Buccaneerr test image.)

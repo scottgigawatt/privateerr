@@ -22,10 +22,12 @@ docker pull scottgigawatt/privateerr:edge
 | ------------- | ------------------------------------------------------------------- |
 | `latest`      | Newest stable semantic-version release; recommended for most users. |
 | `1.0.0`       | A specific stable release.                                          |
+| `1.0`         | Newest stable release in one minor-version line.                    |
+| `1`           | Newest stable release in one major-version line.                    |
 | `edge`        | Newest successful `main` build; may change before the next release. |
 | `sha-cfa2fb5` | Image built from a specific source commit.                          |
 
-Prerelease versions keep their own tags and never replace `latest`.
+Major version zero omits the broad `0` alias. Prerelease versions keep only their own version and commit tags, never replacing movable stable aliases.
 
 Published tags are multi-architecture manifests for:
 

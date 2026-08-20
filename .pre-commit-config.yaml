@@ -80,13 +80,13 @@ repos:
       - id: shellcheck
 
   #
-  # Enforce synchronized Alpine pins and the stable versus edge image-tag policy.
+  # Enforce synchronized build pins and the shared image-tag channel policy.
   #
   - repo: local
     hooks:
-      - id: check-alpine-tag-pins
-        name: check Alpine tag pins
-        entry: test/policy/check-alpine-tag-pins.sh
+      - id: check-build-pin-policy
+        name: check build pin policy
+        entry: test/policy/check-build-pin-policy.sh
         language: script
         pass_filenames: false
 

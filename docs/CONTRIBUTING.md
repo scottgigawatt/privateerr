@@ -71,7 +71,8 @@ pre-commit run --all-files
 - Use semantic versions such as `v1.2.3` or `v1.2.3-rc.1`.
 - Never move or reuse a published version tag.
 - Successful `main` builds publish `edge`; they do not replace `latest`.
-- Stable version tags publish the exact version and replace `latest`.
+- Stable version tags publish exact, minor, major, and `latest` aliases.
+- Major version zero omits the broad `0` alias.
 - Prerelease tags publish only the prerelease version and commit SHA tags.
 - Wait for the image workflow, registry mirror, and provenance checks before publishing the GitHub release.
 

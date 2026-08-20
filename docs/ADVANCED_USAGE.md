@@ -70,13 +70,15 @@ The `build-and-push` GitHub Actions workflow builds and publishes Privateerr to 
 
 Both registries use the same release channels:
 
-| 🏷️ Source                            | 📦 Published tags                 | 🧭 Purpose                                                            |
-| ------------------------------------ | --------------------------------- | --------------------------------------------------------------------- |
-| Successful `main` build              | `edge`, `sha-<commit>`            | Preview the newest reviewed code without changing the stable channel. |
-| Stable tag such as `v1.2.3`          | `1.2.3`, `latest`, `sha-<commit>` | Publish an exact stable version and advance the recommended channel.  |
-| Prerelease tag such as `v1.2.3-rc.1` | `1.2.3-rc.1`, `sha-<commit>`      | Publish a testable prerelease without changing `latest`.              |
+| 🏷️ Source                            | 📦 Published tags                             | 🧭 Purpose                                                            |
+| ------------------------------------ | --------------------------------------------- | --------------------------------------------------------------------- |
+| Successful `main` build              | `edge`, `sha-<commit>`                        | Preview the newest reviewed code without changing the stable channel. |
+| Stable tag such as `v1.2.3`          | `1.2.3`, `1.2`, `1`, `latest`, `sha-<commit>` | Publish one stable release and advance its movable aliases.           |
+| Prerelease tag such as `v1.2.3-rc.1` | `1.2.3-rc.1`, `sha-<commit>`                  | Publish a testable prerelease without changing stable aliases.        |
 
 Release tags must use semantic versioning, be annotated, and point to a commit on `main`. A manual workflow run may publish only from `main`. The workflow validates those rules before it logs in to the registries or publishes an image.
+
+For a major-zero release such as `v0.5.2`, the stable aliases are `0.5.2`, `0.5`, and `latest`; the broad `0` alias stays unpublished because pre-1.0 minor releases may contain breaking changes.
 
 The workflow uses Docker Buildx to create the canonical GHCR image:
 

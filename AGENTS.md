@@ -214,7 +214,10 @@ Build/publish behavior:
 - Main/tag publishing builds multi-arch images.
 - Release tags use git tags like `v0.1.0`.
 - Docker image semver tags omit the leading `v`, e.g. `0.1.0`.
-- `latest` and the semver image tag for a release should be produced from the same build output.
+- Stable releases publish exact, minor, major, and `latest` aliases from one build.
+- Prereleases publish only their exact version and `sha-*` tag, never movable aliases.
+- Successful `main` builds publish `edge` and `sha-*` tags.
+- Major version zero publishes its exact and minor aliases but not a `0` alias.
 
 Security/scanning:
 
