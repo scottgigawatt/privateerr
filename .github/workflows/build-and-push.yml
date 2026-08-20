@@ -145,18 +145,19 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       #
-      # Create the ephemeral build environment and stamp reproducible OCI
-      # metadata without modifying the checked-in example environment.
+      # Seed static Compose defaults in an ephemeral environment file, then
+      # expose dynamic OCI metadata through GitHub's runner environment.
       #
       - name: "Ink the Build Scroll 📜"
         id: build-scroll
         run: |
+          created=$(date -u +'%Y-%m-%dT%H:%M:%SZ')
           cp example.env .env
           {
-            echo "IMAGE_CREATED=$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
-            echo "IMAGE_REVISION=${GITHUB_SHA}"
-          } >> .env
-          echo "created=$(date -u +'%Y-%m-%dT%H:%M:%SZ')" >> "${GITHUB_OUTPUT}"
+            printf 'IMAGE_CREATED=%s\n' "${created}"
+            printf 'IMAGE_REVISION=%s\n' "${GITHUB_SHA}"
+          } >> "${GITHUB_ENV}"
+          printf 'created=%s\n' "${created}" >> "${GITHUB_OUTPUT}"
 
       #
       # Route local policy, helper, and Compose validation through the same
@@ -184,13 +185,10 @@ jobs:
           PIA_PASS: ${{ secrets.PIA_PASS }}
         run: |
           if [ -z "${PIA_USER}" ] || [ -z "${PIA_PASS}" ]; then
-            echo "PIA secrets missing; skipping live e2e voyage."
+            printf '%s\n' "PIA secrets missing; skipping live e2e voyage."
             exit 0
           fi
-          {
-            echo "PIA_USER=${PIA_USER}"
-            echo "PIA_PASS=${PIA_PASS}"
-          } >> .env
+
           make test-e2e
 
       #

@@ -62,16 +62,17 @@ jobs:
         uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c  # v4.2.0
 
       #
-      # Render a CI-specific environment from the checked-in example before
-      # routing repository validation through Make and pre-commit.
+      # Seed static Compose defaults from the checked-in example, then expose
+      # dynamic image metadata through GitHub's runner environment.
       #
       - name: "Load the Example Cargo 📦"
         run: |
+          created=$(date -u +'%Y-%m-%dT%H:%M:%SZ')
           cp example.env .env
           {
-            echo "IMAGE_CREATED=$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
-            echo "IMAGE_REVISION=${GITHUB_SHA}"
-          } >> .env
+            printf 'IMAGE_CREATED=%s\n' "${created}"
+            printf 'IMAGE_REVISION=%s\n' "${GITHUB_SHA}"
+          } >> "${GITHUB_ENV}"
 
       #
       # Validate Privateerr's policy scripts, isolated helpers, and rendered
