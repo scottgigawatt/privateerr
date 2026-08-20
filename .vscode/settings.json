@@ -63,6 +63,7 @@
         "pkgs",
         "Plundarr",
         "Privateerr",
+        "pycache",
         "Pypi",
         "pytest",
         "qmcgaw",

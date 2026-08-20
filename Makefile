@@ -86,9 +86,9 @@ BUCCANEERR_SERVICE ?= buccaneerr
 #
 # Config reset paths.
 #
-CONFIG_PATH                   ?= config
-CONFIG_BACKUP_PATH            ?= backups
-CONFIG_BACKUP_NAME            ?= privateerr
+CONFIG_PATH                    ?= config
+CONFIG_BACKUP_PATH             ?= backups
+CONFIG_BACKUP_NAME             ?= privateerr
 PRIVATEERR_EXAMPLE_WG_CONFIG   ?= test/examples/example-wg0.conf
 PRIVATEERR_EXAMPLE_METADATA    ?= test/examples/example-privateerr.env
 PRIVATEERR_GENERATED_WG_CONFIG ?= config/gluetun/wireguard/wg0.conf
@@ -158,14 +158,14 @@ COMPOSE_LOGS_OPTIONS  ?= --follow
 #
 # Project-owned helpers used by Make and GitHub Actions.
 #
-PIA_CREDENTIAL_CHECK_CMD   ?= scripts/compose/check-pia-credentials.sh
-COMPOSE_STATUS_CMD         ?= scripts/compose/ps.sh
-CONFIG_BACKUP_CMD          ?= scripts/compose/backup.sh
-MAKE_HELPERS_TEST_CMD      ?= test/helpers/test-make-helpers.sh
-WORKFLOW_HELPERS_TEST_CMD  ?= test/helpers/test-workflow-helpers.sh
-POLICY_HELPERS_TEST_CMD    ?= test/helpers/test-policy-checks.sh
-BUILD_PIN_POLICY_TEST_CMD  ?= test/policy/check-build-pin-policy.sh
-IMAGE_TAG_POLICY_TEST_CMD  ?= test/policy/check-image-tag-policy.sh
+PIA_CREDENTIAL_CHECK_CMD  ?= scripts/compose/check-pia-credentials.sh
+COMPOSE_STATUS_CMD        ?= scripts/compose/ps.sh
+CONFIG_BACKUP_CMD         ?= scripts/compose/backup.sh
+MAKE_HELPERS_TEST_CMD     ?= test/helpers/test-make-helpers.sh
+WORKFLOW_HELPERS_TEST_CMD ?= test/helpers/test-workflow-helpers.sh
+POLICY_HELPERS_TEST_CMD   ?= test/helpers/test-policy-checks.sh
+BUILD_PIN_POLICY_TEST_CMD ?= test/policy/check-build-pin-policy.sh
+IMAGE_TAG_POLICY_TEST_CMD ?= test/policy/check-image-tag-policy.sh
 
 #
 # Disposable developer artifacts. Deployment state, generated credentials,
@@ -546,13 +546,10 @@ $(NUKE): $(BUILD_DEPENDS) $(CHECK_ENV)
 		echo "Removing local service images."; \
 		$(DOCKER_BIN) image rm --force $${compose_images} >/dev/null 2>&1 || true; \
 	fi
-
 	@echo "Removing generated logs and Gluetun state. 🧽"
 	rm -rf $(PRIVATEERR_GENERATED_PATHS)
-
 	@echo "Removing base images used by Dockerfiles. ⚓"
 	$(DOCKER_BIN) image rm --force $(FROM_IMAGES) >/dev/null 2>&1 || true
-
 	@$(MAKE) --no-print-directory $(RESTORE_TEST_CONFIG)
 
 #
