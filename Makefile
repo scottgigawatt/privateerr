@@ -156,7 +156,10 @@ IMAGE_TAG_POLICY_TEST_CMD  ?= test/policy/check-image-tag-policy.sh
 # Disposable developer artifacts. Deployment state, generated credentials,
 # containers, volumes, and images must never enter this list.
 #
-CLEAN_ARTIFACT_PATHS := .pytest_cache .ruff_cache test/logs
+CLEAN_ARTIFACT_PATHS      := .pytest_cache .ruff_cache test/logs
+CLEAN_ARTIFACT_FIND_ROOT  := .
+CLEAN_ARTIFACT_FIND_PRUNE := -path './.git' -o -path './docker/pia-manual-connections'
+CLEAN_ARTIFACT_FIND_MATCH := -type d -name '__pycache__' -o -type f \( -name '*.pyc' -o -name '*.pyo' -o -name '.DS_Store' \)
 
 #
 # Docker Compose options for test targets.
@@ -339,6 +342,8 @@ $(ALL): $(UP)
 #
 # $(BUILD_DEPENDS): Ensure build dependencies are installed.
 #
+# Dependencies: None.
+#
 $(BUILD_DEPENDS):
 	$(foreach exe,$(DEPENDENCIES), \
 		$(if $(shell which $(exe) 2> /dev/null),,$(error "No $(exe) in PATH")))
@@ -351,6 +356,8 @@ $(BUILD_DEPENDS):
 
 #
 # $(CHECK_ENV): Ensure .env exists before running Compose commands.
+#
+# Dependencies: None.
 #
 $(CHECK_ENV):
 	@if [ ! -f "$(ENV_FILE)" ]; then \
@@ -545,25 +552,26 @@ $(CONFIG): $(BUILD_DEPENDS) $(CHECK_ENV)
 # $(ENV): Prints the evaluated docker compose default env configuration.
 #
 # Dependencies:
+#   $(BUILD_DEPENDS) - Ensure build dependencies are installed.
 #   $(CHECK_ENV) - Ensure .env exists before running Compose commands.
 #
-$(ENV): $(CHECK_ENV)
-	@. ./$(COMPOSE_ENV_FILE) && \
-	awk -F '=' '/^[^#]/ { \
-		gsub(/^[[:space:]]+|[[:space:]]+$$/, ""); \
-		value = ENVIRON[$$1]; \
-		if (!value) { \
-			split($$2, parts, /:-/); \
-			if (length(parts) > 1) { \
-				gsub(/[{}"]/,"", parts[2]); \
-				value = parts[2]; \
-			} \
+$(ENV): $(BUILD_DEPENDS) $(CHECK_ENV)
+	@$(DOCKER_COMPOSE) --env-file $(COMPOSE_ENV_FILE) -f $(COMPOSE_FILE) \
+		config --environment | \
+	awk -F '=' ' \
+		NR == FNR { \
+			if ($$0 ~ /^[A-Za-z_][A-Za-z0-9_]*=/) values[$$1] = $$0; \
+			next; \
 		} \
-		printf "%s=%s\n", $$1, value \
-	}' $(COMPOSE_ENV_FILE)
+		$$0 ~ /^[A-Za-z_][A-Za-z0-9_]*=/ && $$1 in values { \
+			print values[$$1] \
+		} \
+	' - $(COMPOSE_ENV_FILE)
 
 #
 # $(PRINT_CONFIG): Prints the raw uncommented docker compose yaml configuration.
+#
+# Dependencies: None.
 #
 $(PRINT_CONFIG):
 	@awk '{ \
@@ -594,8 +602,9 @@ $(PRINT_ENV): $(CHECK_ENV)
 #
 $(PS): $(BUILD_DEPENDS) $(CHECK_ENV)
 	$(COMPOSE_STATUS_CMD) \
-		--env-file $(COMPOSE_ENV_FILE) \
-		--compose-file $(COMPOSE_FILE)
+		--docker-bin "$(DOCKER_BIN)" \
+		--env-file "$(COMPOSE_ENV_FILE)" \
+		--compose-file "$(COMPOSE_FILE)"
 
 #
 # $(LOGS): View output from containers.
@@ -609,6 +618,8 @@ $(LOGS): $(CHECK_ENV)
 
 #
 # $(HELP): Print help information.
+#
+# Dependencies: None.
 #
 $(HELP):
 	$(call announce_title,🏴‍☠️ Privateerr command chart)
@@ -647,6 +658,9 @@ $(HELP):
 $(CLEAN):
 	$(call announce,Clearing disposable developer artifacts. 🧹)
 	rm -rf $(CLEAN_ARTIFACT_PATHS)
+	find "$(CLEAN_ARTIFACT_FIND_ROOT)" \
+		\( $(CLEAN_ARTIFACT_FIND_PRUNE) \) -prune -o \
+		\( $(CLEAN_ARTIFACT_FIND_MATCH) \) -exec rm -rf {} +
 
 #
 # $(START): Alias for $(UP).

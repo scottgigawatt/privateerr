@@ -47,6 +47,9 @@ jobs:
         with:
           persist-credentials: false
 
+      #
+      # Initialize the dedicated CodeQL database for GitHub Actions source.
+      #
       - name: "Wake the CodeQL Kraken 🐙"
         uses: github/codeql-action/init@ff2f1c621b7f889edc0d3c761ac2e6a3f8cdb0dd  # v4
         with:

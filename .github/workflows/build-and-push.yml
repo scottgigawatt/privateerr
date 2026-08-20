@@ -90,6 +90,10 @@ jobs:
             --ghcr-image      "${{ env.PRIVATEERR_IMAGE_REF }}" \
             --dockerhub-image "${{ env.DOCKERHUB_PRIVATEERR_IMAGE_REF }}"
 
+      #
+      # Send the same start event to the optional Hades destination with its
+      # distinct presentation template and independently scoped secret.
+      #
       - name: "Notify Hades Discord: build started 🔥"
         env:
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_HADES_HOOK_URL }}
@@ -140,9 +144,15 @@ jobs:
       - name: "Summon Cross-Arch Cannons 🧨"
         uses: docker/setup-qemu-action@96fe6ef7f33517b61c61be40b68a1882f3264fb8  # v4
 
+      #
+      # Create the Buildx builder used by local validation and publication.
+      #
       - name: "Sharpen the Build Axe 🪓"
         uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c  # v4.2.0
 
+      #
+      # Authenticate to GHCR with the job-scoped token before publishing images.
+      #
       - name: "Board the GHCR Galleon 🔐"
         uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f  # v4.6.0
         with:
@@ -173,11 +183,17 @@ jobs:
           make test
           make config >/dev/null
 
+      #
+      # Build both local image shapes before runtime tests and vulnerability scans.
+      #
       - name: "Hammer the Docker Hulls ⚒️"
         run: |
           make build
           make build-buccaneerr
 
+      #
+      # Run the credential-backed e2e voyage when both optional PIA secrets exist.
+      #
       - name: "Send the Test Ship to Sea 🌊"
         env:
           PIA_USER: ${{ secrets.PIA_USER }}
@@ -193,6 +209,9 @@ jobs:
           } >> .env
           make test-e2e
 
+      #
+      # Always stop test resources and restore checked-in example configuration.
+      #
       - name: "Swab the Test Deck 🧽"
         if: always()
         run: make clean-test
@@ -211,6 +230,9 @@ jobs:
           ignore-unfixed: true
           exit-code: 1
 
+      #
+      # Apply the same fixed-vulnerability policy to the Buccaneerr test image.
+      #
       - name: "Inspect Buccaneerr for Bilge Rot 🔍"
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25  # v0.36.0
         with:
@@ -237,6 +259,9 @@ jobs:
             type=sha,prefix=sha-
             type=semver,pattern={{version}}
 
+      #
+      # Derive the matching release-channel tags for the Buccaneerr image.
+      #
       - name: "Chart Buccaneerr Tags 🗺️"
         id: meta-buccaneerr
         uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302  # v6
@@ -287,6 +312,9 @@ jobs:
           sudo apt-get update
           sudo apt-get install --yes skopeo
 
+      #
+      # Copy every published Privateerr manifest from GHCR to Docker Hub.
+      #
       - name: "Mirror Privateerr to Docker Hub 🪞"
         env:
           GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -300,6 +328,9 @@ jobs:
             --dockerhub-username "${{ secrets.DOCKERHUB_USERNAME }}" \
             --published-tags     "${{ steps.meta-privateerr.outputs.tags }}"
 
+      #
+      # Fail publication unless both registries expose identical tag digests.
+      #
       - name: "Compare Registry Manifests 🔎"
         env:
           GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -317,7 +348,7 @@ jobs:
       # Publish the test-only Buccaneerr image to GHCR for every supported
       # architecture with its own SBOM and provenance data.
       #
-      - name: "Publish Buccaneerr to registries 💰"
+      - name: "Publish Buccaneerr to GHCR 💰"
         id: publish-buccaneerr
         uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a  # v7
         with:
@@ -352,6 +383,9 @@ jobs:
           subject-digest: ${{ steps.publish-privateerr.outputs.digest }}
           push-to-registry: true
 
+      #
+      # Publish the equivalent registry-backed attestation for Buccaneerr.
+      #
       - name: "Stamp Buccaneerr's Provenance Scroll 🧾"
         uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8  # v4
         with:
@@ -394,6 +428,9 @@ jobs:
             --published-tags   "${{ steps.meta-privateerr.outputs.tags }}" \
             --published-digest "${{ steps.publish-privateerr.outputs.digest }}"
 
+      #
+      # Report the same final state to Hades even when an earlier step failed.
+      #
       - name: "Notify Hades Discord: build finished 🔥"
         if: always()
         env:

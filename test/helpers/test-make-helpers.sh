@@ -128,7 +128,10 @@ fi
 NO_COLOR=1 make --dry-run clean >"${test_output}/clean.out"
 grep -F 'rm -rf .pytest_cache .ruff_cache test/logs' \
     "${test_output}/clean.out" >/dev/null
-if grep -E 'docker|\.env|wireguard|wg0\.conf|privateerr\.env' \
+grep -F -- "-path './docker/pia-manual-connections'" \
+    "${test_output}/clean.out" >/dev/null
+grep -F -- "-name '.DS_Store'" "${test_output}/clean.out" >/dev/null
+if grep -E '(^|[[:space:]])docker([[:space:]]|$)|\.env|wireguard|wg0\.conf|privateerr\.env' \
     "${test_output}/clean.out" >/dev/null; then
     echo "The clean target includes deployment or credential-bearing state." >&2
     exit 1
