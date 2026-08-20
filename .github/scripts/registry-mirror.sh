@@ -222,14 +222,14 @@ done
 #
 # Validate that all required inputs are present.
 #
-require_value --operation "${operation}"
-require_value --ghcr-image "${ghcr_image}"
-require_value --dockerhub-image "${dockerhub_image}"
-require_value --ghcr-username "${ghcr_username}"
-require_value GHCR_TOKEN "${GHCR_TOKEN}"
+require_value --operation          "${operation}"
+require_value --ghcr-image         "${ghcr_image}"
+require_value --dockerhub-image    "${dockerhub_image}"
+require_value --ghcr-username      "${ghcr_username}"
+require_value GHCR_TOKEN           "${GHCR_TOKEN}"
 require_value --dockerhub-username "${dockerhub_username}"
-require_value DOCKERHUB_TOKEN "${DOCKERHUB_TOKEN}"
-require_value --published-tags "${published_tags}"
+require_value DOCKERHUB_TOKEN      "${DOCKERHUB_TOKEN}"
+require_value --published-tags     "${published_tags}"
 
 #
 # Dispatch the requested operation.

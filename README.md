@@ -53,6 +53,7 @@ Those PIA scripts live in this repo as a submodule at `docker/pia-manual-connect
 And that's it! That's the whole trick: PIA's original scripts do the WireGuard work. Privateerr just gives them a clean container, friendly defaults, repeatable commands, and a small metadata file for Docker Compose setups.
 
 > [!IMPORTANT]
+>
 > **Privateerr is NOT a VPN client.** It does not create or run a VPN tunnel. It generates a PIA WireGuard configuration file (`wg0.conf`) that you can hand to an actual VPN client.
 
 There are already excellent VPN clients. One of the best container-friendly options is [Gluetun](https://github.com/qdm12/gluetun). If what you really want is "get Gluetun working with PIA WireGuard," Privateerr may have you covered: generate the files, point Gluetun at them, and move on.
@@ -105,6 +106,7 @@ PIA_GEOLOCATED_REGION=false
 | `config/gluetun/wireguard/privateerr.env` | A small helper file with the selected PIA server name, endpoint, region, and port-forwarding support metadata.                           |
 
 > [!WARNING]
+>
 > Keep `wg0.conf` private. It contains VPN connection material.
 
 ## 🚪 Port Forwarding
@@ -120,6 +122,7 @@ PIA port forwarding is usually awkward because the server choice matters after W
 The metadata in `privateerr.env` is what lets a Docker Compose stack establish a fully functioning port forwarded VPN connection in _one single step_, in _less than 1 minute_. Privateerr writes the map, reads `PIA_WG_SERVER_NAME`, exports it as `SERVER_NAMES`, then Gluetun can start immediately with the right server information instead of making you run a second manual step _after_ the VPN connection is established.
 
 > [!TIP]
+>
 > For the simplest use case, take `wg0.conf` and leave. For the powerful use case, pair Privateerr with Gluetun in Compose so config generation, server-name handoff, and VPN startup happen together.
 
 For the wired-together version, see the included [Compose file](./docker-compose.yml). For a larger real-world stack, see [Plundarr](https://github.com/scottgigawatt/plundarr#readme).
@@ -211,6 +214,7 @@ make config
 | `make restore-test-config` | You want to restore only the checked-in examples.       |
 
 > [!TIP]
+>
 > More build, test, and release details live in [Advanced Usage](./docs/ADVANCED_USAGE.md).
 
 ## 📦 Platform Notes

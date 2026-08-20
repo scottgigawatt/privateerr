@@ -7,21 +7,19 @@ The test tree keeps responsibilities separate:
 - `policy/` verifies repository-wide dependency and image-tag rules.
 - `helpers/` exercises Make and workflow helpers without external writes.
 - `stubs/` supplies deterministic Docker and Skopeo stand-ins for those tests.
-- `examples/` stores the checked-in WireGuard and metadata examples restored
-  after a live voyage.
-- the test-root `Dockerfile` and `buccaneerr-entrypoint.sh` remain the
-  Buccaneerr build context.
+- `examples/` stores the checked-in WireGuard and metadata examples restored after a live voyage.
+- the test-root `Dockerfile` and `buccaneerr-entrypoint.sh` remain the Buccaneerr build context.
 
 ## Test Script Chart 🗺️
 
-| Hold       | Script                                                | Purpose                                                   |
-| ---------- | ----------------------------------------------------- | --------------------------------------------------------- |
-| 🧭 Policy  | [`policy/check-alpine-tag-pins.sh`](policy/check-alpine-tag-pins.sh) | Keep every pinned Alpine build input synchronized         |
-| 🧭 Policy  | [`policy/check-image-tag-policy.sh`](policy/check-image-tag-policy.sh) | Enforce stable, edge, SHA, and semantic-version tag rules |
-| 🧰 Helpers | [`helpers/test-make-helpers.sh`](helpers/test-make-helpers.sh) | Test credential and Compose helpers without external writes |
-| 🧰 Helpers | [`helpers/test-workflow-helpers.sh`](helpers/test-workflow-helpers.sh) | Test Discord payload and registry helper behavior offline |
-| 🎭 Stubs   | [`stubs/compose-docker-stub.sh`](stubs/compose-docker-stub.sh) | Supply deterministic Docker output to Compose helper tests |
-| 🎭 Stubs   | [`stubs/workflow-skopeo-stub.sh`](stubs/workflow-skopeo-stub.sh) | Simulate registry inspection without network access       |
+| Hold       | Script                                                                 | Purpose                                                     |
+| ---------- | ---------------------------------------------------------------------- | ----------------------------------------------------------- |
+| 🧭 Policy  | [`policy/check-alpine-tag-pins.sh`](policy/check-alpine-tag-pins.sh)   | Keep every pinned Alpine build input synchronized           |
+| 🧭 Policy  | [`policy/check-image-tag-policy.sh`](policy/check-image-tag-policy.sh) | Enforce stable, edge, SHA, and semantic-version tag rules   |
+| 🧰 Helpers | [`helpers/test-make-helpers.sh`](helpers/test-make-helpers.sh)         | Test credential and Compose helpers without external writes |
+| 🧰 Helpers | [`helpers/test-workflow-helpers.sh`](helpers/test-workflow-helpers.sh) | Test Discord payload and registry helper behavior offline   |
+| 🎭 Stubs   | [`stubs/compose-docker-stub.sh`](stubs/compose-docker-stub.sh)         | Supply deterministic Docker output to Compose helper tests  |
+| 🎭 Stubs   | [`stubs/workflow-skopeo-stub.sh`](stubs/workflow-skopeo-stub.sh)       | Simulate registry inspection without network access         |
 
 The subfolders separate static repository policy, reusable helper tests,
 deterministic command stubs, and checked-in reset examples. Make targets remain
@@ -40,6 +38,7 @@ Buccaneerr checks the important loot:
 - The stack behaves like the downstream Synology-friendly Compose setup.
 
 > [!IMPORTANT]
+>
 > ⚓ Buccaneerr exists so the main Privateerr image can stay wee, clean, and focused. Test tools like `curl` stay in this image instead of clutterin' the production brig.
 
 ## How It Gets Built 🛠️
@@ -59,6 +58,7 @@ make test-e2e
 ```
 
 > [!WARNING]
+>
 > 🧨 The e2e voyage uses real PIA credentials from `.env`. Do not commit live credentials, generated VPN configs, or logs from yer secret treasure chest.
 
 ## What It Does During E2E 🧭
@@ -90,4 +90,5 @@ make nuke
 ```
 
 > [!TIP]
+>
 > 🏴‍☠️ Run cleanup before committing after any real e2e voyage. Future ye will thank past ye for not smuggling secrets into the cargo hold.

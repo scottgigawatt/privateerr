@@ -64,6 +64,7 @@ require_file() {
     file_path="$1"
     file_label="$2"
 
+    # Check if the file exists and is not empty.
     if [[ ! -s "${file_path}" ]]; then
         log "Missing ${file_label}: ${file_path}"
         exit 1
@@ -77,12 +78,18 @@ wg_config_path="${BUCCANEERR_CONFIG_PATH}/wg0.conf"
 metadata_path="${BUCCANEERR_CONFIG_PATH}/privateerr.env"
 forwarded_port_path="${BUCCANEERR_GLUETUN_PATH}/forwarded_port"
 
+#
+# Validate the generated WireGuard config and Gluetun metadata.
+#
 log "Inspecting generated WireGuard config."
 require_file "${wg_config_path}" "WireGuard config"
 grep -q '^PrivateKey[[:space:]]*=' "${wg_config_path}"
 grep -q '^PublicKey[[:space:]]*=' "${wg_config_path}"
 grep -q '^Endpoint[[:space:]]*=' "${wg_config_path}"
 
+#
+# Validate the generated Gluetun metadata.
+#
 log "Inspecting generated Gluetun metadata."
 require_file "${metadata_path}" "Privateerr metadata"
 grep -q '^PIA_WG_SERVER_NAME=' "${metadata_path}"
@@ -99,6 +106,7 @@ curl -fsSL "${BUCCANEERR_HEALTH_URL}" >/dev/null
 # Use Gluetun's forwarded_port file because the control API may require auth.
 #
 if [[ "${BUCCANEERR_REQUIRE_PORT_FORWARD}" == "true" ]]; then
+    # Check if the forwarded_port file exists and is not empty.
     log "Checking Gluetun forwarded port."
     forwarded_port=""
 
@@ -109,6 +117,8 @@ if [[ "${BUCCANEERR_REQUIRE_PORT_FORWARD}" == "true" ]]; then
             forwarded_port="$(tr -dc '0-9' < "${forwarded_port_path}")"
             break
         fi
+
+        # Sleep for 1 second before checking again.
         sleep 1
     done
 
@@ -118,7 +128,9 @@ if [[ "${BUCCANEERR_REQUIRE_PORT_FORWARD}" == "true" ]]; then
         exit 1
     fi
 
+    # Log the forwarded port for visibility.
     log "Forwarded port is ${forwarded_port}."
 fi
 
+# Log a success message if all checks passed.
 log "All checks passed. The WireGuard map floats, the tunnel breathes, and the port be plundered."

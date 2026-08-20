@@ -9,8 +9,7 @@
 
 #
 # Check every project-owned Markdown document while excluding Git-owned and
-# third-party files.
-# Markdownlint CLI2 uses a leading hash to negate matching glob patterns.
+# third-party files. Markdownlint CLI2 uses a leading hash to negate matching glob patterns.
 #
 globs:
   - "**/*.md"

@@ -184,20 +184,20 @@ server_data="$(curl -fsSL "${PRIVATEERR_SERVERLIST_URL}" | head -n 1 || true)"
 server_metadata="$(printf '%s' "${server_data}" | jq -r --arg ENDPOINT_IP "${endpoint_ip}" --arg WG_SERVER_NAME "${wg_server_name}" '
     .regions[]
     | select(any(.servers.wg[]?; .ip == $ENDPOINT_IP or .cn == $WG_SERVER_NAME))
-    | {
-        id,
-        name,
-        port_forward,
-        geo,
-        wg: (.servers.wg[] | select(.ip == $ENDPOINT_IP or .cn == $WG_SERVER_NAME))
-      }
-    | [
-        .id,
-        .name,
-        (.port_forward | tostring),
-        (.geo | tostring),
-        .wg.cn
-      ]
+    |   {
+            id,
+            name,
+            port_forward,
+            geo,
+            wg: (.servers.wg[] | select(.ip == $ENDPOINT_IP or .cn == $WG_SERVER_NAME))
+        }
+    |   [
+            .id,
+            .name,
+            (.port_forward | tostring),
+            (.geo | tostring),
+            .wg.cn
+        ]
     | @tsv
 ' 2>/dev/null | head -n 1 || true)"
 

@@ -73,12 +73,12 @@ LABEL org.opencontainers.image.title="Privateerr" \
 # Copy license files, upstream PIA scripts, and Privateerr-owned helpers as one
 # reviewable source boundary before installing the runtime.
 #
-COPY LICENSE /LICENSE
+COPY LICENSE                        /LICENSE
 COPY pia-manual-connections/LICENSE /licenses/pia-manual-connections/LICENSE
-COPY pia-manual-connections ${PIA_BIN_HOME}
-COPY privateerr-entrypoint.sh ${PRIVATEERR_BIN_HOME}/privateerr-entrypoint.sh
-COPY privateerr-healthcheck.sh /usr/local/bin/privateerr-healthcheck
-COPY privateerr-date.sh /usr/local/bin/date
+COPY pia-manual-connections         ${PIA_BIN_HOME}
+COPY privateerr-entrypoint.sh       ${PRIVATEERR_BIN_HOME}/privateerr-entrypoint.sh
+COPY privateerr-healthcheck.sh      /usr/local/bin/privateerr-healthcheck
+COPY privateerr-date.sh             /usr/local/bin/date
 
 #
 # Install the small runtime needed to generate PIA WireGuard configs.

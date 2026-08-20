@@ -79,15 +79,15 @@ jobs:
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
         run: |
           .github/scripts/notify-discord.sh \
-            --event start \
-            --template deck \
-            --run-url "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
-            --repository "${{ github.repository }}" \
-            --ref-name "${{ github.ref_name }}" \
-            --workflow-name "${{ github.workflow }}" \
-            --actor "${{ github.actor }}" \
-            --platforms "${{ env.IMAGE_PLATFORMS }}" \
-            --ghcr-image "${{ env.PRIVATEERR_IMAGE_REF }}" \
+            --event           start \
+            --template        deck \
+            --run-url         "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
+            --repository      "${{ github.repository }}" \
+            --ref-name        "${{ github.ref_name }}" \
+            --workflow-name   "${{ github.workflow }}" \
+            --actor           "${{ github.actor }}" \
+            --platforms       "${{ env.IMAGE_PLATFORMS }}" \
+            --ghcr-image      "${{ env.PRIVATEERR_IMAGE_REF }}" \
             --dockerhub-image "${{ env.DOCKERHUB_PRIVATEERR_IMAGE_REF }}"
 
       - name: "Notify Hades Discord: build started 🔥"
@@ -95,15 +95,15 @@ jobs:
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_HADES_HOOK_URL }}
         run: |
           .github/scripts/notify-discord.sh \
-            --event start \
-            --template hades \
-            --run-url "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
-            --repository "${{ github.repository }}" \
-            --ref-name "${{ github.ref_name }}" \
-            --workflow-name "${{ github.workflow }}" \
-            --actor "${{ github.actor }}" \
-            --platforms "${{ env.IMAGE_PLATFORMS }}" \
-            --ghcr-image "${{ env.PRIVATEERR_IMAGE_REF }}" \
+            --event           start \
+            --template        hades \
+            --run-url         "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
+            --repository      "${{ github.repository }}" \
+            --ref-name        "${{ github.ref_name }}" \
+            --workflow-name   "${{ github.workflow }}" \
+            --actor           "${{ github.actor }}" \
+            --platforms       "${{ env.IMAGE_PLATFORMS }}" \
+            --ghcr-image      "${{ env.PRIVATEERR_IMAGE_REF }}" \
             --dockerhub-image "${{ env.DOCKERHUB_PRIVATEERR_IMAGE_REF }}"
 
       #
@@ -294,11 +294,11 @@ jobs:
         run: |
           .github/scripts/registry-mirror.sh \
             --mirror \
-            --ghcr-image "${{ env.PRIVATEERR_IMAGE_REF }}" \
-            --dockerhub-image "${{ env.DOCKERHUB_PRIVATEERR_IMAGE_REF }}" \
-            --ghcr-username "${{ github.actor }}" \
+            --ghcr-image         "${{ env.PRIVATEERR_IMAGE_REF }}" \
+            --dockerhub-image    "${{ env.DOCKERHUB_PRIVATEERR_IMAGE_REF }}" \
+            --ghcr-username      "${{ github.actor }}" \
             --dockerhub-username "${{ secrets.DOCKERHUB_USERNAME }}" \
-            --published-tags "${{ steps.meta-privateerr.outputs.tags }}"
+            --published-tags     "${{ steps.meta-privateerr.outputs.tags }}"
 
       - name: "Compare Registry Manifests 🔎"
         env:
@@ -307,11 +307,11 @@ jobs:
         run: |
           .github/scripts/registry-mirror.sh \
             --verify \
-            --ghcr-image "${{ env.PRIVATEERR_IMAGE_REF }}" \
-            --dockerhub-image "${{ env.DOCKERHUB_PRIVATEERR_IMAGE_REF }}" \
-            --ghcr-username "${{ github.actor }}" \
+            --ghcr-image         "${{ env.PRIVATEERR_IMAGE_REF }}" \
+            --dockerhub-image    "${{ env.DOCKERHUB_PRIVATEERR_IMAGE_REF }}" \
+            --ghcr-username      "${{ github.actor }}" \
             --dockerhub-username "${{ secrets.DOCKERHUB_USERNAME }}" \
-            --published-tags "${{ steps.meta-privateerr.outputs.tags }}"
+            --published-tags     "${{ steps.meta-privateerr.outputs.tags }}"
 
       #
       # Publish the test-only Buccaneerr image to GHCR for every supported
@@ -382,16 +382,16 @@ jobs:
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
         run: |
           .github/scripts/notify-discord.sh \
-            --event verdict \
-            --template deck \
-            --run-url "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
-            --repository "${{ github.repository }}" \
-            --ref-name "${{ github.ref_name }}" \
-            --job-status "${{ job.status }}" \
-            --ghcr-image "${{ env.PRIVATEERR_IMAGE_REF }}" \
+            --event            verdict \
+            --template         deck \
+            --run-url          "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
+            --repository       "${{ github.repository }}" \
+            --ref-name         "${{ github.ref_name }}" \
+            --job-status       "${{ job.status }}" \
+            --ghcr-image       "${{ env.PRIVATEERR_IMAGE_REF }}" \
             --ghcr-package-url "${{ github.server_url }}/${{ github.repository }}/pkgs/container/privateerr" \
-            --dockerhub-url "https://hub.docker.com/r/${{ github.repository_owner }}/privateerr" \
-            --published-tags "${{ steps.meta-privateerr.outputs.tags }}" \
+            --dockerhub-url    "https://hub.docker.com/r/${{ github.repository_owner }}/privateerr" \
+            --published-tags   "${{ steps.meta-privateerr.outputs.tags }}" \
             --published-digest "${{ steps.publish-privateerr.outputs.digest }}"
 
       - name: "Notify Hades Discord: build finished 🔥"
@@ -400,14 +400,14 @@ jobs:
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_HADES_HOOK_URL }}
         run: |
           .github/scripts/notify-discord.sh \
-            --event verdict \
-            --template hades \
-            --run-url "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
-            --repository "${{ github.repository }}" \
-            --ref-name "${{ github.ref_name }}" \
-            --job-status "${{ job.status }}" \
-            --ghcr-image "${{ env.PRIVATEERR_IMAGE_REF }}" \
+            --event            verdict \
+            --template         hades \
+            --run-url          "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
+            --repository       "${{ github.repository }}" \
+            --ref-name         "${{ github.ref_name }}" \
+            --job-status       "${{ job.status }}" \
+            --ghcr-image       "${{ env.PRIVATEERR_IMAGE_REF }}" \
             --ghcr-package-url "${{ github.server_url }}/${{ github.repository }}/pkgs/container/privateerr" \
-            --dockerhub-url "https://hub.docker.com/r/${{ github.repository_owner }}/privateerr" \
-            --published-tags "${{ steps.meta-privateerr.outputs.tags }}" \
+            --dockerhub-url    "https://hub.docker.com/r/${{ github.repository_owner }}/privateerr" \
+            --published-tags   "${{ steps.meta-privateerr.outputs.tags }}" \
             --published-digest "${{ steps.publish-privateerr.outputs.digest }}"

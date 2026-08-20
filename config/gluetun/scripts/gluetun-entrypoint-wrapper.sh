@@ -55,6 +55,7 @@ while [ ! -s "${PRIVATEERR_METADATA_PATH}" ]; do
         exit 1
     fi
 
+    # Log the wait status and sleep for 2 seconds before checking again.
     log "Waiting for Privateerr metadata: ${PRIVATEERR_METADATA_PATH}"
     sleep 2
     elapsed_seconds=$((elapsed_seconds + 2))

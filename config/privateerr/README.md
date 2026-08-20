@@ -9,6 +9,7 @@ config/privateerr/logs/privateerr.log
 ```
 
 > [!NOTE]
+>
 > 🧽 That log be ignored by git, because live credentials and fresh voyage details belong in yer local hold, not nailed to the public mast.
 
 The actual WireGuard treasure still lands in Gluetun's berth:
@@ -19,4 +20,5 @@ config/gluetun/wireguard/privateerr.env
 ```
 
 > [!CAUTION]
+>
 > 💣 Live `wg0.conf` and `privateerr.env` can contain sensitive voyage details. Run `make restore-test-config` before committing.

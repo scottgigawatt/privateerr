@@ -35,7 +35,7 @@ make clean-test
 
 Published images target:
 
-| 🧱 Platform    | 🖥️ Typical use                                                           |
+| 🧱 Platform    | 🖥️ Typical use                                                            |
 | -------------- | ------------------------------------------------------------------------- |
 | `linux/amd64`  | Intel and AMD x86_64 systems.                                             |
 | `linux/arm64`  | Modern ARM64 systems, including many NAS and Apple Silicon Linux targets. |

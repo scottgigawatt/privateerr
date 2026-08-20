@@ -25,6 +25,7 @@ What should have happened?
 Paste logs, errors, screenshots, or command output. `make logs`, `make ps`, and `make config` be useful spyglasses.
 
 > [!WARNING]
+>
 > Redact PIA credentials, WireGuard private keys, live `wg0.conf`, live `privateerr.env`, and private logs before tossin' anything onto the public deck.
 
 ## 🧩 Setup

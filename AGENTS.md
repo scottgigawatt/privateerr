@@ -29,8 +29,7 @@ The companion Buccaneerr image is test-only. It validates the Privateerr + Gluet
 - `config/`: Checked-in service config directories used by Docker Compose.
 - `config/gluetun/wireguard/`: Generated WireGuard config and metadata location.
 - `docs/`: Supporting project documentation.
-- `.github/`: Workflows, reusable workflow helpers, issue templates, PR template,
-  Renovate policy, and CODEOWNERS.
+- `.github/`: Workflows, reusable workflow helpers, issue templates, PR template, Renovate policy, and CODEOWNERS.
 - `docker-compose.yml`: Single Compose stack used for local development, Synology-style one-file deployments, and e2e validation.
 - `example.env`: Complete example environment file. Keep ordering aligned with `docker-compose.yml`.
 
