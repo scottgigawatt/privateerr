@@ -133,7 +133,7 @@ When Renovate opens a dependency PR, the validation workflow checks that every p
 | `make print-env`        | Print uncommented Compose environment values.                          |
 | `make ps`               | Show a compact Compose status table.                                   |
 | `make test`             | Run policy checks plus Make and workflow helper tests.                 |
-| `make test-workflows`   | Test Discord payloads and registry operations without external writes. |
+| `make test-workflows`   | Test release, Discord, and registry helpers without external writes.   |
 | `make build`            | Build only the Privateerr image.                                       |
 | `make build-buccaneerr` | Build only the Buccaneerr validation image.                            |
 | `make build-platforms`  | Verify both images for every published architecture.                   |

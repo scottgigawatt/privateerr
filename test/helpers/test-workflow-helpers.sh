@@ -5,8 +5,8 @@
 #
 # Licensed under the Apache License, Version 2.0.
 #
-# test-workflow-helpers.sh: Validate Discord payload generation and registry
-#                           mirroring without messages or registry writes.
+# test-workflow-helpers.sh: Validate release policy, Discord payload generation,
+#                           and registry mirroring without external writes.
 #
 # Usage: test/helpers/test-workflow-helpers.sh
 #
@@ -22,6 +22,7 @@ set -eu
 REPOSITORY_ROOT=$(CDPATH='' cd -- "$(dirname -- "$0")/../.." && pwd)
 TEST_ROOT=$(mktemp -d)
 SKOPEO_LOG="${TEST_ROOT}/skopeo.log"
+RELEASE_REPOSITORY="${TEST_ROOT}/release-repository"
 
 #
 # cleanup: Remove all temporary helper-test state.
@@ -50,6 +51,107 @@ trap cleanup EXIT HUP INT TERM
 assert_json_value() {
     jq -e "$2" "$1" >/dev/null
 }
+
+#
+# run_release_helper: Invoke the release helper inside the isolated repository.
+#
+# Parameters: $@ - Release-helper flags.
+#
+# Returns: The release helper's exit status.
+#
+run_release_helper() {
+    (
+        cd "${RELEASE_REPOSITORY}"
+        sh "${REPOSITORY_ROOT}/.github/scripts/validate-release-tag.sh" "$@"
+    )
+}
+
+#
+# Build a local release repository with an annotated semantic-version tag on
+# main. Its bare origin exercises the helper's real fetch and ancestry checks.
+#
+git init --quiet --bare "${TEST_ROOT}/origin.git"
+git init --quiet --initial-branch=main "${RELEASE_REPOSITORY}"
+git -C "${RELEASE_REPOSITORY}" config user.email test@example.invalid
+git -C "${RELEASE_REPOSITORY}" config user.name "Privateerr Tests"
+printf '%s\n' 'release fixture' > "${RELEASE_REPOSITORY}/release.txt"
+git -C "${RELEASE_REPOSITORY}" add release.txt
+git -C "${RELEASE_REPOSITORY}" commit --quiet -m "Add release fixture"
+main_sha=$(git -C "${RELEASE_REPOSITORY}" rev-parse HEAD)
+git -C "${RELEASE_REPOSITORY}" tag --annotate v1.2.3 \
+    --message "Test release"
+git -C "${RELEASE_REPOSITORY}" remote add origin "${TEST_ROOT}/origin.git"
+git -C "${RELEASE_REPOSITORY}" push --quiet origin main refs/tags/v1.2.3
+
+#
+# Accept an annotated semantic-version tag whose commit belongs to main.
+#
+run_release_helper \
+    --release-tag v1.2.3 \
+    --release-sha "${main_sha}" \
+    > "${TEST_ROOT}/release-valid.out"
+grep -F 'Release tag v1.2.3 is annotated and points to a commit on main.' \
+    "${TEST_ROOT}/release-valid.out" >/dev/null
+
+#
+# Accept SemVer prerelease identifiers and build metadata without weakening the
+# leading-zero rules enforced for the core version.
+#
+git -C "${RELEASE_REPOSITORY}" tag --annotate v1.2.3-rc.1+build.7 \
+    --message "Test prerelease"
+run_release_helper \
+    --release-tag v1.2.3-rc.1+build.7 \
+    --release-sha "${main_sha}" \
+    > "${TEST_ROOT}/release-prerelease.out"
+grep -F 'Release tag v1.2.3-rc.1+build.7 is annotated and points to a commit on main.' \
+    "${TEST_ROOT}/release-prerelease.out" >/dev/null
+
+#
+# Reject malformed semantic versions before consulting repository state.
+#
+if run_release_helper \
+    --release-tag v01.2.3 \
+    --release-sha "${main_sha}" \
+    > "${TEST_ROOT}/release-semver.out" 2>&1; then
+    echo "Release helper accepted an invalid semantic version." >&2
+    exit 1
+fi
+grep -F 'Release tag v01.2.3 is not valid semantic versioning.' \
+    "${TEST_ROOT}/release-semver.out" >/dev/null
+
+#
+# Reject lightweight tags even when their commit belongs to main.
+#
+git -C "${RELEASE_REPOSITORY}" tag v1.2.4
+if run_release_helper \
+    --release-tag v1.2.4 \
+    --release-sha "${main_sha}" \
+    > "${TEST_ROOT}/release-annotated.out" 2>&1; then
+    echo "Release helper accepted a lightweight tag." >&2
+    exit 1
+fi
+grep -F 'Release tag v1.2.4 must be annotated.' \
+    "${TEST_ROOT}/release-annotated.out" >/dev/null
+
+#
+# Reject an annotated release whose commit has not reached main.
+#
+git -C "${RELEASE_REPOSITORY}" switch --quiet --create release-only
+printf '%s\n' 'release-only commit' >> "${RELEASE_REPOSITORY}/release.txt"
+git -C "${RELEASE_REPOSITORY}" commit --quiet --all \
+    --message "Add release-only fixture"
+release_only_sha=$(git -C "${RELEASE_REPOSITORY}" rev-parse HEAD)
+git -C "${RELEASE_REPOSITORY}" tag --annotate v1.2.5 \
+    --message "Invalid test release"
+if run_release_helper \
+    --release-tag v1.2.5 \
+    --release-sha "${release_only_sha}" \
+    > "${TEST_ROOT}/release-ancestry.out" 2>&1; then
+    echo "Release helper accepted a commit outside main." >&2
+    exit 1
+fi
+grep -F 'Release tag v1.2.5 does not point to a commit on main.' \
+    "${TEST_ROOT}/release-ancestry.out" >/dev/null
 
 #
 # Render deterministic start and verdict payloads through long and short flags.

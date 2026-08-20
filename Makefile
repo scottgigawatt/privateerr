@@ -454,7 +454,8 @@ $(TEST_MAKE_HELPERS):
 	$(MAKE_HELPERS_TEST_CMD)
 
 #
-# $(TEST_WORKFLOWS): Tests Discord and registry workflow helpers locally.
+# $(TEST_WORKFLOWS): Tests release, Discord, and registry workflow helpers
+#                    locally.
 #
 # Dependencies: None.
 #
@@ -638,7 +639,7 @@ $(HELP):
 	$(call help_heading,🧪 Test and build)
 	$(call help_line,$(TEST),Run policy and automation-helper tests.)
 	$(call help_line,$(TEST_MAKE_HELPERS),Test credential and status helpers.)
-	$(call help_line,$(TEST_WORKFLOWS),Test Discord and registry workflow helpers.)
+	$(call help_line,$(TEST_WORKFLOWS),Test release$(COMMA) Discord$(COMMA) and registry workflow helpers.)
 	$(call help_line,$(TEST_E2E),Run the live Privateerr and Gluetun test.)
 	$(call help_line,$(BUILD),Build the Privateerr image.)
 	$(call help_line,$(BUILD_BUCCANEERR),Build the Buccaneerr test image.)
