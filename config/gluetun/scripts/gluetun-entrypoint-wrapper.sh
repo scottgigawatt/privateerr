@@ -9,6 +9,8 @@
 #                                then starts Gluetun with the generated PIA
 #                                WireGuard server name.
 #
+# Usage: gluetun-entrypoint-wrapper.sh
+#
 # The script:
 #   - Waits for Privateerr to write privateerr.env.
 #   - Reads PIA_WG_SERVER_NAME from the generated metadata file.
@@ -35,7 +37,11 @@ gluetun_script_name="gluetun-entrypoint-wrapper.sh"
 elapsed_seconds=0
 
 #
-# Prefix wrapper log lines so they are distinct from Gluetun output.
+# log: Prefix wrapper lines so they are distinct from Gluetun output.
+#
+# Parameters: $* - Message fragments to write as one log line.
+#
+# Returns: printf's exit status.
 #
 log() {
     printf '[%s] %s\n' "${gluetun_script_name}" "$*"
@@ -51,6 +57,7 @@ while [ ! -s "${PRIVATEERR_METADATA_PATH}" ]; do
         exit 1
     fi
 
+    # Log the wait status and sleep for 2 seconds before checking again.
     log "Waiting for Privateerr metadata: ${PRIVATEERR_METADATA_PATH}"
     sleep 2
     elapsed_seconds=$((elapsed_seconds + 2))

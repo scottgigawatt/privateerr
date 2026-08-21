@@ -1,3 +1,16 @@
+#
+# Copyright 2025-2026 Scott Gigawatt
+#
+# Licensed under the Apache License, Version 2.0.
+#
+# .gitmodules: Register the official PIA manual connection scripts used by
+#              Privateerr without modifying their upstream source.
+#
+
+#
+# Keep the PIA scripts as a distinct third-party submodule. Clone recursively
+# so the Privateerr image build context contains the pinned upstream revision.
+#
 [submodule "docker/pia-manual-connections"]
 	path = docker/pia-manual-connections
 	url = git@github.com:pia-foss/manual-connections.git

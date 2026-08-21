@@ -1,13 +1,33 @@
 {
+    //
+    // Copyright 2025-2026 Scott Gigawatt
+    //
+    // Licensed under the Apache License, Version 2.0.
+    //
+    // settings.json: Keep the Privateerr workspace aligned with repository
+    //                formatting, spelling, schema, and validation rules.
+    //
+
+    //
+    // Accept project names, dependencies, and intentional pirate vocabulary.
+    //
     "cSpell.words": [
         "actionlint",
         "adjustin",
         "aquasecurity",
+        "argjson",
+        "avoidin",
+        "blockquotes",
         "buccaneerr",
         "buildin",
         "buildx",
+        "CDPATH",
         "centurylinklabs",
         "Chartin",
+        "cksum",
+        "clingin",
+        "Cloudant",
+        "clutterin",
         "CODEOWNERS",
         "copyin",
         "coreutils",
@@ -18,6 +38,7 @@
         "DOCKERHUB",
         "Dockerized",
         "dotenv",
+        "Droppin",
         "elif",
         "foss",
         "generatin",
@@ -26,17 +47,29 @@
         "Gluetun",
         "gsub",
         "healthcheck",
+        "hoistin",
         "KEEPALIVE",
+        "leakin",
         "likin",
         "linebreak",
+        "missin",
         "multiarch",
         "Navigatin",
+        "NGHTTP",
+        "opencontainers",
         "openresolv",
+        "ossf",
         "piaportforward",
+        "pkgs",
         "Plundarr",
         "Privateerr",
+        "pycache",
+        "Pypi",
+        "pytest",
         "qmcgaw",
+        "reportin",
         "resolvconf",
+        "Riggin",
         "Roya",
         "sailin",
         "sarif",
@@ -47,11 +80,144 @@
         "semver",
         "SERVERLIST",
         "shellcheck",
+        "skopeo",
         "Sonoma",
+        "SSF's",
+        "subfolders",
+        "SUBSEP",
+        "todate",
+        "tossin",
         "tostring",
         "updatin",
+        "urandom",
         "Usin",
-        "wonderin"
+        "wonderin",
+        "worktree"
     ],
-    "makefile.configureOnOpen": false
+
+    //
+    // Keep Makefile Tools from inventing a configure step for this project.
+    //
+    "makefile.configureOnOpen": false,
+
+    //
+    // Associate special repository files with their correct language modes.
+    //
+    "files.associations": {
+        ".prettierrc.json5": "jsonc",
+        ".secrets.baseline": "jsonc",
+        "**/CODEOWNERS": "plaintext",
+        "Dockerfile*": "dockerfile"
+    },
+
+    //
+    // Mirror EditorConfig indentation while disabling VS Code auto-detection.
+    //
+    "[awk]": {
+        "editor.detectIndentation": false,
+        "editor.tabSize": 2,
+        "editor.insertSpaces": true
+    },
+    "[dockerfile]": {
+        "editor.detectIndentation": false,
+        "editor.tabSize": 4,
+        "editor.insertSpaces": true
+    },
+    "[yaml]": {
+        "editor.detectIndentation": false,
+        "editor.tabSize": 2,
+        "editor.insertSpaces": true,
+        "editor.formatOnSave": false
+    },
+    "[github-actions-workflow]": {
+        "editor.detectIndentation": false,
+        "editor.tabSize": 2,
+        "editor.insertSpaces": true,
+        "editor.formatOnSave": false
+    },
+    "[json]": {
+        "editor.defaultFormatter": "esbenp.prettier-vscode",
+        "editor.detectIndentation": false,
+        "editor.tabSize": 4,
+        "editor.insertSpaces": true,
+        "editor.formatOnSave": false
+    },
+    "[jsonc]": {
+        "editor.detectIndentation": false,
+        "editor.tabSize": 4,
+        "editor.insertSpaces": true,
+        "editor.formatOnSave": false
+    },
+    "[jq]": {
+        "editor.detectIndentation": false,
+        "editor.tabSize": 2,
+        "editor.insertSpaces": true,
+        "editor.formatOnSave": false
+    },
+    "[makefile]": {
+        "editor.detectIndentation": false,
+        "editor.tabSize": 4,
+        "editor.insertSpaces": false
+    },
+    "[markdown]": {
+        "editor.defaultFormatter": "esbenp.prettier-vscode",
+        "editor.detectIndentation": false,
+        "editor.tabSize": 2,
+        "editor.insertSpaces": true,
+        "editor.formatOnSave": false
+    },
+    "[shellscript]": {
+        "editor.detectIndentation": false,
+        "editor.tabSize": 4,
+        "editor.insertSpaces": true
+    },
+    "[toml]": {
+        "editor.defaultFormatter": "tamasfe.even-better-toml",
+        "editor.detectIndentation": false,
+        "editor.tabSize": 2,
+        "editor.insertSpaces": true
+    },
+
+    //
+    // Validate project AWK programs against the portable POSIX language mode.
+    //
+    "awk.mode": "awk",
+    "awk.stylisticWarnings.missingSemicolon": false,
+
+    //
+    // Use the checked-in Prettier configuration only for supported languages.
+    // Keep global module discovery disabled so formatting stays workspace-safe.
+    //
+    "prettier.requireConfig": true,
+    "prettier.resolveGlobalModules": false,
+    "prettier.useEditorConfig": true,
+
+    //
+    // Keep TOML formatting at two spaces through Even Better TOML.
+    //
+    "evenBetterToml.formatter.indentString": "  ",
+
+    //
+    // Enable shell diagnostics for every project-owned helper.
+    //
+    "shellcheck.enable": true,
+
+    //
+    // Validate repository YAML with SchemaStore and the Compose specification.
+    //
+    "yaml.format.enable": true,
+    "yaml.schemaStore.enable": true,
+    "yaml.schemas": {
+        "https://json.schemastore.org/github-workflow.json": [
+            "**/.github/workflows/*.yml",
+            "**/.github/workflows/*.yaml"
+        ],
+        "https://raw.githubusercontent.com/compose-spec/compose-spec/main/schema/compose-spec.json": [
+            "**/docker-compose*.yml",
+            "**/docker-compose*.yaml"
+        ],
+        "https://json.schemastore.org/pre-commit-config.json": ".pre-commit-config.yaml"
+    },
+    "yaml.validate": true,
+    "yaml.yamlVersion": "1.2"
 }

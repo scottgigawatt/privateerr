@@ -1,3 +1,17 @@
+#
+# Copyright 2025-2026 Scott Gigawatt
+#
+# Licensed under the Apache License, Version 2.0.
+#
+# .gitleaks.toml: Path-scoped exclusions for the repository secret scanner.
+#
+
+#
+# Ignore the generated detect-secrets baseline itself. The baseline records
+# fingerprints and metadata for known findings; it is not a deployable secret.
+#
 [[paths]]
+  # Match detect-secrets baselines anywhere in an isolated worktree.
   path = "**/.secrets.baseline"
+  # Exclude the matched baseline from Gitleaks findings.
   ignore = true

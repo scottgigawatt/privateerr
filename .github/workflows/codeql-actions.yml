@@ -13,50 +13,53 @@ name: "Interrogate the Actions Rigging 🔎🏴‍☠️"
 # manually requested security review.
 #
 on:
-    push:
-        branches:
-            - main
-    pull_request:
-        branches:
-            - main
-    workflow_dispatch:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
 
 permissions:
-    contents: read
+  contents: read
 
 jobs:
-    #
-    # Run CodeQL with the permissions needed to read workflow metadata and
-    # publish GitHub Actions findings to code scanning.
-    #
-    codeql-actions:
-        name: "Sniff the Workflow Bilge 🔍"
-        runs-on: ubuntu-latest
-        permissions:
-            actions: read
-            contents: read
-            security-events: write
+  #
+  # Run CodeQL with the permissions needed to read workflow metadata and
+  # publish GitHub Actions findings to code scanning.
+  #
+  codeql-actions:
+    name: "Sniff the Workflow Bilge 🔍"
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
 
-        steps:
-            #
-            # Check out without retaining credentials before CodeQL inspects the
-            # repository's workflow definitions.
-            #
-            - name: "Grab the Treasure Map 🗺️"
-              uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
-              with:
-                  persist-credentials: false
+    steps:
+      #
+      # Check out without retaining credentials before CodeQL inspects the
+      # repository's workflow definitions.
+      #
+      - name: "Grab the Treasure Map 🗺️"
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
 
-            - name: "Wake the CodeQL Kraken 🐙"
-              uses: github/codeql-action/init@ff2f1c621b7f889edc0d3c761ac2e6a3f8cdb0dd  # v4
-              with:
-                  languages: actions
+      #
+      # Initialize the dedicated CodeQL database for GitHub Actions source.
+      #
+      - name: "Wake the CodeQL Kraken 🐙"
+        uses: github/codeql-action/init@ff2f1c621b7f889edc0d3c761ac2e6a3f8cdb0dd  # v4
+        with:
+          languages: actions
 
-            #
-            # Analyze the initialized Actions database and keep its findings in
-            # a dedicated code-scanning category.
-            #
-            - name: "Read the Cursed Scrolls 📜"
-              uses: github/codeql-action/analyze@ff2f1c621b7f889edc0d3c761ac2e6a3f8cdb0dd  # v4
-              with:
-                  category: "/language:actions"
+      #
+      # Analyze the initialized Actions database and keep its findings in
+      # a dedicated code-scanning category.
+      #
+      - name: "Read the Cursed Scrolls 📜"
+        uses: github/codeql-action/analyze@ff2f1c621b7f889edc0d3c761ac2e6a3f8cdb0dd  # v4
+        with:
+          category: "/language:actions"

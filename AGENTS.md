@@ -20,11 +20,16 @@ The companion Buccaneerr image is test-only. It validates the Privateerr + Gluet
 
 - `docker/`: Privateerr image build context and Privateerr-owned entrypoint scripts.
 - `docker/pia-manual-connections/`: PIA upstream scripts as a git submodule. Treat this as third-party code.
-- `test/`: Buccaneerr image build context, e2e validator scripts, and example reset files.
+- `test/`: Buccaneerr image build context and organized test support files.
+- `test/policy/`: Static repository policy checks used by Make and pre-commit.
+- `test/helpers/`: Isolated Make and workflow helper tests.
+- `test/stubs/`: Deterministic command stubs used by the helper tests.
+- `test/examples/`: Checked-in example reset files restored after live tests.
+- `scripts/compose/`: Host-side credential preflight and Compose status helpers.
 - `config/`: Checked-in service config directories used by Docker Compose.
 - `config/gluetun/wireguard/`: Generated WireGuard config and metadata location.
 - `docs/`: Supporting project documentation.
-- `.github/`: Workflows, issue templates, PR template, Dependabot, and CODEOWNERS.
+- `.github/`: Workflows, reusable workflow helpers, issue templates, PR template, Renovate policy, and CODEOWNERS.
 - `docker-compose.yml`: Single Compose stack used for local development, Synology-style one-file deployments, and e2e validation.
 - `example.env`: Complete example environment file. Keep ordering aligned with `docker-compose.yml`.
 
@@ -76,6 +81,10 @@ Top-of-file comments for project-owned scripts and config-style files should inc
 
 Shell scripts with a shebang should have one blank line after the shebang before the top-of-file comment.
 
+Inline Compose comments use two spaces before `#`. Align the `#` characters for
+logically grouped lines. Use two-space indentation in YAML, TOML, AWK, and jq;
+use four-space indentation in shell and JSON-with-comments workspace files.
+
 ## Shell Script Rules
 
 Project-owned host scripts should prefer:
@@ -87,6 +96,11 @@ Project-owned host scripts should prefer:
 Container-only scripts may use Bash when the container image intentionally installs Bash and the Dockerfile/Compose entrypoint expects it.
 
 Keep shell error messages clear enough to diagnose failures quickly. User-facing status logs may use the project voice, but actual diagnostic errors should be direct.
+
+Document each shell function immediately above its declaration with its
+purpose, parameters, and return behavior. Use `Parameters: None.` when a
+function accepts nothing, keep one parameter per comment line, and use one
+space after `Returns:`.
 
 ## Docker Rules
 
@@ -136,7 +150,7 @@ Live runs overwrite:
 Never commit real generated secrets. Restore checked-in examples with:
 
 ```sh
-make reset-config
+make restore-test-config
 ```
 
 The source example files live in:
@@ -176,11 +190,13 @@ Important commands:
 make help
 make build
 make build-buccaneerr
-make build-multiarch
+make build-platforms
 make run-privateerr
+make test
+make test-workflows
 make test-e2e
-make test-down
-make reset-config
+make clean-test
+make restore-test-config
 make clean
 make nuke
 make config
@@ -189,11 +205,14 @@ make print-config
 make print-env
 ```
 
-Run `make test-down` after live e2e tests to stop containers and restore example files.
+Run `make clean-test` after live e2e tests to stop containers and restore example files.
+`make clean` removes only disposable developer artifacts; it must never touch
+containers, volumes, images, `.env`, generated VPN state, or checked-in examples.
 
 ## GitHub Workflow Rules
 
 Workflow step names should be pirate-themed and include tasteful emoji.
+All project-owned YAML, including GitHub Actions workflows, uses two-space indentation.
 
 Use current major versions of GitHub Actions where practical.
 
@@ -204,7 +223,10 @@ Build/publish behavior:
 - Main/tag publishing builds multi-arch images.
 - Release tags use git tags like `v0.1.0`.
 - Docker image semver tags omit the leading `v`, e.g. `0.1.0`.
-- `latest` and the semver image tag for a release should be produced from the same build output.
+- Stable releases publish exact, minor, major, and `latest` aliases from one build.
+- Prereleases publish only their exact version and `sha-*` tag, never movable aliases.
+- Successful `main` builds publish `edge` and `sha-*` tags.
+- Major version zero publishes its exact and minor aliases but not a `0` alias.
 
 Security/scanning:
 
@@ -230,7 +252,9 @@ make help
 make config
 make build
 make build-buccaneerr
-make build-multiarch
+make build-platforms
+make test
+make test-workflows
 pre-commit run --all-files
 ```
 
@@ -238,7 +262,7 @@ For behavior changes touching Privateerr, Gluetun handoff, WireGuard config gene
 
 ```sh
 make test-e2e
-make test-down
+make clean-test
 ```
 
 Do not leave live generated VPN config or metadata in the working tree.

@@ -53,6 +53,7 @@ Those PIA scripts live in this repo as a submodule at `docker/pia-manual-connect
 And that's it! That's the whole trick: PIA's original scripts do the WireGuard work. Privateerr just gives them a clean container, friendly defaults, repeatable commands, and a small metadata file for Docker Compose setups.
 
 > [!IMPORTANT]
+>
 > **Privateerr is NOT a VPN client.** It does not create or run a VPN tunnel. It generates a PIA WireGuard configuration file (`wg0.conf`) that you can hand to an actual VPN client.
 
 There are already excellent VPN clients. One of the best container-friendly options is [Gluetun](https://github.com/qdm12/gluetun). If what you really want is "get Gluetun working with PIA WireGuard," Privateerr may have you covered: generate the files, point Gluetun at them, and move on.
@@ -61,19 +62,19 @@ There are already excellent VPN clients. One of the best container-friendly opti
 
 Clone the repo with submodules, copy the example environment file, then pass your PIA credentials inline:
 
-```console
-❯ git clone --recurse-submodules git@github.com:scottgigawatt/privateerr.git
-❯ cd privateerr
-❯ cp example.env .env
-❯ PIA_USER="p1234567" PIA_PASS="p0rtRoya1" PIA_PF="false" make run-privateerr
+```sh
+git clone --recurse-submodules git@github.com:scottgigawatt/privateerr.git
+cd privateerr
+cp example.env .env
+PIA_USER="p1234567" PIA_PASS="p0rtRoya1" PIA_PF="false" make run-privateerr
 ```
 
 You don't even need to look at or update the `.env` file to get a fully functioning WireGuard configuration file _in seconds!_ Now, the `.env` file is intentionally roomy, but the defaults are ready to go; just use inline variables to override anything in the `.env` file for that run.
 
 When the command finishes, the main file you came for is here:
 
-```console
-❯ cat config/gluetun/wireguard/wg0.conf
+```sh
+cat config/gluetun/wireguard/wg0.conf
 [Interface]
 Address = 10.10.10.10
 PrivateKey = shiverMeTimbers123
@@ -88,8 +89,8 @@ Endpoint = 10.10.10.10:1234
 
 Privateerr also writes a tiny metadata file beside the WireGuard config:
 
-```console
-❯ cat config/gluetun/wireguard/privateerr.env
+```sh
+cat config/gluetun/wireguard/privateerr.env
 PIA_WG_SERVER_NAME=jolly-roger-401
 PIA_WG_ENDPOINT_IP=10.10.10.10
 PIA_WG_ENDPOINT_PORT=1234
@@ -105,14 +106,15 @@ PIA_GEOLOCATED_REGION=false
 | `config/gluetun/wireguard/privateerr.env` | A small helper file with the selected PIA server name, endpoint, region, and port-forwarding support metadata.                           |
 
 > [!WARNING]
+>
 > Keep `wg0.conf` private. It contains VPN connection material.
 
 ## 🚪 Port Forwarding
 
 Want a port-forwarding-capable PIA server? Change one variable:
 
-```console
-❯ PIA_USER="p1234567" PIA_PASS="p0rtRoya1" PIA_PF="true" make run-privateerr
+```sh
+PIA_USER="p1234567" PIA_PASS="p0rtRoya1" PIA_PF="true" make run-privateerr
 ```
 
 PIA port forwarding is usually awkward because the server choice matters after WireGuard is involved. Privateerr makes the handoff simple: with `PIA_PF=true`, it asks PIA for a port-forwarding-capable WireGuard endpoint, generates `wg0.conf`, figures out the matching PIA WireGuard server name, and writes that name into `privateerr.env`.
@@ -120,6 +122,7 @@ PIA port forwarding is usually awkward because the server choice matters after W
 The metadata in `privateerr.env` is what lets a Docker Compose stack establish a fully functioning port forwarded VPN connection in _one single step_, in _less than 1 minute_. Privateerr writes the map, reads `PIA_WG_SERVER_NAME`, exports it as `SERVER_NAMES`, then Gluetun can start immediately with the right server information instead of making you run a second manual step _after_ the VPN connection is established.
 
 > [!TIP]
+>
 > For the simplest use case, take `wg0.conf` and leave. For the powerful use case, pair Privateerr with Gluetun in Compose so config generation, server-name handoff, and VPN startup happen together.
 
 For the wired-together version, see the included [Compose file](./docker-compose.yml). For a larger real-world stack, see [Plundarr](https://github.com/scottgigawatt/plundarr#readme).
@@ -128,14 +131,14 @@ For the wired-together version, see the included [Compose file](./docker-compose
 
 Curious about every variable available in this project? Run:
 
-```console
-❯ make env
+```sh
+make env
 ```
 
 If you only care about the PIA settings, anchor the grep at the start of the line:
 
-```console
-❯ make env | grep ^PIA
+```sh
+make env | grep ^PIA
 PIA_BIN_HOME=/pia
 PIA_VPN_PROTOCOL=wireguard
 PIA_DISABLE_IPV6=yes
@@ -144,8 +147,8 @@ PIA_DISABLE_IPV6=yes
 
 If you want to see the Gluetun side:
 
-```console
-❯ make env | grep ^GLUETUN
+```sh
+make env | grep ^GLUETUN
 GLUETUN_TAG=latest
 GLUETUN_CONFIG_PATH=./config/gluetun
 GLUETUN_WRAPPER_SCRIPT_PATH=./config/gluetun/scripts/gluetun-entrypoint-wrapper.sh
@@ -184,30 +187,35 @@ Use these commands when you want Docker Compose to show you what it sees:
 
 So if you want to inspect the template, run:
 
-```console
-❯ make print-config
+```sh
+make print-config
 ```
 
 If you want to see the actual Compose configuration Docker will run:
 
-```console
-❯ make config
+```sh
+make config
 ```
 
 ## ⚙️ Useful Commands
 
-| ⚙️ Command            | ✅ Use it when                                               |
-| --------------------- | ------------------------------------------------------------ |
-| `make run-privateerr` | You only want fresh `wg0.conf` and `privateerr.env`.         |
-| `make up`             | You want the full Privateerr + Gluetun Compose stack.        |
-| `make down`           | You want to stop and remove the stack.                       |
-| `make logs`           | You want to inspect container output.                        |
-| `make print-config`   | You want the Compose template without comments.              |
-| `make config`         | You want the fully rendered Compose model.                   |
-| `make reset-config`   | You want to restore the checked-in example config files.     |
-| `make clean`          | You want to stop the stack and restore example config files. |
+| ⚙️ Command                 | ✅ Use it when                                          |
+| -------------------------- | ------------------------------------------------------- |
+| `make run-privateerr`      | You only want fresh `wg0.conf` and `privateerr.env`.    |
+| `make up`                  | You want the full Privateerr + Gluetun Compose stack.   |
+| `make down`                | You want to stop and remove the stack.                  |
+| `make ps`                  | You want a compact container status table.              |
+| `make logs`                | You want to inspect container output.                   |
+| `make backup`              | You want a recoverable archive of the config directory. |
+| `make test`                | You want the local policy and automation-helper suite.  |
+| `make print-config`        | You want the Compose template without comments.         |
+| `make config`              | You want the fully rendered Compose model.              |
+| `make clean`               | You want to remove only disposable developer artifacts. |
+| `make clean-test`          | You want to stop tests and restore example config.      |
+| `make restore-test-config` | You want to restore only the checked-in examples.       |
 
 > [!TIP]
+>
 > More build, test, and release details live in [Advanced Usage](./docs/ADVANCED_USAGE.md).
 
 ## 📦 Platform Notes
@@ -218,12 +226,12 @@ Published Privateerr images support `linux/amd64`, `linux/arm64`, and `linux/arm
 
 Images are published to both [GHCR](https://github.com/scottgigawatt/privateerr/pkgs/container/privateerr) and [Docker Hub](https://hub.docker.com/repository/docker/scottgigawatt/privateerr/general). Most users should stay on `latest`; use `edge` only when ye intentionally want the newest successful `main` build before it becomes a stable release.
 
-| 📦 Registry | ✅ Stable                                  | 🧪 Edge                                 |
+| 📦 Registry | ✅ Stable                                 | 🧪 Edge                                 |
 | ----------- | ----------------------------------------- | --------------------------------------- |
 | GHCR        | `ghcr.io/scottgigawatt/privateerr:latest` | `ghcr.io/scottgigawatt/privateerr:edge` |
 | Docker Hub  | `scottgigawatt/privateerr:latest`         | `scottgigawatt/privateerr:edge`         |
 
-Stable version tags such as `1.0.0` remain available when ye need to pin an exact release. Commit tags such as `sha-cfa2fb5` identify a particular source revision. Prerelease tags keep their own version and never replace `latest`.
+Stable releases also publish minor and major aliases: `1.2.3` moves `1.2` and `1` alongside `latest`. Major version zero keeps the safer exact and minor aliases without publishing a broad `0` tag. Commit tags such as `sha-cfa2fb5` identify a particular source revision. Prerelease tags keep only their exact version and commit tag, never replacing movable stable aliases.
 
 The Docker Hub overview is generated from [docs/DOCKERHUB_README.md](./docs/DOCKERHUB_README.md), which keeps Docker Hub focused on pulling the image and understanding the basic use case. The full project docs stay here in the GitHub README.
 
@@ -235,7 +243,7 @@ Privateerr keeps the build deck intentionally locked down:
 - Alpine build bases are pinned to versioned image digests.
 - Renovate opens update PRs for pinned actions, Docker digests, Compose images, and submodules.
 - Pre-commit, CodeQL, OpenSSF Scorecard, and Trivy guard the repo and image workflow.
-- Successful `main` builds publish `edge`; stable semantic-version tags publish the exact version and move `latest`.
+- Successful `main` builds publish `edge`; stable semantic-version tags publish exact, minor, major, and `latest` aliases.
 - Published images are scanned with Trivy, attested, and mirrored from GHCR to Docker Hub with digest preservation.
 
 This means a new `main` build does **not** replace the stable `latest` image or silently float to a newer Alpine base just because Alpine published one. Renovate has to raise the flag, CI has to pass, and the update has to merge before `edge` uses that new base. A reviewed version tag is still required to move `latest`.

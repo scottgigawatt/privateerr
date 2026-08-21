@@ -8,6 +8,8 @@
 # privateerr-entrypoint.sh: This script launches the unmodified PIA manual connection
 #                           scripts, then writes a dotenv metadata file for Gluetun.
 #
+# Usage: docker/privateerr-entrypoint.sh
+#
 # The script:
 #   - Runs the PIA setup script from the configured PIA script directory.
 #   - Expects PIA_CONNECT=false so PIA writes a WireGuard config instead of starting a tunnel.
@@ -45,21 +47,34 @@ privateerr_run_log_path="/tmp/privateerr-run.log"
 keepalive_child_pid=""
 
 #
-# Write a log line to both stdout and the configured log file.
+# write_log_line: Write one line to stdout and the configured log file.
+#
+# Parameters: $1 - Complete log message.
+#
+# Returns: tee's exit status.
 #
 write_log_line() {
     printf '%s\n' "$1" | tee -a "${PRIVATEERR_LOG_PATH}"
 }
 
 #
-# Prefix log lines emitted by this script.
+# log_privateerr: Prefix log lines emitted by this script.
+#
+# Parameters: $* - Message fragments to write as one log line.
+#
+# Returns: write_log_line's exit status.
 #
 log_privateerr() {
     write_log_line "[${privateerr_script_name}] $*"
 }
 
 #
-# Prefix log lines emitted by upstream PIA scripts.
+# log_pia: Prefix log lines emitted by an upstream PIA script.
+#
+# Parameters: $1 - Upstream script name.
+#             $2 - Complete upstream log line.
+#
+# Returns: tee's exit status.
 #
 log_pia() {
     pia_script_name="$1"
@@ -70,7 +85,11 @@ log_pia() {
 }
 
 #
-# Stop the keepalive loop cleanly when Docker asks the container to stop.
+# shutdown_privateerr: Stop the keepalive loop when Docker requests shutdown.
+#
+# Parameters: None.
+#
+# Returns: Exits the entrypoint with status 0.
 #
 shutdown_privateerr() {
     log_privateerr "Privateerr received stop signal and will leave port cleanly. ⚓"
@@ -167,20 +186,20 @@ server_data="$(curl -fsSL "${PRIVATEERR_SERVERLIST_URL}" | head -n 1 || true)"
 server_metadata="$(printf '%s' "${server_data}" | jq -r --arg ENDPOINT_IP "${endpoint_ip}" --arg WG_SERVER_NAME "${wg_server_name}" '
     .regions[]
     | select(any(.servers.wg[]?; .ip == $ENDPOINT_IP or .cn == $WG_SERVER_NAME))
-    | {
-        id,
-        name,
-        port_forward,
-        geo,
-        wg: (.servers.wg[] | select(.ip == $ENDPOINT_IP or .cn == $WG_SERVER_NAME))
-      }
-    | [
-        .id,
-        .name,
-        (.port_forward | tostring),
-        (.geo | tostring),
-        .wg.cn
-      ]
+    |   {
+            id,
+            name,
+            port_forward,
+            geo,
+            wg: (.servers.wg[] | select(.ip == $ENDPOINT_IP or .cn == $WG_SERVER_NAME))
+        }
+    |   [
+            .id,
+            .name,
+            (.port_forward | tostring),
+            (.geo | tostring),
+            .wg.cn
+        ]
     | @tsv
 ' 2>/dev/null | head -n 1 || true)"
 
@@ -205,8 +224,11 @@ if [[ -z "${wg_server_name}" || "${wg_server_name}" == "null" ]]; then
 fi
 
 #
-# Escape values that might contain spaces so the metadata remains friendly to
-# both Docker Compose env-file parsing and shell sourcing.
+# dotenv_escape: Escape one value for a double-quoted dotenv assignment.
+#
+# Parameters: $1 - Raw dotenv value.
+#
+# Returns: Prints the escaped value.
 #
 dotenv_escape() {
     printf '%s' "$1" | sed 's/\\/\\\\/g; s/"/\\"/g'

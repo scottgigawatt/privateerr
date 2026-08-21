@@ -9,6 +9,7 @@ config/buccaneerr/logs/buccaneerr.log
 ```
 
 > [!NOTE]
+>
 > 🧽 Those logs be ignored by git. They are useful after a voyage, but too full of fresh sea spray for the public ledger.
 
 Buccaneerr checks:
@@ -19,4 +20,5 @@ Buccaneerr checks:
 - PIA port forwarding returns a proper port.
 
 > [!TIP]
+>
 > 🦜 If the voyage sinks, start here first. Buccaneerr's log usually points straight at the busted plank.

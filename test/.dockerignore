@@ -1,3 +1,14 @@
+#
+# Copyright 2025-2026 Scott Gigawatt
+#
+# Licensed under the Apache License, Version 2.0.
+#
+# .dockerignore: Files that do not belong in the Buccaneerr image build context.
+#
+
+#
+# Local workstation metadata and test logs are never image inputs.
+#
 .DS_Store
 *.log
 logs/

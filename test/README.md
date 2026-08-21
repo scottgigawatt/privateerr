@@ -2,6 +2,48 @@
 
 Welcome to the test hold, where Buccaneerr climbs aboard after Privateerr and Gluetun to make sure the whole WireGuard voyage did not spring a leak. ☠️
 
+The test tree keeps responsibilities separate:
+
+- `policy/` verifies repository-wide dependency and image-tag rules.
+- `helpers/` exercises Make and workflow helpers without external writes.
+- `stubs/` supplies deterministic Docker and Skopeo stand-ins for those tests.
+- `examples/` stores the checked-in WireGuard and metadata examples restored after a live voyage.
+- the test-root `Dockerfile` and `buccaneerr-entrypoint.sh` remain the Buccaneerr build context.
+
+## Test Script Chart 🗺️
+
+| Hold       | Script                                                                   | Purpose                                                            |
+| ---------- | ------------------------------------------------------------------------ | ------------------------------------------------------------------ |
+| 🛡️ Policy | [`policy/check-build-pin-policy.sh`](policy/check-build-pin-policy.sh)   | Keep digest-pinned build dependency tags synchronized               |
+| 🛡️ Policy | [`policy/check-image-tag-policy.sh`](policy/check-image-tag-policy.sh)   | Enforce canonical image tags in every metadata-action block         |
+| 🧮 Policy | [`policy/awk/check-image-tags.awk`](policy/awk/check-image-tags.awk)     | Parse and validate workflow image-tag metadata blocks               |
+| 🧮 Policy | [`policy/awk/collect-build-pins.awk`](policy/awk/collect-build-pins.awk) | Extract and validate digest-pinned build dependency values          |
+| 🧰 Helpers | [`helpers/test-make-helpers.sh`](helpers/test-make-helpers.sh)           | Test AWK, backup, credential, and Compose helpers offline           |
+| 🧰 Helpers | [`helpers/test-policy-checks.sh`](helpers/test-policy-checks.sh)         | Test valid and invalid publishing-policy fixtures offline           |
+| 🧰 Helpers | [`helpers/test-workflow-helpers.sh`](helpers/test-workflow-helpers.sh)   | Test release, Discord, and registry helper behavior offline         |
+| 🎭 Stubs   | [`stubs/compose-docker-stub.sh`](stubs/compose-docker-stub.sh)           | Supply deterministic Docker output to Compose helper tests          |
+| 🎭 Stubs   | [`stubs/workflow-skopeo-stub.sh`](stubs/workflow-skopeo-stub.sh)         | Simulate registry inspection without network access                 |
+
+The subfolders separate static repository policy, reusable helper tests,
+deterministic command stubs, and checked-in reset examples. Make targets remain
+the public interface; invoke individual scripts only while diagnosing a focused
+failure.
+
+## Offline Policy and Helper Checks 🧭
+
+> [!TIP]
+>
+> ```sh
+> make test
+> make test-make-helpers
+> make test-workflows
+> ```
+
+The complete local target checks reusable AWK and Compose helpers, config
+backups, release tags, every structured Discord profile, registry mirroring,
+synchronized SHA-256 build pins, and canonical image-tag channels. Disposable
+negative fixtures prove that mismatched pins and unsafe tag rules are rejected.
+
 ## What Buccaneerr Be 🦜
 
 Buccaneerr is the test-only image for this repo. It does not ship with the production Privateerr image, and it does not generate WireGuard config. Instead, it joins the running test stack after Privateerr has written its files and Gluetun has raised the VPN sails.
@@ -14,6 +56,7 @@ Buccaneerr checks the important loot:
 - The stack behaves like the downstream Synology-friendly Compose setup.
 
 > [!IMPORTANT]
+>
 > ⚓ Buccaneerr exists so the main Privateerr image can stay wee, clean, and focused. Test tools like `curl` stay in this image instead of clutterin' the production brig.
 
 ## How It Gets Built 🛠️
@@ -22,17 +65,18 @@ The image is built from [Dockerfile](Dockerfile), using the same pinned Alpine b
 
 Build it directly with:
 
-```bash
+```sh
 make build-buccaneerr
 ```
 
 Run the full end-to-end voyage with:
 
-```bash
+```sh
 make test-e2e
 ```
 
 > [!WARNING]
+>
 > 🧨 The e2e voyage uses real PIA credentials from `.env`. Do not commit live credentials, generated VPN configs, or logs from yer secret treasure chest.
 
 ## What It Does During E2E 🧭
@@ -57,11 +101,12 @@ These files contain fake pirate-flavored data. Cleanup targets copy them back in
 
 Useful cleanup commands:
 
-```bash
-make test-down
-make reset-config
+```sh
+make clean-test
+make restore-test-config
 make nuke
 ```
 
 > [!TIP]
+>
 > 🏴‍☠️ Run cleanup before committing after any real e2e voyage. Future ye will thank past ye for not smuggling secrets into the cargo hold.

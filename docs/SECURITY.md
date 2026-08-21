@@ -6,14 +6,15 @@ Ahoy, security-minded sailor. If ye spot a cursed leak, a leaky hull, or a suspi
 
 Privateerr sails by the stable `latest` image and the `edge` image built from `main`. Since this project be a small vessel, security fixes target those newest charts instead of older treasure maps.
 
-| Version | Supported |
-| ------- | --------- |
-| `latest` stable image | ✅ |
-| `edge` image and `main` branch | ✅ |
-| Older version tags and local builds | ❌ |
-| Forked or modified PIA scripts | ❌ |
+| Version                             | Supported |
+| ----------------------------------- | --------- |
+| `latest` stable image               | ✅        |
+| `edge` image and `main` branch      | ✅        |
+| Older version tags and local builds | ❌        |
+| Forked or modified PIA scripts      | ❌        |
 
 > [!IMPORTANT]
+>
 > 🧭 Privateerr uses the official PIA manual connection scripts as a submodule. Security issues in those upstream scripts should also be reported to the PIA project, because Privateerr keeps those scrolls untouched.
 
 ## Reporting a Vulnerability 🦜
@@ -41,6 +42,7 @@ Helpful reports include:
 - Any safe logs with secrets removed.
 
 > [!WARNING]
+>
 > 💣 Never include real PIA usernames, passwords, WireGuard private keys, generated `wg0.conf` files, or live `privateerr.env` metadata in a public report.
 
 ## Response Expectations 🕰️
@@ -68,12 +70,13 @@ The protected build path then:
 - Builds Privateerr and Buccaneerr for `linux/amd64`, `linux/arm64`, and `linux/arm/v7`.
 - Scans built images with Trivy before publishing.
 - Publishes `edge` from `main` after checks pass.
-- Publishes exact versions and `latest` from stable semantic-version tags.
+- Publishes exact, minor, major, and `latest` aliases from stable semantic-version tags.
 - Attests build provenance and mirrors Privateerr from GHCR to Docker Hub with digest preservation.
 
 Rebuilding the same commit does not automatically pick up a newer Alpine base. To pick up patched packages, merge the Renovate update PR first, then pull `edge` from the updated `main` or publish a stable version tag when the change is ready for `latest`.
 
 > [!TIP]
+>
 > 🏴‍☠️ Pull `latest` for the newest stable patched hull. Pull `edge` only when ye intentionally want the newest successful `main` build.
 
 Fair winds, sharp eyes, and may yer secrets stay below deck. ☠️

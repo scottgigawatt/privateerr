@@ -12,7 +12,8 @@
 ARG ALPINE_TAG=3.24@sha256:28bd5fe8b56d1bd048e5babf5b10710ebe0bae67db86916198a6eec434943f8b
 
 #
-# Use the specified version of the Alpine image.
+# Stage 1 of 1: Build the test-only Buccaneerr validator on pinned Alpine.
+# Keeping this separate prevents validation tools entering the production image.
 #
 FROM alpine:${ALPINE_TAG}
 
@@ -39,30 +40,34 @@ ENV BUCCANEERR_BIN_HOME=${BUCCANEERR_BIN_HOME}
 # metadata, source links, and license display.
 #
 LABEL org.opencontainers.image.title="Buccaneerr" \
-      org.opencontainers.image.description="Test-only Buccaneerr validator for Privateerr, Gluetun WireGuard, and PIA port-forwarding e2e checks." \
-      org.opencontainers.image.url="https://github.com/scottgigawatt/privateerr" \
-      org.opencontainers.image.documentation="https://github.com/scottgigawatt/privateerr#readme" \
-      org.opencontainers.image.source="https://github.com/scottgigawatt/privateerr" \
-      org.opencontainers.image.vendor="Scott Gigawatt" \
-      org.opencontainers.image.licenses="Apache-2.0" \
-      org.opencontainers.image.created="${IMAGE_CREATED}" \
-      org.opencontainers.image.revision="${IMAGE_REVISION}" \
-      org.opencontainers.image.version="${IMAGE_VERSION}" \
-      org.opencontainers.image.base.name="docker.io/library/alpine:${ALPINE_TAG}"
+        org.opencontainers.image.description="Test-only Buccaneerr validator for Privateerr, Gluetun WireGuard, and PIA port-forwarding e2e checks." \
+        org.opencontainers.image.url="https://github.com/scottgigawatt/privateerr" \
+        org.opencontainers.image.documentation="https://github.com/scottgigawatt/privateerr#readme" \
+        org.opencontainers.image.source="https://github.com/scottgigawatt/privateerr" \
+        org.opencontainers.image.vendor="Scott Gigawatt" \
+        org.opencontainers.image.licenses="Apache-2.0" \
+        org.opencontainers.image.created="${IMAGE_CREATED}" \
+        org.opencontainers.image.revision="${IMAGE_REVISION}" \
+        org.opencontainers.image.version="${IMAGE_VERSION}" \
+        org.opencontainers.image.base.name="docker.io/library/alpine:${ALPINE_TAG}"
 
 #
 # Install validation tools. These stay out of the production image.
 #
 RUN apk add --no-cache \
-      bash \
-      ca-certificates \
-      curl
+        bash \
+        ca-certificates \
+        curl
 
 #
 # Copy over the project license and Buccaneerr script, then make the script executable.
 #
-COPY LICENSE /LICENSE
+COPY LICENSE                  /LICENSE
 COPY buccaneerr-entrypoint.sh ${BUCCANEERR_BIN_HOME}/buccaneerr-entrypoint.sh
+
+#
+# Make the Buccaneerr entrypoint script executable.
+#
 RUN chmod +x "${BUCCANEERR_BIN_HOME}/buccaneerr-entrypoint.sh"
 
 #

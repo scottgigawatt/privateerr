@@ -13,683 +13,460 @@ name: "Hoist the Registry Sails 🏴‍☠️"
 # refreshes the moving edge images, while manual dispatch supports recovery.
 #
 on:
-    push:
-        branches:
-            - main
-        tags:
-            - "v*.*.*"
-        paths:
-            - "docker/**"
-            - "test/**"
-            - "config/**"
-            - "docs/DOCKERHUB_README.md"
-            - "docker-compose.yml"
-            - "Makefile"
-            - "example.env"
-            - ".github/workflows/build-and-push.yml"
-    schedule:
-        - cron: "17 7 * * 1"
-    workflow_dispatch:
+  push:
+    branches:
+      - main
+    tags:
+      - "v*.*.*"
+    paths:
+      - ".github/discord/**"
+      - ".github/scripts/**"
+      - ".github/workflows/build-and-push.yml"
+      - "Makefile"
+      - "config/**"
+      - "docker/**"
+      - "docs/DOCKERHUB_README.md"
+      - "docker-compose.yml"
+      - "example.env"
+      - "test/**"
+  schedule:
+    - cron: "17 7 * * 1"
+  workflow_dispatch:
 
 permissions:
-    contents: read
+  contents: read
 
 jobs:
-    #
-    # Build and inspect both images before publishing their multi-architecture
-    # manifests, attestations, registry mirrors, and release notifications.
-    #
-    build-and-push:
-        name: "Pack the Cargo Hold 🧰"
-        if: github.event_name != 'workflow_dispatch' || github.ref == 'refs/heads/main'
-        runs-on: ubuntu-latest
-        permissions:
-            contents: read
-            id-token: write
-            attestations: write
-            packages: write
+  #
+  # Build and inspect both images before publishing their multi-architecture
+  # manifests, attestations, registry mirrors, and release notifications.
+  #
+  build-and-push:
+    name: "Pack the Cargo Hold 🧰"
+    if: github.event_name != 'workflow_dispatch' || github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+      packages: write
+    env:
+      REGISTRY: ghcr.io
+      IMAGE_PLATFORMS: linux/amd64,linux/arm64,linux/arm/v7
+      PRIVATEERR_LOCAL_IMAGE_REF: ghcr.io/${{ github.repository }}
+      BUCCANEERR_LOCAL_IMAGE_REF: ghcr.io/${{ github.repository_owner }}/buccaneerr
+      PRIVATEERR_IMAGE_REF: ghcr.io/${{ github.repository }}
+      BUCCANEERR_IMAGE_REF: ghcr.io/${{ github.repository_owner }}/buccaneerr
+      DOCKERHUB_PRIVATEERR_IMAGE_REF: docker.io/${{ github.repository_owner }}/privateerr
+
+    steps:
+      #
+      # Check out complete history and the upstream PIA submodule without
+      # retaining credentials. Helper scripts are invoked from this checkout.
+      #
+      - name: "Grab the Treasure Map 🗺️"
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          submodules: recursive
+          fetch-depth: 0
+          persist-credentials: false
+
+      #
+      # Accept only annotated semantic-version tags whose commits already
+      # belong to main before any release image can be published.
+      #
+      - name: "Inspect the Release Chart 🧭"
+        if: startsWith(github.ref, 'refs/tags/')
+        run: |
+          .github/scripts/validate-release-tag.sh \
+            --release-tag "${{ github.ref_name }}" \
+            --release-sha "${{ github.sha }}"
+
+      #
+      # Announce the start independently to each optional webhook. Only the
+      # credential stays secret; public workflow metadata uses explicit flags.
+      #
+      - name: "Notify Primary Discord: build opened 📣"
         env:
-            REGISTRY: ghcr.io
-            IMAGE_PLATFORMS: linux/amd64,linux/arm64,linux/arm/v7
-            PRIVATEERR_LOCAL_IMAGE_REF: ghcr.io/${{ github.repository }}
-            BUCCANEERR_LOCAL_IMAGE_REF: ghcr.io/${{ github.repository_owner }}/buccaneerr
-            PRIVATEERR_IMAGE_REF: ghcr.io/${{ github.repository }}
-            BUCCANEERR_IMAGE_REF: ghcr.io/${{ github.repository_owner }}/buccaneerr
-            DOCKERHUB_PRIVATEERR_IMAGE_REF: docker.io/${{ github.repository_owner }}/privateerr
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          WORKFLOW_NAME: ${{ github.workflow }}
+          REF_NAME: ${{ github.ref_name }}
+          ACTOR: ${{ github.actor }}
+          REPOSITORY: ${{ github.repository }}
+          GHCR_IMAGE: ${{ env.PRIVATEERR_IMAGE_REF }}
+          DOCKERHUB_IMAGE: ${{ env.DOCKERHUB_PRIVATEERR_IMAGE_REF }}
+          IMAGE_PLATFORMS: ${{ env.IMAGE_PLATFORMS }}
+        run: |
+          sh .github/scripts/discord-notifier.sh \
+              --type            image-start \
+              --profile         image-primary \
+              --run-url         "${RUN_URL}" \
+              --repository      "${REPOSITORY}" \
+              --ref-name        "${REF_NAME}" \
+              --workflow-name   "${WORKFLOW_NAME}" \
+              --actor           "${ACTOR}" \
+              --platforms       "${IMAGE_PLATFORMS}" \
+              --ghcr-image      "${GHCR_IMAGE}" \
+              --dockerhub-image "${DOCKERHUB_IMAGE}"
 
-        steps:
-            #
-            # Announce the start independently to each optional Discord webhook.
-            # Missing webhooks skip cleanly without blocking the build.
-            #
-            - name: "Notify Discord: build started 📣"
-              env:
-                  DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
-                  RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-                  WORKFLOW_NAME: ${{ github.workflow }}
-                  REF_NAME: ${{ github.ref_name }}
-                  ACTOR: ${{ github.actor }}
-                  REPOSITORY: ${{ github.repository }}
-                  GHCR_IMAGE_REF: ${{ env.PRIVATEERR_IMAGE_REF }}
-                  DOCKERHUB_IMAGE_REF: ${{ env.DOCKERHUB_PRIVATEERR_IMAGE_REF }}
-                  IMAGE_PLATFORMS: ${{ env.IMAGE_PLATFORMS }}
-              run: |
-                  if [ -z "${DISCORD_WEBHOOK_URL}" ]; then
-                    echo "DISCORD_WEBHOOK_URL is not set; skipping Discord notification."
-                    exit 0
-                  fi
+      #
+      # Send the same opening state through the secondary destination profile
+      # so future presentation changes remain isolated from workflow logic.
+      #
+      - name: "Notify Secondary Discord: build opened 📣"
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_HADES_HOOK_URL }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          WORKFLOW_NAME: ${{ github.workflow }}
+          REF_NAME: ${{ github.ref_name }}
+          ACTOR: ${{ github.actor }}
+          REPOSITORY: ${{ github.repository }}
+          GHCR_IMAGE: ${{ env.PRIVATEERR_IMAGE_REF }}
+          DOCKERHUB_IMAGE: ${{ env.DOCKERHUB_PRIVATEERR_IMAGE_REF }}
+          IMAGE_PLATFORMS: ${{ env.IMAGE_PLATFORMS }}
+        run: |
+          sh .github/scripts/discord-notifier.sh \
+              --type            image-start \
+              --profile         image-secondary \
+              --run-url         "${RUN_URL}" \
+              --repository      "${REPOSITORY}" \
+              --ref-name        "${REF_NAME}" \
+              --workflow-name   "${WORKFLOW_NAME}" \
+              --actor           "${ACTOR}" \
+              --platforms       "${IMAGE_PLATFORMS}" \
+              --ghcr-image      "${GHCR_IMAGE}" \
+              --dockerhub-image "${DOCKERHUB_IMAGE}"
 
-                  embed_colors=(16711884 15961002 11685080 10181046 15844367 16738740)
-                  color="${embed_colors[$((RANDOM % ${#embed_colors[@]}))]}"
+      #
+      # Prepare emulation, Buildx, and registry authentication for one
+      # multi-architecture build across every supported platform.
+      #
+      - name: "Summon Cross-Arch Cannons 🧨"
+        uses: docker/setup-qemu-action@96fe6ef7f33517b61c61be40b68a1882f3264fb8  # v4
 
-                  payload="$(jq -n \
-                    --arg title "🚢 Privateerr left the dock unsupervised" \
-                    --arg description "${WORKFLOW_NAME} is building images. Nobody checked its boating license." \
-                    --arg url "${RUN_URL}" \
-                    --arg repository "${REPOSITORY}" \
-                    --arg ref "${REF_NAME}" \
-                    --arg actor "${ACTOR}" \
-                    --arg platforms "${IMAGE_PLATFORMS}" \
-                    --arg ghcr "${GHCR_IMAGE_REF}" \
-                    --arg dockerhub "${DOCKERHUB_IMAGE_REF}" \
-                    --argjson color "${color}" \
-                    '{
-                      username: "Privateerr Builds",
-                      embeds: [{
-                        title: $title,
-                        description: $description,
-                        url: $url,
-                        color: $color,
-                        fields: [
-                          {name: "📚 Repo", value: $repository, inline: true},
-                          {name: "🌿 Ref", value: $ref, inline: true},
-                          {name: "🧑‍✈️ Captain", value: $actor, inline: true},
-                          {name: "🧱 Platforms", value: $platforms, inline: false},
-                          {name: "📦 GHCR Cargo", value: $ghcr, inline: false},
-                          {name: "🐳 Docker Hub Cargo", value: $dockerhub, inline: false}
-                        ],
-                        footer: {text: "If found adrift, check the logs."},
-                        timestamp: now | todate
-                      }]
-                    }')"
+      #
+      # Create the Buildx builder used by local validation and publication.
+      #
+      - name: "Sharpen the Build Axe 🪓"
+        uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c  # v4.2.0
 
-                  curl \
-                    --fail \
-                    --silent \
-                    --show-error \
-                    --header "Content-Type: application/json" \
-                    --data "${payload}" \
-                    "${DISCORD_WEBHOOK_URL}"
+      #
+      # Authenticate to GHCR with the job-scoped token before publishing images.
+      #
+      - name: "Board the GHCR Galleon 🔐"
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f  # v4.6.0
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
-            - name: "Notify Hades Discord: build started 🔥"
-              env:
-                  DISCORD_HADES_HOOK_URL: ${{ secrets.DISCORD_HADES_HOOK_URL }}
-                  RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-                  WORKFLOW_NAME: ${{ github.workflow }}
-                  REF_NAME: ${{ github.ref_name }}
-                  ACTOR: ${{ github.actor }}
-                  REPOSITORY: ${{ github.repository }}
-                  GHCR_IMAGE_REF: ${{ env.PRIVATEERR_IMAGE_REF }}
-                  DOCKERHUB_IMAGE_REF: ${{ env.DOCKERHUB_PRIVATEERR_IMAGE_REF }}
-                  IMAGE_PLATFORMS: ${{ env.IMAGE_PLATFORMS }}
-              run: |
-                  if [ -z "${DISCORD_HADES_HOOK_URL}" ]; then
-                    echo "DISCORD_HADES_HOOK_URL is not set; skipping Hades Discord notification."
-                    exit 0
-                  fi
+      #
+      # Seed static Compose defaults in an ephemeral environment file, then
+      # expose dynamic OCI metadata through GitHub's runner environment.
+      #
+      - name: "Ink the Build Scroll 📜"
+        id: build-scroll
+        run: |
+          created=$(date -u +'%Y-%m-%dT%H:%M:%SZ')
+          cp example.env .env
+          {
+            printf 'IMAGE_CREATED=%s\n' "${created}"
+            printf 'IMAGE_REVISION=%s\n' "${GITHUB_SHA}"
+          } >> "${GITHUB_ENV}"
+          printf 'created=%s\n' "${created}" >> "${GITHUB_OUTPUT}"
 
-                  embed_colors=(16711884 15961002 11685080 10181046 15844367 16738740)
-                  color="${embed_colors[$((RANDOM % ${#embed_colors[@]}))]}"
+      #
+      # Route local policy, helper, and Compose validation through the same
+      # Make interface contributors use before building either image.
+      #
+      - name: "Interrogate the Rigging 🧪"
+        run: |
+          make test
+          make config >/dev/null
 
-                  payload="$(jq -n \
-                    --arg title "🔥 The build furnace is making noises" \
-                    --arg description "${WORKFLOW_NAME} entered the underworld with a clipboard and no supervision." \
-                    --arg url "${RUN_URL}" \
-                    --arg repository "${REPOSITORY}" \
-                    --arg ref "${REF_NAME}" \
-                    --arg actor "${ACTOR}" \
-                    --arg platforms "${IMAGE_PLATFORMS}" \
-                    --arg ghcr "${GHCR_IMAGE_REF}" \
-                    --arg dockerhub "${DOCKERHUB_IMAGE_REF}" \
-                    --argjson color "${color}" \
-                    '{
-                      username: "Hades Build Bureau",
-                      embeds: [{
-                        title: $title,
-                        description: $description,
-                        url: $url,
-                        color: $color,
-                        fields: [
-                          {name: "🏛️ Repo", value: $repository, inline: true},
-                          {name: "🩸 Ref", value: $ref, inline: true},
-                          {name: "😈 Summoner", value: $actor, inline: true},
-                          {name: "🧱 Platforms", value: $platforms, inline: false},
-                          {name: "📦 GHCR Cauldron", value: $ghcr, inline: false},
-                          {name: "🐳 Docker Hub", value: $dockerhub, inline: false}
-                        ],
-                        footer: {text: "Hades Build Bureau: mostly fire, some paperwork."},
-                        timestamp: now | todate
-                      }]
-                    }')"
+      #
+      # Build both local image shapes before runtime tests and vulnerability scans.
+      #
+      - name: "Hammer the Docker Hulls ⚒️"
+        run: |
+          make build
+          make build-buccaneerr
 
-                  curl \
-                    --fail \
-                    --silent \
-                    --show-error \
-                    --header "Content-Type: application/json" \
-                    --data "${payload}" \
-                    "${DISCORD_HADES_HOOK_URL}"
+      #
+      # Run the credential-backed e2e voyage when both optional PIA secrets exist.
+      #
+      - name: "Send the Test Ship to Sea 🌊"
+        env:
+          PIA_USER: ${{ secrets.PIA_USER }}
+          PIA_PASS: ${{ secrets.PIA_PASS }}
+        run: |
+          if [ -z "${PIA_USER}" ] || [ -z "${PIA_PASS}" ]; then
+            printf '%s\n' "PIA secrets missing; skipping live e2e voyage."
+            exit 0
+          fi
 
-            #
-            # Check out complete history and the upstream PIA submodule without
-            # retaining credentials so annotated release tags can be verified.
-            #
-            - name: "Grab the Treasure Map 🗺️"
-              uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
-              with:
-                  submodules: recursive
-                  fetch-depth: 0
-                  persist-credentials: false
+          make test-e2e
 
-            #
-            # Accept only annotated semantic-version tags whose commits already
-            # belong to main before any release image can be published.
-            #
-            - name: "Inspect the Release Chart 🧭"
-              if: startsWith(github.ref, 'refs/tags/')
-              env:
-                  RELEASE_TAG: ${{ github.ref_name }}
-              run: |
-                  semver_pattern='^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-((0|[1-9][0-9]*)|([0-9A-Za-z-]*[A-Za-z-][0-9A-Za-z-]*))(\.((0|[1-9][0-9]*)|([0-9A-Za-z-]*[A-Za-z-][0-9A-Za-z-]*)))*)?(\+[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?$'
+      #
+      # Always stop test resources and restore checked-in example configuration.
+      #
+      - name: "Swab the Test Deck 🧽"
+        if: always()
+        run: make clean-test
 
-                  if [[ ! "${RELEASE_TAG}" =~ ${semver_pattern} ]]; then
-                    echo "Release tag ${RELEASE_TAG} is not valid semantic versioning."
-                    exit 1
-                  fi
+      #
+      # Reject fixed HIGH or CRITICAL vulnerabilities before either image
+      # can be tagged or sent to a registry.
+      #
+      - name: "Inspect Privateerr for Bilge Rot 🔍"
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25  # v0.36.0
+        with:
+          image-ref: ${{ env.PRIVATEERR_LOCAL_IMAGE_REF }}:latest
+          format: table
+          vuln-type: os,library
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+          exit-code: 1
 
-                  if [ "$(git cat-file -t "refs/tags/${RELEASE_TAG}")" != "tag" ]; then
-                    echo "Release tag ${RELEASE_TAG} must be annotated."
-                    exit 1
-                  fi
+      #
+      # Apply the same fixed-vulnerability policy to the Buccaneerr test image.
+      #
+      - name: "Inspect Buccaneerr for Bilge Rot 🔍"
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25  # v0.36.0
+        with:
+          image-ref: ${{ env.BUCCANEERR_LOCAL_IMAGE_REF }}:latest
+          format: table
+          vuln-type: os,library
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+          exit-code: 1
 
-                  git fetch --no-tags origin main
-                  if ! git merge-base --is-ancestor "${GITHUB_SHA}" origin/main; then
-                    echo "Release tag ${RELEASE_TAG} does not point to a commit on main."
-                    exit 1
-                  fi
+      #
+      # Derive matching edge, commit, and semantic-version tags for the
+      # production and test images from the current Git reference.
+      #
+      - name: "Chart Privateerr Tags 🗺️"
+        id: meta-privateerr
+        uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302  # v6
+        with:
+          images: ${{ env.PRIVATEERR_IMAGE_REF }}
+          flavor: |
+            latest=auto
+          tags: |
+            type=edge,branch=main
+            type=sha,prefix=sha-
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}},enable=${{ !startsWith(github.ref, 'refs/tags/v0.') }}
 
-            #
-            # Prepare emulation, Buildx, and registry authentication for one
-            # multi-architecture build across every supported platform.
-            #
-            - name: "Summon Cross-Arch Cannons 🧨"
-              uses: docker/setup-qemu-action@96fe6ef7f33517b61c61be40b68a1882f3264fb8  # v4
+      #
+      # Derive the matching release-channel tags for the Buccaneerr image.
+      #
+      - name: "Chart Buccaneerr Tags 🗺️"
+        id: meta-buccaneerr
+        uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302  # v6
+        with:
+          images: ${{ env.BUCCANEERR_IMAGE_REF }}
+          flavor: |
+            latest=auto
+          tags: |
+            type=edge,branch=main
+            type=sha,prefix=sha-
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}},enable=${{ !startsWith(github.ref, 'refs/tags/v0.') }}
 
-            - name: "Sharpen the Build Axe 🪓"
-              uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c  # v4.2.0
+      #
+      # Build Privateerr once for all supported architectures, publish it
+      # to GHCR, and attach index annotations, SBOM, and provenance data.
+      #
+      - name: "Publish Privateerr to GHCR 💰"
+        id: publish-privateerr
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a  # v7
+        with:
+          context: docker
+          file: docker/Dockerfile
+          platforms: ${{ env.IMAGE_PLATFORMS }}
+          push: true
+          tags: ${{ steps.meta-privateerr.outputs.tags }}
+          labels: ${{ steps.meta-privateerr.outputs.labels }}
+          annotations: |
+            index:org.opencontainers.image.title=Privateerr
+            index:org.opencontainers.image.description=Privateerr generates PIA WireGuard configs and Gluetun metadata from unmodified PIA manual connection scripts.
+            index:org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            index:org.opencontainers.image.documentation=https://github.com/${{ github.repository }}#readme
+          build-args: |
+            ALPINE_TAG=3.24@sha256:28bd5fe8b56d1bd048e5babf5b10710ebe0bae67db86916198a6eec434943f8b
+            PIA_BIN_HOME=/pia
+            PRIVATEERR_BIN_HOME=/privateerr
+            IMAGE_CREATED=${{ steps.build-scroll.outputs.created }}
+            IMAGE_REVISION=${{ github.sha }}
+            IMAGE_VERSION=${{ steps.meta-privateerr.outputs.version }}
+          sbom: true
+          provenance: true
 
-            - name: "Board the GHCR Galleon 🔐"
-              uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f  # v4.6.0
-              with:
-                  registry: ${{ env.REGISTRY }}
-                  username: ${{ github.actor }}
-                  password: ${{ secrets.GITHUB_TOKEN }}
+      #
+      # Install the registry-native copy tool, then mirror every Privateerr
+      # tag from GHCR to Docker Hub without rebuilding the image.
+      #
+      - name: "Install Skopeo 🪞"
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes skopeo
 
-            #
-            # Create the ephemeral build environment and stamp reproducible OCI
-            # metadata without modifying the checked-in example environment.
-            #
-            - name: "Ink the Build Scroll 📜"
-              id: build-scroll
-              run: |
-                  cp example.env .env
-                  {
-                    echo "IMAGE_CREATED=$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
-                    echo "IMAGE_REVISION=${GITHUB_SHA}"
-                  } >> .env
-                  echo "created=$(date -u +'%Y-%m-%dT%H:%M:%SZ')" >> "${GITHUB_OUTPUT}"
+      #
+      # Copy every published Privateerr manifest from GHCR to Docker Hub.
+      #
+      - name: "Mirror Privateerr to Docker Hub 🪞"
+        env:
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+        run: |
+          .github/scripts/registry-mirror.sh \
+            --mirror \
+            --ghcr-image         "${{ env.PRIVATEERR_IMAGE_REF }}" \
+            --dockerhub-image    "${{ env.DOCKERHUB_PRIVATEERR_IMAGE_REF }}" \
+            --ghcr-username      "${{ github.actor }}" \
+            --dockerhub-username "${{ secrets.DOCKERHUB_USERNAME }}" \
+            --published-tags     "${{ steps.meta-privateerr.outputs.tags }}"
 
-            #
-            # Build both local images, run live PIA validation when credentials
-            # exist, and always restore the checked-in example configuration.
-            #
-            - name: "Hammer the Docker Hulls ⚒️"
-              run: |
-                  make build
-                  make build-buccaneerr
+      #
+      # Fail publication unless both registries expose identical tag digests.
+      #
+      - name: "Compare Registry Manifests 🔎"
+        env:
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+        run: |
+          .github/scripts/registry-mirror.sh \
+            --verify \
+            --ghcr-image         "${{ env.PRIVATEERR_IMAGE_REF }}" \
+            --dockerhub-image    "${{ env.DOCKERHUB_PRIVATEERR_IMAGE_REF }}" \
+            --ghcr-username      "${{ github.actor }}" \
+            --dockerhub-username "${{ secrets.DOCKERHUB_USERNAME }}" \
+            --published-tags     "${{ steps.meta-privateerr.outputs.tags }}"
 
-            - name: "Send the Test Ship to Sea 🌊"
-              env:
-                  PIA_USER: ${{ secrets.PIA_USER }}
-                  PIA_PASS: ${{ secrets.PIA_PASS }}
-              run: |
-                  if [ -z "${PIA_USER}" ] || [ -z "${PIA_PASS}" ]; then
-                    echo "PIA secrets missing; skipping live e2e voyage."
-                    exit 0
-                  fi
-                  {
-                    echo "PIA_USER=${PIA_USER}"
-                    echo "PIA_PASS=${PIA_PASS}"
-                  } >> .env
-                  make test-e2e
+      #
+      # Publish the test-only Buccaneerr image to GHCR for every supported
+      # architecture with its own SBOM and provenance data.
+      #
+      - name: "Publish Buccaneerr to GHCR 💰"
+        id: publish-buccaneerr
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a  # v7
+        with:
+          context: test
+          file: test/Dockerfile
+          platforms: ${{ env.IMAGE_PLATFORMS }}
+          push: true
+          tags: ${{ steps.meta-buccaneerr.outputs.tags }}
+          labels: ${{ steps.meta-buccaneerr.outputs.labels }}
+          annotations: |
+            index:org.opencontainers.image.title=Buccaneerr
+            index:org.opencontainers.image.description=Test-only Buccaneerr validator for Privateerr, Gluetun WireGuard, and PIA port-forwarding e2e checks.
+            index:org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            index:org.opencontainers.image.documentation=https://github.com/${{ github.repository }}#readme
+          build-args: |
+            ALPINE_TAG=3.24@sha256:28bd5fe8b56d1bd048e5babf5b10710ebe0bae67db86916198a6eec434943f8b
+            BUCCANEERR_BIN_HOME=/buccaneerr
+            IMAGE_CREATED=${{ steps.build-scroll.outputs.created }}
+            IMAGE_REVISION=${{ github.sha }}
+            IMAGE_VERSION=${{ steps.meta-buccaneerr.outputs.version }}
+          sbom: true
+          provenance: true
 
-            - name: "Swab the Test Deck 🧽"
-              if: always()
-              run: make test-down
+      #
+      # Publish registry-backed build attestations for both image digests
+      # after their multi-architecture manifests are available.
+      #
+      - name: "Stamp Privateerr's Provenance Scroll 🧾"
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8  # v4
+        with:
+          subject-name: ${{ env.PRIVATEERR_IMAGE_REF }}
+          subject-digest: ${{ steps.publish-privateerr.outputs.digest }}
+          push-to-registry: true
 
-            #
-            # Reject fixed HIGH or CRITICAL vulnerabilities before either image
-            # can be tagged or sent to a registry.
-            #
-            - name: "Inspect Privateerr for Bilge Rot 🔍"
-              uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25  # v0.36.0
-              with:
-                  image-ref: ${{ env.PRIVATEERR_LOCAL_IMAGE_REF }}:latest
-                  format: table
-                  vuln-type: os,library
-                  severity: CRITICAL,HIGH
-                  ignore-unfixed: true
-                  exit-code: 1
+      #
+      # Publish the equivalent registry-backed attestation for Buccaneerr.
+      #
+      - name: "Stamp Buccaneerr's Provenance Scroll 🧾"
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8  # v4
+        with:
+          subject-name: ${{ env.BUCCANEERR_IMAGE_REF }}
+          subject-digest: ${{ steps.publish-buccaneerr.outputs.digest }}
+          push-to-registry: true
 
-            - name: "Inspect Buccaneerr for Bilge Rot 🔍"
-              uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25  # v0.36.0
-              with:
-                  image-ref: ${{ env.BUCCANEERR_LOCAL_IMAGE_REF }}:latest
-                  format: table
-                  vuln-type: os,library
-                  severity: CRITICAL,HIGH
-                  ignore-unfixed: true
-                  exit-code: 1
+      #
+      # Keep Docker Hub's landing page synchronized with the checked-in
+      # public image documentation.
+      #
+      - name: "Update Privateerr Docker Hub overview 📘"
+        uses: peter-evans/dockerhub-description@1b9a80c056b620d92cedb9d9b5a223409c68ddfa  # v5.0.0
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          repository: ${{ github.repository_owner }}/privateerr
+          short-description: "Generate PIA WireGuard config and Gluetun port forwarding metadata."
+          readme-filepath: ./docs/DOCKERHUB_README.md
 
-            #
-            # Derive matching edge, commit, and semantic-version tags for the
-            # production and test images from the current Git reference.
-            #
-            - name: "Chart Privateerr Tags 🗺️"
-              id: meta-privateerr
-              uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302  # v6
-              with:
-                  images: ${{ env.PRIVATEERR_IMAGE_REF }}
-                  flavor: |
-                      latest=auto
-                  tags: |
-                      type=edge,branch=main
-                      type=sha,prefix=sha-
-                      type=semver,pattern={{version}}
+      #
+      # Report the final job state to both optional Discord destinations.
+      # These steps always run so a failed publication never disappears.
+      #
+      - name: "Notify Primary Discord: build verdict 📣"
+        if: always()
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          JOB_STATUS: ${{ job.status }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          REPOSITORY: ${{ github.repository }}
+          REF_NAME: ${{ github.ref_name }}
+          GHCR_IMAGE: ${{ env.PRIVATEERR_IMAGE_REF }}
+          GHCR_PACKAGE_URL: ${{ github.server_url }}/${{ github.repository }}/pkgs/container/privateerr
+          DOCKERHUB_URL: https://hub.docker.com/r/${{ github.repository_owner }}/privateerr
+          PUBLISHED_TAGS: ${{ steps.meta-privateerr.outputs.tags }}
+          PUBLISHED_DIGEST: ${{ steps.publish-privateerr.outputs.digest }}
+        run: |
+          sh .github/scripts/discord-notifier.sh \
+              --type             image-verdict \
+              --profile          image-primary \
+              --run-url          "${RUN_URL}" \
+              --repository       "${REPOSITORY}" \
+              --ref-name         "${REF_NAME}" \
+              --job-status       "${JOB_STATUS}" \
+              --ghcr-image       "${GHCR_IMAGE}" \
+              --ghcr-package-url "${GHCR_PACKAGE_URL}" \
+              --dockerhub-url    "${DOCKERHUB_URL}" \
+              --published-tags   "${PUBLISHED_TAGS}" \
+              --published-digest "${PUBLISHED_DIGEST}"
 
-            - name: "Chart Buccaneerr Tags 🗺️"
-              id: meta-buccaneerr
-              uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302  # v6
-              with:
-                  images: ${{ env.BUCCANEERR_IMAGE_REF }}
-                  flavor: |
-                      latest=auto
-                  tags: |
-                      type=edge,branch=main
-                      type=sha,prefix=sha-
-                      type=semver,pattern={{version}}
-
-            #
-            # Build Privateerr once for all supported architectures, publish it
-            # to GHCR, and attach index annotations, SBOM, and provenance data.
-            #
-            - name: "Publish Privateerr to GHCR 💰"
-              id: publish-privateerr
-              uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a  # v7
-              with:
-                  context: docker
-                  file: docker/Dockerfile
-                  platforms: ${{ env.IMAGE_PLATFORMS }}
-                  push: true
-                  tags: ${{ steps.meta-privateerr.outputs.tags }}
-                  labels: ${{ steps.meta-privateerr.outputs.labels }}
-                  annotations: |
-                      index:org.opencontainers.image.title=Privateerr
-                      index:org.opencontainers.image.description=Privateerr generates PIA WireGuard configs and Gluetun metadata from unmodified PIA manual connection scripts.
-                      index:org.opencontainers.image.source=https://github.com/${{ github.repository }}
-                      index:org.opencontainers.image.documentation=https://github.com/${{ github.repository }}#readme
-                  build-args: |
-                      ALPINE_TAG=3.24@sha256:28bd5fe8b56d1bd048e5babf5b10710ebe0bae67db86916198a6eec434943f8b
-                      PIA_BIN_HOME=/pia
-                      PRIVATEERR_BIN_HOME=/privateerr
-                      IMAGE_CREATED=${{ steps.build-scroll.outputs.created }}
-                      IMAGE_REVISION=${{ github.sha }}
-                      IMAGE_VERSION=${{ steps.meta-privateerr.outputs.version }}
-                  sbom: true
-                  provenance: true
-
-            #
-            # Install the registry-native copy tool, then mirror every Privateerr
-            # tag from GHCR to Docker Hub without rebuilding the image.
-            #
-            - name: "Install Skopeo 🪞"
-              run: |
-                  sudo apt-get update
-                  sudo apt-get install --yes skopeo
-
-            - name: "Mirror Privateerr to Docker Hub 🪞"
-              env:
-                  GHCR_USERNAME: ${{ github.actor }}
-                  GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-                  DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
-                  DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
-                  GHCR_IMAGE_REF: ${{ env.PRIVATEERR_IMAGE_REF }}
-                  DOCKERHUB_IMAGE_REF: ${{ env.DOCKERHUB_PRIVATEERR_IMAGE_REF }}
-                  PRIVATEERR_TAGS: ${{ steps.meta-privateerr.outputs.tags }}
-              run: |
-                  while IFS= read -r ghcr_tag; do
-                    [ -n "${ghcr_tag}" ] || continue
-                    tag_suffix="${ghcr_tag#"${GHCR_IMAGE_REF}"}"
-                    dockerhub_tag="${DOCKERHUB_IMAGE_REF}${tag_suffix}"
-
-                    echo "Mirroring ${ghcr_tag} to ${dockerhub_tag}"
-                    skopeo copy \
-                      --all \
-                      --preserve-digests \
-                      --src-creds "${GHCR_USERNAME}:${GHCR_TOKEN}" \
-                      --dest-creds "${DOCKERHUB_USERNAME}:${DOCKERHUB_TOKEN}" \
-                      "docker://${ghcr_tag}" \
-                      "docker://${dockerhub_tag}"
-                  done <<< "${PRIVATEERR_TAGS}"
-
-            #
-            # Publish the test-only Buccaneerr image to GHCR for every supported
-            # architecture with its own SBOM and provenance data.
-            #
-            - name: "Publish Buccaneerr to registries 💰"
-              id: publish-buccaneerr
-              uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a  # v7
-              with:
-                  context: test
-                  file: test/Dockerfile
-                  platforms: ${{ env.IMAGE_PLATFORMS }}
-                  push: true
-                  tags: ${{ steps.meta-buccaneerr.outputs.tags }}
-                  labels: ${{ steps.meta-buccaneerr.outputs.labels }}
-                  annotations: |
-                      index:org.opencontainers.image.title=Buccaneerr
-                      index:org.opencontainers.image.description=Test-only Buccaneerr validator for Privateerr, Gluetun WireGuard, and PIA port-forwarding e2e checks.
-                      index:org.opencontainers.image.source=https://github.com/${{ github.repository }}
-                      index:org.opencontainers.image.documentation=https://github.com/${{ github.repository }}#readme
-                  build-args: |
-                      ALPINE_TAG=3.24@sha256:28bd5fe8b56d1bd048e5babf5b10710ebe0bae67db86916198a6eec434943f8b
-                      BUCCANEERR_BIN_HOME=/buccaneerr
-                      IMAGE_CREATED=${{ steps.build-scroll.outputs.created }}
-                      IMAGE_REVISION=${{ github.sha }}
-                      IMAGE_VERSION=${{ steps.meta-buccaneerr.outputs.version }}
-                  sbom: true
-                  provenance: true
-
-            #
-            # Publish registry-backed build attestations for both image digests
-            # after their multi-architecture manifests are available.
-            #
-            - name: "Stamp Privateerr's Provenance Scroll 🧾"
-              uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8  # v4
-              with:
-                  subject-name: ${{ env.PRIVATEERR_IMAGE_REF }}
-                  subject-digest: ${{ steps.publish-privateerr.outputs.digest }}
-                  push-to-registry: true
-
-            - name: "Stamp Buccaneerr's Provenance Scroll 🧾"
-              uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8  # v4
-              with:
-                  subject-name: ${{ env.BUCCANEERR_IMAGE_REF }}
-                  subject-digest: ${{ steps.publish-buccaneerr.outputs.digest }}
-                  push-to-registry: true
-
-            #
-            # Keep Docker Hub's landing page synchronized with the checked-in
-            # public image documentation.
-            #
-            - name: "Update Privateerr Docker Hub overview 📘"
-              uses: peter-evans/dockerhub-description@1b9a80c056b620d92cedb9d9b5a223409c68ddfa  # v5.0.0
-              with:
-                  username: ${{ secrets.DOCKERHUB_USERNAME }}
-                  password: ${{ secrets.DOCKERHUB_TOKEN }}
-                  repository: ${{ github.repository_owner }}/privateerr
-                  short-description: "Generate PIA WireGuard config and Gluetun port forwarding metadata."
-                  readme-filepath: ./docs/DOCKERHUB_README.md
-
-            #
-            # Collect compact tag, digest, mirror, and Docker Hub statistics for
-            # the final notifications even when an earlier step failed.
-            #
-            - name: "Collect publish summary 📊"
-              id: publish-summary
-              if: always()
-              env:
-                  GHCR_USERNAME: ${{ github.actor }}
-                  GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-                  DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
-                  DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
-                  GHCR_IMAGE_REF: ${{ env.PRIVATEERR_IMAGE_REF }}
-                  DOCKERHUB_IMAGE_REF: ${{ env.DOCKERHUB_PRIVATEERR_IMAGE_REF }}
-                  PRIVATEERR_TAGS: ${{ steps.meta-privateerr.outputs.tags }}
-                  DOCKERHUB_REPOSITORY: ${{ github.repository_owner }}/privateerr
-              run: |
-                  {
-                    echo "tags<<EOF"
-                    printf '%s\n' "${PRIVATEERR_TAGS:-none}"
-                    echo "EOF"
-                  } >> "${GITHUB_OUTPUT}"
-
-                  primary_ghcr_tag="$(printf '%s\n' "${PRIVATEERR_TAGS:-}" | sed '/^$/d' | head -n 1)"
-                  primary_dockerhub_tag=""
-                  ghcr_digest="unavailable"
-                  dockerhub_digest="unavailable"
-                  digest_match="not checked"
-
-                  if [ -n "${primary_ghcr_tag}" ]; then
-                    tag_suffix="${primary_ghcr_tag#"${GHCR_IMAGE_REF}"}"
-                    primary_dockerhub_tag="${DOCKERHUB_IMAGE_REF}${tag_suffix}"
-                  fi
-
-                  if [ -n "${primary_ghcr_tag}" ] && command -v skopeo >/dev/null 2>&1; then
-                    ghcr_digest="$(skopeo inspect \
-                      --creds "${GHCR_USERNAME}:${GHCR_TOKEN}" \
-                      "docker://${primary_ghcr_tag}" \
-                      | jq -r '.Digest // "unavailable"' || true)"
-
-                    dockerhub_digest="$(skopeo inspect \
-                      --creds "${DOCKERHUB_USERNAME}:${DOCKERHUB_TOKEN}" \
-                      "docker://${primary_dockerhub_tag}" \
-                      | jq -r '.Digest // "unavailable"' || true)"
-
-                    if [ "${ghcr_digest}" = "${dockerhub_digest}" ] && [ "${ghcr_digest}" != "unavailable" ]; then
-                      digest_match="yes"
-                    elif [ "${ghcr_digest}" != "unavailable" ] || [ "${dockerhub_digest}" != "unavailable" ]; then
-                      digest_match="no"
-                    fi
-                  fi
-
-                  dockerhub_json="$(curl --fail --silent --show-error \
-                    "https://hub.docker.com/v2/repositories/${DOCKERHUB_REPOSITORY}/" || true)"
-                  dockerhub_pulls="$(printf '%s' "${dockerhub_json}" | jq -r '.pull_count // "unavailable"' 2>/dev/null || echo "unavailable")"
-                  dockerhub_stars="$(printf '%s' "${dockerhub_json}" | jq -r '.star_count // "unavailable"' 2>/dev/null || echo "unavailable")"
-
-                  {
-                    echo "primary_ghcr_tag=${primary_ghcr_tag:-unavailable}"
-                    echo "primary_dockerhub_tag=${primary_dockerhub_tag:-unavailable}"
-                    echo "ghcr_digest=${ghcr_digest}"
-                    echo "dockerhub_digest=${dockerhub_digest}"
-                    echo "digest_match=${digest_match}"
-                    echo "dockerhub_pulls=${dockerhub_pulls}"
-                    echo "dockerhub_stars=${dockerhub_stars}"
-                  } >> "${GITHUB_OUTPUT}"
-
-            #
-            # Report the final job state to both optional Discord destinations.
-            # These steps always run so a failed publication never disappears.
-            #
-            - name: "Notify Discord: build finished 📣"
-              if: always()
-              env:
-                  DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
-                  JOB_STATUS: ${{ job.status }}
-                  RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-                  REPOSITORY: ${{ github.repository }}
-                  REF_NAME: ${{ github.ref_name }}
-                  GHCR_IMAGE_REF: ${{ env.PRIVATEERR_IMAGE_REF }}
-                  GHCR_PACKAGE_URL: ${{ github.server_url }}/${{ github.repository }}/pkgs/container/privateerr
-                  DOCKERHUB_URL: https://hub.docker.com/r/${{ github.repository_owner }}/privateerr
-                  PRIVATEERR_TAGS: ${{ steps.publish-summary.outputs.tags }}
-                  GHCR_DIGEST: ${{ steps.publish-summary.outputs.ghcr_digest }}
-                  DOCKERHUB_DIGEST: ${{ steps.publish-summary.outputs.dockerhub_digest }}
-                  DIGEST_MATCH: ${{ steps.publish-summary.outputs.digest_match }}
-                  DOCKERHUB_PULLS: ${{ steps.publish-summary.outputs.dockerhub_pulls }}
-                  DOCKERHUB_STARS: ${{ steps.publish-summary.outputs.dockerhub_stars }}
-              run: |
-                  if [ -z "${DISCORD_WEBHOOK_URL}" ]; then
-                    echo "DISCORD_WEBHOOK_URL is not set; skipping Discord notification."
-                    exit 0
-                  fi
-
-                  if [ "${JOB_STATUS}" = "success" ]; then
-                    title="✅ Images survived the voyage"
-                    description="Registries agree. The containers deny everything."
-                  else
-                    title="💥 The build sank near the dock"
-                    description="Workflow ended ${JOB_STATUS}. The logs saw what happened."
-                  fi
-                  embed_colors=(16711884 15961002 11685080 10181046 15844367 16738740)
-                  color="${embed_colors[$((RANDOM % ${#embed_colors[@]}))]}"
-
-                  formatted_tags="$(printf '%s\n' "${PRIVATEERR_TAGS:-none}" \
-                    | sed '/^$/d; s#^'"${GHCR_IMAGE_REF}"':##; s/^/• /')"
-                  [ -n "${formatted_tags}" ] || formatted_tags="none"
-                  ghcr_digest_short="$(printf '%s' "${GHCR_DIGEST:-unavailable}" | sed -E 's/^(sha256:[0-9a-f]{12}).*/\1/')"
-                  dockerhub_digest_short="$(printf '%s' "${DOCKERHUB_DIGEST:-unavailable}" | sed -E 's/^(sha256:[0-9a-f]{12}).*/\1/')"
-
-                  payload="$(jq -n \
-                    --arg title "${title}" \
-                    --arg description "${description}" \
-                    --arg url "${RUN_URL}" \
-                    --arg repository "${REPOSITORY}" \
-                    --arg ref "${REF_NAME}" \
-                    --arg tags "${formatted_tags}" \
-                    --arg ghcrDigest "${ghcr_digest_short}" \
-                    --arg dockerhubDigest "${dockerhub_digest_short}" \
-                    --arg digestMatch "${DIGEST_MATCH:-not checked}" \
-                    --arg dockerhubPulls "${DOCKERHUB_PULLS:-unavailable}" \
-                    --arg dockerhubStars "${DOCKERHUB_STARS:-unavailable}" \
-                    --arg ghcrUrl "${GHCR_PACKAGE_URL}" \
-                    --arg dockerhubUrl "${DOCKERHUB_URL}" \
-                    --argjson color "${color}" \
-                    '{
-                      username: "Privateerr Builds",
-                      embeds: [{
-                        title: $title,
-                        description: $description,
-                        url: $url,
-                        color: $color,
-                        fields: [
-                          {name: "📚 Repo", value: $repository, inline: true},
-                          {name: "🌿 Ref", value: $ref, inline: true},
-                          {name: "🏷️ Tags", value: $tags, inline: false},
-                          {name: "🧾 GHCR Digest", value: $ghcrDigest, inline: false},
-                          {name: "🧾 Hub Digest", value: $dockerhubDigest, inline: false},
-                          {name: "🪞 Digests Match", value: $digestMatch, inline: true},
-                          {name: "🐳 Hub Pulls", value: $dockerhubPulls, inline: true},
-                          {name: "⭐ Hub Stars", value: $dockerhubStars, inline: true},
-                          {name: "📦 GHCR", value: $ghcrUrl, inline: false},
-                          {name: "🐳 Docker Hub", value: $dockerhubUrl, inline: false}
-                        ],
-                        footer: {text: "Privateerr: technically seaworthy."},
-                        timestamp: now | todate
-                      }]
-                    }')"
-
-                  curl \
-                    --fail \
-                    --silent \
-                    --show-error \
-                    --header "Content-Type: application/json" \
-                    --data "${payload}" \
-                    "${DISCORD_WEBHOOK_URL}"
-
-            - name: "Notify Hades Discord: build finished 🔥"
-              if: always()
-              env:
-                  DISCORD_HADES_HOOK_URL: ${{ secrets.DISCORD_HADES_HOOK_URL }}
-                  JOB_STATUS: ${{ job.status }}
-                  RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-                  REPOSITORY: ${{ github.repository }}
-                  REF_NAME: ${{ github.ref_name }}
-                  GHCR_IMAGE_REF: ${{ env.PRIVATEERR_IMAGE_REF }}
-                  GHCR_PACKAGE_URL: ${{ github.server_url }}/${{ github.repository }}/pkgs/container/privateerr
-                  DOCKERHUB_URL: https://hub.docker.com/r/${{ github.repository_owner }}/privateerr
-                  PRIVATEERR_TAGS: ${{ steps.publish-summary.outputs.tags }}
-                  GHCR_DIGEST: ${{ steps.publish-summary.outputs.ghcr_digest }}
-                  DOCKERHUB_DIGEST: ${{ steps.publish-summary.outputs.dockerhub_digest }}
-                  DIGEST_MATCH: ${{ steps.publish-summary.outputs.digest_match }}
-                  DOCKERHUB_PULLS: ${{ steps.publish-summary.outputs.dockerhub_pulls }}
-                  DOCKERHUB_STARS: ${{ steps.publish-summary.outputs.dockerhub_stars }}
-              run: |
-                  if [ -z "${DISCORD_HADES_HOOK_URL}" ]; then
-                    echo "DISCORD_HADES_HOOK_URL is not set; skipping Hades Discord notification."
-                    exit 0
-                  fi
-
-                  if [ "${JOB_STATUS}" = "success" ]; then
-                    title="😈 Furnace says done"
-                    description="Images escaped the underworld. Docker Hub accepted the paperwork."
-                  else
-                    title="💀 The cauldron filed an incident report"
-                    description="Pipeline ended ${JOB_STATUS}. Cerberus blames YAML."
-                  fi
-                  embed_colors=(16711884 15961002 11685080 10181046 15844367 16738740)
-                  color="${embed_colors[$((RANDOM % ${#embed_colors[@]}))]}"
-
-                  formatted_tags="$(printf '%s\n' "${PRIVATEERR_TAGS:-none}" \
-                    | sed '/^$/d; s#^'"${GHCR_IMAGE_REF}"':##; s/^/• /')"
-                  [ -n "${formatted_tags}" ] || formatted_tags="none"
-                  ghcr_digest_short="$(printf '%s' "${GHCR_DIGEST:-unavailable}" | sed -E 's/^(sha256:[0-9a-f]{12}).*/\1/')"
-                  dockerhub_digest_short="$(printf '%s' "${DOCKERHUB_DIGEST:-unavailable}" | sed -E 's/^(sha256:[0-9a-f]{12}).*/\1/')"
-
-                  payload="$(jq -n \
-                    --arg title "${title}" \
-                    --arg description "${description}" \
-                    --arg url "${RUN_URL}" \
-                    --arg repository "${REPOSITORY}" \
-                    --arg ref "${REF_NAME}" \
-                    --arg tags "${formatted_tags}" \
-                    --arg ghcrDigest "${ghcr_digest_short}" \
-                    --arg dockerhubDigest "${dockerhub_digest_short}" \
-                    --arg digestMatch "${DIGEST_MATCH:-not checked}" \
-                    --arg dockerhubPulls "${DOCKERHUB_PULLS:-unavailable}" \
-                    --arg dockerhubStars "${DOCKERHUB_STARS:-unavailable}" \
-                    --arg ghcrUrl "${GHCR_PACKAGE_URL}" \
-                    --arg dockerhubUrl "${DOCKERHUB_URL}" \
-                    --argjson color "${color}" \
-                    '{
-                      username: "Hades Build Bureau",
-                      embeds: [{
-                        title: $title,
-                        description: $description,
-                        url: $url,
-                        color: $color,
-                        fields: [
-                          {name: "🏛️ Repo", value: $repository, inline: true},
-                          {name: "🩸 Ref", value: $ref, inline: true},
-                          {name: "🏷️ Tags", value: $tags, inline: false},
-                          {name: "🧾 GHCR Digest", value: $ghcrDigest, inline: false},
-                          {name: "🧾 Hub Digest", value: $dockerhubDigest, inline: false},
-                          {name: "🪞 Digests Match", value: $digestMatch, inline: true},
-                          {name: "🐳 Abyss Pulls", value: $dockerhubPulls, inline: true},
-                          {name: "⭐ Infernal Applause", value: $dockerhubStars, inline: true},
-                          {name: "📦 GHCR", value: $ghcrUrl, inline: false},
-                          {name: "🐳 Docker Hub", value: $dockerhubUrl, inline: false}
-                        ],
-                        footer: {text: "Hades Build Bureau: fire in, containers out."},
-                        timestamp: now | todate
-                      }]
-                    }')"
-
-                  curl \
-                    --fail \
-                    --silent \
-                    --show-error \
-                    --header "Content-Type: application/json" \
-                    --data "${payload}" \
-                    "${DISCORD_HADES_HOOK_URL}"
+      #
+      # Send the same final state to the optional secondary destination even
+      # when an earlier publication step failed.
+      #
+      - name: "Notify Secondary Discord: build verdict 📣"
+        if: always()
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_HADES_HOOK_URL }}
+          JOB_STATUS: ${{ job.status }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          REPOSITORY: ${{ github.repository }}
+          REF_NAME: ${{ github.ref_name }}
+          GHCR_IMAGE: ${{ env.PRIVATEERR_IMAGE_REF }}
+          GHCR_PACKAGE_URL: ${{ github.server_url }}/${{ github.repository }}/pkgs/container/privateerr
+          DOCKERHUB_URL: https://hub.docker.com/r/${{ github.repository_owner }}/privateerr
+          PUBLISHED_TAGS: ${{ steps.meta-privateerr.outputs.tags }}
+          PUBLISHED_DIGEST: ${{ steps.publish-privateerr.outputs.digest }}
+        run: |
+          sh .github/scripts/discord-notifier.sh \
+              --type             image-verdict \
+              --profile          image-secondary \
+              --run-url          "${RUN_URL}" \
+              --repository       "${REPOSITORY}" \
+              --ref-name         "${REF_NAME}" \
+              --job-status       "${JOB_STATUS}" \
+              --ghcr-image       "${GHCR_IMAGE}" \
+              --ghcr-package-url "${GHCR_PACKAGE_URL}" \
+              --dockerhub-url    "${DOCKERHUB_URL}" \
+              --published-tags   "${PUBLISHED_TAGS}" \
+              --published-digest "${PUBLISHED_DIGEST}"

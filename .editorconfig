@@ -3,52 +3,89 @@
 #
 # Licensed under the Apache License, Version 2.0.
 #
-# .editorconfig: Shared editor formatting rules for Privateerr-owned files.
+# .editorconfig: Keep repository text files and source code consistently
+#                formatted across supported editors.
 #
 
+#
+# Indicates that this is the top-most EditorConfig file and that all
+# other EditorConfig files in subdirectories should be ignored.
+#
 root = true
 
+#
+# Repository-wide text encoding, line endings, whitespace, and space-based
+# indentation defaults.
+#
 [*]
 charset = utf-8
 end_of_line = lf
 insert_final_newline = true
 trim_trailing_whitespace = true
-
-[*.md]
 indent_style = space
+
+#
+# Documentation and YAML use two-space indentation for compact nested content.
+#
+[*.{md,yml,yaml}]
 indent_size = 2
+
+#
+# Markdown preserves intentional two-space hard line breaks.
+#
+[*.md]
 trim_trailing_whitespace = false
 
-[*.{yml,yaml}]
-indent_style = space
+#
+# AWK programs use two-space indentation for readable rules and action blocks.
+#
+[*.awk]
 indent_size = 2
 
-[.github/workflows/*.{yml,yaml}]
-indent_style = space
-indent_size = 4
-
-[*.{json,json5}]
-indent_style = space
-indent_size = 4
-
-[.secrets.baseline]
-indent_style = space
+#
+# jq filters use two-space indentation for readable pipelines and objects.
+#
+[*.jq]
 indent_size = 2
 
+#
+# Web assets use the conventional two-space project style.
+#
+[*.{css,js}]
+indent_size = 2
+
+#
+# TOML arrays and nested values use two-space indentation.
+#
 [*.toml]
-indent_style = space
 indent_size = 2
 
-[*.sh]
-indent_style = space
+#
+# JSON, Python, and shell source use four-space indentation.
+#
+[*.{json,json5,py,sh}]
 indent_size = 4
 
+#
+# The generated detect-secrets baseline uses two-space JSON indentation.
+#
+[.secrets.baseline]
+indent_size = 2
+
+#
+# Dockerfile continuations use four-space indentation.
+#
 [{Dockerfile,**/Dockerfile}]
-indent_style = space
 indent_size = 4
 
+#
+# Git submodule declarations use Git's conventional tab indentation.
+#
 [.gitmodules]
 indent_style = tab
 
+#
+# Make recipes require literal tabs.
+#
 [Makefile]
 indent_style = tab

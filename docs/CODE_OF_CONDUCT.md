@@ -33,6 +33,7 @@ Privateerr touches VPN credentials and generated WireGuard config. Do not post r
 - Container logs that contain secrets or network details ye would rather not hand to strangers.
 
 > [!WARNING]
+>
 > 🧨 If ye find a security problem, do not open a public issue with exploit details. Follow the [security policy](SECURITY.md) and keep the cursed treasure map private.
 
 ## Enforcement 🪝
