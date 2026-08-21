@@ -612,8 +612,8 @@ $(PRINT_ENV): $(CHECK_ENV)
 #
 $(PS): $(BUILD_DEPENDS) $(CHECK_ENV)
 	$(COMPOSE_STATUS_CMD) \
-		--docker-bin   "$(DOCKER_BIN)" \
-		--env-file     "$(COMPOSE_ENV_FILE)" \
+		--docker-bin "$(DOCKER_BIN)" \
+		--env-file "$(COMPOSE_ENV_FILE)" \
 		--compose-file "$(COMPOSE_FILE)"
 
 #
