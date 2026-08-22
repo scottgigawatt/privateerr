@@ -77,7 +77,6 @@ printf '%s\n' \
     >"${test_output}/Dockerfile"
 printf '%s\n' \
     'alpine:3.23.3' \
-    'scratch' \
     >"${test_output}/base-images.expected"
 
 awk -f scripts/awk/collect-dockerfile-base-images.awk \
@@ -272,11 +271,45 @@ if grep -E '(^|[[:space:]])docker([[:space:]]|$)|\.env|wireguard|wg0\.conf|priva
 fi
 
 #
+# Keep ordinary down volume- and image-preserving.
+#
+NO_COLOR=1 make --dry-run down \
+    DOCKER_COMPOSE=true \
+    ENV_FILE=example.env \
+    COMPOSE_ENV_FILE=example.env \
+    >"${test_output}/down.out"
+grep -F 'down --timeout 30 --remove-orphans' "${test_output}/down.out" >/dev/null
+if grep -E 'down .*--volumes|down .*--rmi' "${test_output}/down.out" >/dev/null; then
+    echo "The down target includes destructive volume or image options." >&2
+    exit 1
+fi
+
+#
+# Delegate destructive Docker cleanup while invoking clean and restore once.
+#
+NO_COLOR=1 make --dry-run nuke \
+    DOCKER_COMPOSE=true \
+    ENV_FILE=example.env \
+    COMPOSE_ENV_FILE=example.env \
+    >"${test_output}/nuke.out"
+grep -F 'scripts/compose/nuke.sh' "${test_output}/nuke.out" >/dev/null
+grep -F -- '--project-name "privateerr"' "${test_output}/nuke.out" >/dev/null
+grep -F -- '--builder-name "privateerr-local"' "${test_output}/nuke.out" >/dev/null
+test "$(grep -c 'make --no-print-directory clean' "${test_output}/nuke.out")" -eq 1
+test "$(grep -c 'make --no-print-directory restore-test-config' "${test_output}/nuke.out")" -eq 1
+if grep -E 'docker (system|image|volume|builder) prune|--all-inactive|rm --force.*(service|base)' \
+    "${test_output}/nuke.out" >/dev/null; then
+    echo "The nuke target contains global or forceful image cleanup." >&2
+    exit 1
+fi
+
+#
 # Keep both platform-build recipes composed entirely from overridable variables.
 #
 NO_COLOR=1 make --dry-run build-platforms \
     DOCKER_COMPOSE=true \
     DOCKER_BUILDX=privateerr-buildx \
+    BUILDX_BUILDER_NAME=privateerr-test-builder \
     BUILDX_BUILD_OPTIONS=--test-build-option \
     BUILDX_PLATFORM_OPTIONS=--test-platform-option \
     BUILDX_PRIVATEERR_IMAGE_TAG=test/privateerr \
@@ -287,9 +320,9 @@ NO_COLOR=1 make --dry-run build-platforms \
     BUCCANEERR_BUILD_CONTEXT=test-buccaneerr-context \
     >"${test_output}/build-platforms.out"
 
-grep -F 'privateerr-buildx build --test-build-option --test-platform-option --tag "test/privateerr" --file "test-privateerr.Dockerfile" "test-privateerr-context"' \
+grep -F 'privateerr-buildx build --builder "privateerr-test-builder" --test-build-option --test-platform-option --tag "test/privateerr" --file "test-privateerr.Dockerfile" "test-privateerr-context"' \
     "${test_output}/build-platforms.out" >/dev/null
-grep -F 'privateerr-buildx build --test-build-option --test-platform-option --tag "test/buccaneerr" --file "test-buccaneerr.Dockerfile" "test-buccaneerr-context"' \
+grep -F 'privateerr-buildx build --builder "privateerr-test-builder" --test-build-option --test-platform-option --tag "test/buccaneerr" --file "test-buccaneerr.Dockerfile" "test-buccaneerr-context"' \
     "${test_output}/build-platforms.out" >/dev/null
 
 #
@@ -301,6 +334,56 @@ if LC_ALL=C grep "$(printf '\033')" "${test_output}/help.out" >/dev/null; then
     echo "Make help emitted terminal colors into redirected output." >&2
     exit 1
 fi
+
+#
+# Keep shared target groups and framed dependency comments reviewable.
+#
+common_targets=$(awk '
+    /^COMMON_TARGETS=/ { active = 1 }
+    active && match($0, /\$\([A-Z0-9_]+\)/) {
+        if (targets != "") {
+            targets = targets " "
+        }
+        targets = targets substr($0, RSTART + 2, RLENGTH - 3)
+    }
+    active && $0 !~ /\\$/ {
+        print targets
+        exit
+    }
+' Makefile)
+test "${common_targets}" = "BUILD_DEPENDS CHECK_ENV CHECK_PIA ALL UP DOWN PS LOGS CONFIG ENV PRINT_CONFIG PRINT_ENV BUILD BUILD_PLATFORMS TEST TEST_MAKE_HELPERS TEST_WORKFLOWS TEST_E2E BACKUP RESTORE_TEST_CONFIG CLEAN_TEST CLEAN NUKE HELP"
+common_recipe_order=$(awk '
+    /^\$\([A-Z0-9_]+\)(:| )/ {
+        target = $0
+        sub(/^\$\(/, "", target)
+        sub(/\).*/, "", target)
+        if (targets != "") {
+            targets = targets " "
+        }
+        targets = targets target
+        if (++count == 24) {
+            print targets
+            exit
+        }
+    }
+' Makefile)
+test "${common_recipe_order}" = "${common_targets}"
+grep -F ".DEFAULT_GOAL := \$(ALL)" Makefile >/dev/null
+for target_group in COMMON_TARGETS PROJECT_TARGETS INTERNAL_TARGETS ALIAS_TARGETS; do
+    grep -F "${target_group}=" Makefile >/dev/null
+done
+
+missing_dependency_comments=$(awk '
+    /^# \$\(/ { target = $0; dependencies = 0; active = 1; next }
+    active && /^# Dependencies/ { dependencies = 1 }
+    active && /^\$\(/ {
+        if (!dependencies) {
+            print target
+        }
+        active = 0
+    }
+' Makefile)
+test -z "${missing_dependency_comments}"
 
 #
 # Report success.
