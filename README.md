@@ -203,7 +203,7 @@ make config
 | -------------------------- | ------------------------------------------------------- |
 | `make run-privateerr`      | You only want fresh `wg0.conf` and `privateerr.env`.    |
 | `make up`                  | You want the full Privateerr + Gluetun Compose stack.   |
-| `make down`                | You want to stop and remove the stack.                  |
+| `make down`                | You want to stop the stack but preserve volumes/images. |
 | `make ps`                  | You want a compact container status table.              |
 | `make logs`                | You want to inspect container output.                   |
 | `make backup`              | You want a recoverable archive of the config directory. |
@@ -213,6 +213,14 @@ make config
 | `make clean`               | You want to remove only disposable developer artifacts. |
 | `make clean-test`          | You want to stop tests and restore example config.      |
 | `make restore-test-config` | You want to restore only the checked-in examples.       |
+| `make nuke`                | You want to remove project Docker resources and transient state. |
+
+> [!CAUTION]
+> `make nuke` removes Privateerr's containers, networks, volumes, service and
+> local images, and repository-owned Buildx cache. It restores the checked-in
+> WireGuard examples but preserves `.env`, `backups/`, and the persistent
+> `config/` directory. Declared Dockerfile base images are removed only when
+> Docker reports that they are not shared or in use.
 
 > [!TIP]
 >

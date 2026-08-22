@@ -20,7 +20,8 @@
 - [ ] `make build-platforms` if image dependencies or build stages changed
 - [ ] `make test-e2e` if VPN behavior changed
 - [ ] Pinned action SHAs and Alpine digest defaults still move together
-- [ ] `make clean-test` or `make nuke` restored example config
+- [ ] `make clean-test` restored example config after any live test
+- [ ] Any `make nuke` validation used only disposable project resources
 - [ ] `git status --short` shows no generated config, logs, or other stray cargo
 
 ## Secrets check 🛡️

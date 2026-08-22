@@ -145,8 +145,14 @@ before the PR can merge.
 | `make build-buccaneerr` | Build only the Buccaneerr validation image.                            |
 | `make build-platforms`  | Verify both images for every published architecture.                   |
 | `make logs`             | Show test stack logs.                                                  |
+| `make down`             | Stop containers and remove networks while preserving volumes/images.  |
 | `make clean`            | Remove only disposable local test and tool artifacts.                  |
 | `make clean-test`       | Stop the live test stack and restore checked-in examples.              |
+| `make nuke`             | Remove project Docker resources/cache and reset transient test state.  |
+
+`make nuke` preserves `.env`, `backups/`, and persistent bind-mounted config.
+Base-image removal is best-effort when another container or project still uses
+the same image.
 
 ## 📄 Generated Files
 

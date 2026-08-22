@@ -6,6 +6,7 @@ The test tree keeps responsibilities separate:
 
 - `policy/` verifies repository-wide dependency and image-tag rules.
 - `helpers/` exercises Make and workflow helpers without external writes.
+- `runtime/` performs opt-in acceptance checks against isolated Docker resources.
 - `stubs/` supplies deterministic Docker and Skopeo stand-ins for those tests.
 - `examples/` stores the checked-in WireGuard and metadata examples restored after a live voyage.
 - the test-root `Dockerfile` and `buccaneerr-entrypoint.sh` remain the Buccaneerr build context.
@@ -21,6 +22,7 @@ The test tree keeps responsibilities separate:
 | 🧰 Helpers | [`helpers/test-make-helpers.sh`](helpers/test-make-helpers.sh)           | Test AWK, backup, credential, and Compose helpers offline           |
 | 🧰 Helpers | [`helpers/test-policy-checks.sh`](helpers/test-policy-checks.sh)         | Test valid and invalid publishing-policy fixtures offline           |
 | 🧰 Helpers | [`helpers/test-workflow-helpers.sh`](helpers/test-workflow-helpers.sh)   | Test release, Discord, and registry helper behavior offline         |
+| 🌊 Runtime | [`runtime/test-compose-cleanup-live.sh`](runtime/test-compose-cleanup-live.sh) | Verify isolated `down` and `nuke` ownership on a real Docker daemon |
 | 🎭 Stubs   | [`stubs/compose-docker-stub.sh`](stubs/compose-docker-stub.sh)           | Supply deterministic Docker output to Compose helper tests          |
 | 🎭 Stubs   | [`stubs/workflow-skopeo-stub.sh`](stubs/workflow-skopeo-stub.sh)         | Simulate registry inspection without network access                 |
 
@@ -43,6 +45,20 @@ The complete local target checks reusable AWK and Compose helpers, config
 backups, release tags, every structured Discord profile, registry mirroring,
 synchronized SHA-256 build pins, and canonical image-tag channels. Disposable
 negative fixtures prove that mismatched pins and unsafe tag rules are rejected.
+
+Run the opt-in live cleanup acceptance after changing Compose lifecycle or
+nuke behavior:
+
+> [!CAUTION]
+>
+> ```sh
+> test/runtime/test-compose-cleanup-live.sh
+> ```
+
+It creates uniquely named disposable projects and unrelated sentinels on the
+real Docker daemon. The test proves `down` preserves volumes and images, then
+proves `nuke` removes only its project resources and named builder. It never
+uses the repository `.env`, config, backups, or PIA credentials.
 
 ## What Buccaneerr Be 🦜
 
@@ -106,6 +122,11 @@ make clean-test
 make restore-test-config
 make nuke
 ```
+
+`clean-test` uses the volume-preserving `down` path and restores the examples.
+`nuke` additionally removes project containers, networks, volumes, images, and
+the `privateerr-local` Buildx cache, but it leaves `.env`, `backups/`, and the
+persistent config directory intact. Shared or in-use base images are retained.
 
 > [!TIP]
 >

@@ -49,6 +49,12 @@ make clean-test
 pre-commit run --all-files
 ```
 
+`make down` preserves volumes and images. `make clean` never touches Docker,
+`.env`, generated WireGuard state, config, or backups. Use `make nuke` only for
+an intentionally destructive reset of this repository's Docker resources and
+scoped Buildx cache; it still preserves `.env`, `backups/`, and persistent
+config before restoring the checked-in examples.
+
 > [!IMPORTANT]
 >
 > 🧪 `make test-e2e` uses real PIA credentials from `.env`. That voyage should happen locally, not with secrets flung into random public waters.

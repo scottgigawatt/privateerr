@@ -208,6 +208,9 @@ make print-env
 Run `make clean-test` after live e2e tests to stop containers and restore example files.
 `make clean` removes only disposable developer artifacts; it must never touch
 containers, volumes, images, `.env`, generated VPN state, or checked-in examples.
+`make down` preserves volumes and images. `make nuke` removes only this Compose
+project's Docker resources and repository-owned Buildx cache, restores examples,
+and preserves `.env`, `backups/`, and persistent bind-mounted config.
 
 ## GitHub Workflow Rules
 
