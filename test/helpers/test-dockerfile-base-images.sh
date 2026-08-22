@@ -49,7 +49,7 @@ printf '%s\n' \
     'FROM build AS final' \
     'FROM scratch' \
     "FROM \${UNRESOLVED_IMAGE}" \
-    >"${test_output}/Dockerfile one"
+    >"${test_output}/Dockerfile.one"
 
 printf '%s\n' \
     'ARG BASE_IMAGE=alpine:3.24' \
@@ -57,7 +57,7 @@ printf '%s\n' \
     'FROM BASE' \
     'FROM alpine:3.24' \
     'FROM busybox:1.37' \
-    >"${test_output}/Dockerfile two"
+    >"${test_output}/Dockerfile.two"
 
 printf '%s\n' \
     'example.invalid/base@sha256:abc=def' \
@@ -66,8 +66,8 @@ printf '%s\n' \
     >"${test_output}/base-images.expected"
 
 awk -f scripts/awk/collect-dockerfile-base-images.awk \
-    "${test_output}/Dockerfile one" \
-    "${test_output}/Dockerfile two" \
+    "${test_output}/Dockerfile.one" \
+    "${test_output}/Dockerfile.two" \
     >"${test_output}/base-images.actual"
 
 cmp "${test_output}/base-images.expected" "${test_output}/base-images.actual"

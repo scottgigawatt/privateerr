@@ -47,12 +47,6 @@ RUN_PRIVATEERR=run-privateerr
 ENSURE_BUILDX_BUILDER=ensure-buildx-builder
 
 #
-# Compatibility alias target names.
-#
-START=start
-STOP=stop
-
-#
 # Common public targets shared by Plundarr and Privateerr.
 #
 COMMON_TARGETS= \
@@ -95,20 +89,12 @@ INTERNAL_TARGETS= \
 	$(ENSURE_BUILDX_BUILDER)
 
 #
-# Compatibility aliases retained for existing callers.
-#
-ALIAS_TARGETS= \
-	$(START) \
-	$(STOP)
-
-#
 # Complete target inventory used by .PHONY.
 #
 TARGETS= \
 	$(COMMON_TARGETS) \
 	$(PROJECT_TARGETS) \
-	$(INTERNAL_TARGETS) \
-	$(ALIAS_TARGETS)
+	$(INTERNAL_TARGETS)
 
 #
 # Punctuation expanded after Make parses $(call ...) arguments.
@@ -728,19 +714,3 @@ $(ENSURE_BUILDX_BUILDER): $(BUILD_DEPENDS)
 			--name "$(BUILDX_BUILDER_NAME)" \
 			--driver "$(BUILDX_BUILDER_DRIVER)" >/dev/null; \
 	fi
-
-#
-# $(START): Alias for $(UP).
-#
-# Dependencies:
-#   $(UP) - Builds, recreates, and starts every service in the stack.
-#
-$(START): $(UP)
-
-#
-# $(STOP): Alias for $(DOWN).
-#
-# Dependencies:
-#   $(DOWN) - Stop and remove the stack.
-#
-$(STOP): $(DOWN)

@@ -180,8 +180,11 @@
 
     //
     // Validate project AWK programs against the portable POSIX language mode.
+    // Disable compatibility diagnostics because version 0.1.0 misclassifies
+    // POSIX newline statement separators and output redirection as errors.
     //
     "awk.mode": "awk",
+    "awk.stylisticWarnings.compatibility": false,
     "awk.stylisticWarnings.missingSemicolon": false,
 
     //

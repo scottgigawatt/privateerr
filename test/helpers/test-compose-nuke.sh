@@ -40,9 +40,9 @@ cleanup() {
 test_output=$(mktemp -d)
 trap cleanup 0 1 2 15
 stub_path="$(pwd)/test/stubs/docker-nuke-stub.sh"
-: >"${test_output}/compose file.yml"
+: >"${test_output}/compose-file.yml"
 : >"${test_output}/project.env"
-printf '%s\n' 'FROM test/shared-base:1' >"${test_output}/Dockerfile test"
+printf '%s\n' 'FROM test/shared-base:1' >"${test_output}/Dockerfile.test"
 mkdir -p "${test_output}/config" "${test_output}/backups"
 printf '%s\n' 'preserve me' >"${test_output}/project.env.preserved"
 printf '%s\n' 'preserve me' >"${test_output}/config/state.db"
@@ -69,21 +69,21 @@ NUKE_STUB_LOG="${test_output}/nuke.log" \
     sh scripts/compose/nuke.sh \
         --docker-bin "${stub_path}" \
         --compose-mode plugin \
-        --compose-file "${test_output}/compose file.yml" \
+        --compose-file "${test_output}/compose-file.yml" \
         --env-file "${test_output}/project.env" \
         --project-name test-project \
         --down-timeout 45 \
-        --dockerfile "${test_output}/Dockerfile test" \
+        --dockerfile "${test_output}/Dockerfile.test" \
         --base-image-awk scripts/awk/collect-dockerfile-base-images.awk \
         --builder-name test-builder \
         --additional-image test/additional:local \
         >"${test_output}/nuke.out" 2>&1
 
-grep -F "compose --project-name test-project --env-file ${test_output}/project.env --file ${test_output}/compose file.yml config --quiet" \
+grep -F "compose --project-name test-project --env-file ${test_output}/project.env --file ${test_output}/compose-file.yml config --quiet" \
     "${test_output}/nuke.log" >/dev/null
-grep -F "compose --project-name test-project --env-file ${test_output}/project.env --file ${test_output}/compose file.yml config --images" \
+grep -F "compose --project-name test-project --env-file ${test_output}/project.env --file ${test_output}/compose-file.yml config --images" \
     "${test_output}/nuke.log" >/dev/null
-grep -F "compose --project-name test-project --env-file ${test_output}/project.env --file ${test_output}/compose file.yml down --timeout 45 --volumes --remove-orphans --rmi all" \
+grep -F "compose --project-name test-project --env-file ${test_output}/project.env --file ${test_output}/compose-file.yml down --timeout 45 --volumes --remove-orphans --rmi all" \
     "${test_output}/nuke.log" >/dev/null
 grep -F 'image rm test/service:local' "${test_output}/nuke.log" >/dev/null
 grep -F 'image rm test/additional:local' "${test_output}/nuke.log" >/dev/null
@@ -112,7 +112,7 @@ if NUKE_STUB_LOG="${test_output}/failure.log" NUKE_STUB_FAIL_COMPOSE=down \
     sh scripts/compose/nuke.sh \
         --docker-bin "${stub_path}" \
         --compose-mode plugin \
-        --compose-file "${test_output}/compose file.yml" \
+        --compose-file "${test_output}/compose-file.yml" \
         --env-file "${test_output}/project.env" \
         --project-name test-project \
         --down-timeout 45 \

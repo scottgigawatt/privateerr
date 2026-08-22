@@ -14,10 +14,11 @@
 # clear_array: Remove every entry from an associative array portably.
 #
 # Parameters: values - Associative array to clear.
+#             key    - Function-local iteration key; callers must not supply it.
 #
 # Returns: Nothing.
 #
-function clear_array(values, key) {
+function clear_array(values,    key) {
   for (key in values) {
     delete values[key]
   }
@@ -40,11 +41,17 @@ function trim(value) {
 # resolve_arguments: Replace Dockerfile variable references with known global
 #                    ARG defaults.
 #
-# Parameters: value - FROM image token to resolve.
+# Parameters: value     - FROM image token to resolve.
+#             output    - Function-local resolved-token buffer.
+#             position  - Function-local cursor within value.
+#             character - Function-local character at position.
+#             closing   - Function-local offset of a closing brace.
+#             name      - Function-local Dockerfile ARG name.
+#             end       - Function-local end of an unbraced ARG name.
 #
 # Returns: The resolved token. Sets resolve_failed when a value is unavailable.
 #
-function resolve_arguments(value, output, position, character, closing, name, end) {
+function resolve_arguments(value,    output, position, character, closing, name, end) {
   output = ""
   resolve_failed = 0
 
