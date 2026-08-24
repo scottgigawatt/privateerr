@@ -46,7 +46,7 @@ repos:
   # Validate every Markdown document with the shared repository configuration.
   #
   - repo: https://github.com/DavidAnson/markdownlint-cli2
-    rev: v0.22.1
+    rev: v0.23.2
     hooks:
       - id: markdownlint-cli2
         pass_filenames: false
