@@ -8,7 +8,7 @@
 #
 
 #
-# Common target names shared by Plundarr and Privateerr.
+# Common target names.
 #
 BUILD_DEPENDS=build-depends
 CHECK_ENV=check-env
@@ -37,13 +37,13 @@ NUKE=nuke
 HELP=help
 
 #
-# Privateerr-specific public target names.
+# Project target names.
 #
 RUN_PRIVATEERR=run-privateerr
 BUILD_BUCCANEERR=build-buccaneerr
 
 #
-# Common targets shared by Plundarr and Privateerr.
+# Common targets.
 #
 COMMON_TARGETS= \
 	$(BUILD_DEPENDS) \
@@ -73,19 +73,19 @@ COMMON_TARGETS= \
 	$(HELP)
 
 #
-# Public targets unique to this repository.
+# Project targets.
 #
 PROJECT_TARGETS= \
 	$(RUN_PRIVATEERR) \
 	$(BUILD_BUCCANEERR)
 
 #
-# Project-specific internal prerequisite targets. Privateerr currently has none.
+# Internal targets.
 #
 INTERNAL_TARGETS=
 
 #
-# Complete target inventory used by .PHONY.
+# Complete target inventory.
 #
 TARGETS= \
 	$(COMMON_TARGETS) \

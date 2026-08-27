@@ -336,7 +336,7 @@ if LC_ALL=C grep "$(printf '\033')" "${test_output}/help.out" >/dev/null; then
 fi
 
 #
-# Keep shared target groups and framed dependency comments reviewable.
+# Keep target groups and framed dependency comments reviewable.
 #
 common_targets=$(awk '
     /^COMMON_TARGETS=/ { active = 1 }
