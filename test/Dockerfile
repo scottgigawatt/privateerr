@@ -52,9 +52,11 @@ LABEL org.opencontainers.image.title="Buccaneerr" \
         org.opencontainers.image.base.name="docker.io/library/alpine:${ALPINE_TAG}"
 
 #
-# Install validation tools. These stay out of the production image.
+# Upgrade the base OpenSSL runtime libraries to Alpine's current fixed release,
+# then install validation tools. These stay out of the production image.
 #
-RUN apk add --no-cache \
+RUN apk upgrade --no-cache libcrypto3 libssl3 && \
+    apk add --no-cache \
         bash \
         ca-certificates \
         curl

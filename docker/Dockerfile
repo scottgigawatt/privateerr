@@ -81,11 +81,13 @@ COPY privateerr-healthcheck.sh      /usr/local/bin/privateerr-healthcheck
 COPY privateerr-date.sh             /usr/local/bin/date
 
 #
-# Install the small runtime needed to generate PIA WireGuard configs.
-# jq and nghttp2-libs come from the configured edge repository until Alpine
-# stable has the required versions.
+# Upgrade the base OpenSSL runtime libraries to Alpine's current fixed release,
+# then install the small runtime needed to generate PIA WireGuard configs. jq
+# and nghttp2-libs come from the configured edge repository until Alpine stable
+# has the required versions.
 #
-RUN apk add --no-cache \
+RUN apk upgrade --no-cache libcrypto3 libssl3 && \
+    apk add --no-cache \
         bash \
         ca-certificates \
         curl \
