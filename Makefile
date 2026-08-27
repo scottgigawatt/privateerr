@@ -117,7 +117,7 @@ PRIVATEERR_EXAMPLE_WG_CONFIG   ?= test/examples/example-wg0.conf
 PRIVATEERR_EXAMPLE_METADATA    ?= test/examples/example-privateerr.env
 PRIVATEERR_GENERATED_WG_CONFIG ?= config/gluetun/wireguard/wg0.conf
 PRIVATEERR_GENERATED_METADATA  ?= config/gluetun/wireguard/privateerr.env
-RUNTIME_ARTIFACT_PATHS        := config/privateerr/logs \
+RUNTIME_ARTIFACT_PATHS         := config/privateerr/logs \
 	config/buccaneerr/logs \
 	config/gluetun/forwarded_port \
 	config/gluetun/ip \
@@ -154,14 +154,8 @@ PRIVATEERR_COMPOSE_PROJECT_NAME ?= privateerr
 COMPOSE_FILE                    ?= docker-compose.yml
 COMPOSE_DOWN_TIMEOUT            ?= 30
 COMPOSE_ENV_FILE                ?= $(ENV_FILE)
-COMPOSE_DOWN_OPTIONS            ?= \
-	--timeout $(COMPOSE_DOWN_TIMEOUT) \
-	--remove-orphans
-COMPOSE_NUKE_OPTIONS            ?= \
-	--timeout $(COMPOSE_DOWN_TIMEOUT) \
-	--volumes \
-	--remove-orphans \
-	--rmi all
+COMPOSE_DOWN_OPTIONS            ?= --timeout $(COMPOSE_DOWN_TIMEOUT) --remove-orphans
+COMPOSE_NUKE_OPTIONS            ?= --timeout $(COMPOSE_DOWN_TIMEOUT) --volumes --remove-orphans --rmi all
 COMPOSE_BUILD_OPTIONS           ?= --pull --no-cache
 COMPOSE_UP_OPTIONS              ?= --build --force-recreate --pull always --remove-orphans
 COMPOSE_LOGS_OPTIONS            ?= --follow

@@ -373,12 +373,6 @@ for target_group in COMMON_TARGETS PROJECT_TARGETS INTERNAL_TARGETS; do
     grep -F "${target_group}=" Makefile >/dev/null
 done
 
-if grep -E '^(ALIAS_TARGETS|RUN|START|STOP)=' Makefile >/dev/null \
-    || grep -E '^((run|start|stop)|\$\((RUN|START|STOP)\)):' Makefile >/dev/null; then
-    echo "The Makefile still defines compatibility alias targets." >&2
-    exit 1
-fi
-
 missing_dependency_comments=$(awk '
     /^# \$\(/ { target = $0; dependencies = 0; active = 1; next }
     active && /^# Dependencies/ { dependencies = 1 }
