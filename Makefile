@@ -8,11 +8,12 @@
 #
 
 #
-# Makefile target names.
+# Common target names shared by Plundarr and Privateerr.
 #
 BUILD_DEPENDS=build-depends
 CHECK_ENV=check-env
 CHECK_PIA=check-pia
+ENSURE_BUILDX_BUILDER=ensure-buildx-builder
 ALL=all
 UP=up
 DOWN=down
@@ -38,21 +39,17 @@ HELP=help
 #
 # Privateerr-specific public target names.
 #
-BUILD_BUCCANEERR=build-buccaneerr
 RUN_PRIVATEERR=run-privateerr
+BUILD_BUCCANEERR=build-buccaneerr
 
 #
-# Internal prerequisite target names.
-#
-ENSURE_BUILDX_BUILDER=ensure-buildx-builder
-
-#
-# Common public targets shared by Plundarr and Privateerr.
+# Common targets shared by Plundarr and Privateerr.
 #
 COMMON_TARGETS= \
 	$(BUILD_DEPENDS) \
 	$(CHECK_ENV) \
 	$(CHECK_PIA) \
+	$(ENSURE_BUILDX_BUILDER) \
 	$(ALL) \
 	$(UP) \
 	$(DOWN) \
@@ -79,14 +76,13 @@ COMMON_TARGETS= \
 # Public targets unique to this repository.
 #
 PROJECT_TARGETS= \
-	$(BUILD_BUCCANEERR) \
-	$(RUN_PRIVATEERR)
+	$(RUN_PRIVATEERR) \
+	$(BUILD_BUCCANEERR)
 
 #
-# Internal prerequisites and file targets.
+# Project-specific internal prerequisite targets. Privateerr currently has none.
 #
-INTERNAL_TARGETS= \
-	$(ENSURE_BUILDX_BUILDER)
+INTERNAL_TARGETS=
 
 #
 # Complete target inventory used by .PHONY.
@@ -401,11 +397,24 @@ $(CHECK_ENV):
 #               target starts Privateerr.
 #
 # Dependencies:
-#   $(BUILD_DEPENDS) - Ensure Docker and Docker Compose are installed.
+#   $(BUILD_DEPENDS) - Ensure build dependencies are installed.
 #   $(CHECK_ENV) - Ensure .env exists.
 #
 $(CHECK_PIA): $(BUILD_DEPENDS) $(CHECK_ENV)
 	@$(PRIVATEERR_COMPOSE) config --environment | $(PIA_CREDENTIAL_CHECK_CMD)
+
+#
+# $(ENSURE_BUILDX_BUILDER): Create the repository-owned Buildx builder when missing.
+#
+# Dependencies:
+#   $(BUILD_DEPENDS) - Ensure build dependencies are installed.
+#
+$(ENSURE_BUILDX_BUILDER): $(BUILD_DEPENDS)
+	@if ! $(DOCKER_BUILDX) inspect "$(BUILDX_BUILDER_NAME)" >/dev/null 2>&1; then \
+		$(DOCKER_BUILDX) create \
+			--name "$(BUILDX_BUILDER_NAME)" \
+			--driver "$(BUILDX_BUILDER_DRIVER)" >/dev/null; \
+	fi
 
 #
 # $(ALL): Default makefile target. Builds and starts the service stack.
@@ -673,17 +682,6 @@ $(HELP):
 	$(call announce_warning,⚠️  Destructive targets never run automatically. Run make backup first.)
 
 #
-# $(BUILD_BUCCANEERR): Builds only the Buccaneerr image.
-#
-# Dependencies:
-#   $(BUILD_DEPENDS) - Ensure build dependencies are installed.
-#   $(CHECK_ENV) - Ensure .env exists before running Compose commands.
-#
-$(BUILD_BUCCANEERR): $(BUILD_DEPENDS) $(CHECK_ENV) $(ENSURE_BUILDX_BUILDER)
-	$(call announce,Building the Buccaneerr image. 🔎)
-	$(PRIVATEERR_COMPOSE) build $(COMPOSE_BUILD_OPTIONS) $(BUCCANEERR_SERVICE)
-
-#
 # $(RUN_PRIVATEERR): Runs only Privateerr to generate WireGuard config and metadata.
 #
 # Dependencies:
@@ -697,14 +695,12 @@ $(RUN_PRIVATEERR): $(CHECK_PIA) $(ENSURE_BUILDX_BUILDER)
 		$(PRIVATEERR_SERVICE)
 
 #
-# $(ENSURE_BUILDX_BUILDER): Create the repository-owned Buildx builder when missing.
+# $(BUILD_BUCCANEERR): Builds only the Buccaneerr image.
 #
 # Dependencies:
-#   $(BUILD_DEPENDS) - Ensure Docker and Docker Compose are installed.
+#   $(BUILD_DEPENDS) - Ensure build dependencies are installed.
+#   $(CHECK_ENV) - Ensure .env exists before running Compose commands.
 #
-$(ENSURE_BUILDX_BUILDER): $(BUILD_DEPENDS)
-	@if ! $(DOCKER_BUILDX) inspect "$(BUILDX_BUILDER_NAME)" >/dev/null 2>&1; then \
-		$(DOCKER_BUILDX) create \
-			--name "$(BUILDX_BUILDER_NAME)" \
-			--driver "$(BUILDX_BUILDER_DRIVER)" >/dev/null; \
-	fi
+$(BUILD_BUCCANEERR): $(BUILD_DEPENDS) $(CHECK_ENV) $(ENSURE_BUILDX_BUILDER)
+	$(call announce,Building the Buccaneerr image. 🔎)
+	$(PRIVATEERR_COMPOSE) build $(COMPOSE_BUILD_OPTIONS) $(BUCCANEERR_SERVICE)
