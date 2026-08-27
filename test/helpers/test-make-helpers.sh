@@ -336,7 +336,7 @@ if LC_ALL=C grep "$(printf '\033')" "${test_output}/help.out" >/dev/null; then
 fi
 
 #
-# Keep shared target groups and framed dependency comments reviewable.
+# Keep target groups and framed dependency comments reviewable.
 #
 common_targets=$(awk '
     /^COMMON_TARGETS=/ { active = 1 }
@@ -351,7 +351,7 @@ common_targets=$(awk '
         exit
     }
 ' Makefile)
-test "${common_targets}" = "BUILD_DEPENDS CHECK_ENV CHECK_PIA ALL UP DOWN PS LOGS CONFIG ENV PRINT_CONFIG PRINT_ENV BUILD BUILD_PLATFORMS TEST TEST_MAKE_HELPERS TEST_WORKFLOWS TEST_E2E BACKUP RESTORE_TEST_CONFIG CLEAN_TEST CLEAN NUKE HELP"
+test "${common_targets}" = "BUILD_DEPENDS CHECK_ENV CHECK_PIA ENSURE_BUILDX_BUILDER ALL UP DOWN PS LOGS CONFIG ENV PRINT_CONFIG PRINT_ENV BUILD BUILD_PLATFORMS TEST TEST_MAKE_HELPERS TEST_WORKFLOWS TEST_E2E BACKUP RESTORE_TEST_CONFIG CLEAN_TEST CLEAN NUKE HELP"
 common_recipe_order=$(awk '
     /^\$\([A-Z0-9_]+\)(:| )/ {
         target = $0
@@ -361,13 +361,42 @@ common_recipe_order=$(awk '
             targets = targets " "
         }
         targets = targets target
-        if (++count == 24) {
+        if (++count == 25) {
             print targets
             exit
         }
     }
 ' Makefile)
 test "${common_recipe_order}" = "${common_targets}"
+project_targets=$(awk '
+    /^PROJECT_TARGETS=/ { active = 1 }
+    active && match($0, /\$\([A-Z0-9_]+\)/) {
+        if (targets != "") {
+            targets = targets " "
+        }
+        targets = targets substr($0, RSTART + 2, RLENGTH - 3)
+    }
+    active && $0 !~ /\\$/ {
+        print targets
+        exit
+    }
+' Makefile)
+project_recipe_order=$(awk -v project_targets=" ${project_targets} " '
+    /^\$\([A-Z0-9_]+\)(:| )/ {
+        target = $0
+        sub(/^\$\(/, "", target)
+        sub(/\).*/, "", target)
+        if (index(project_targets, " " target " ") == 0) {
+            next
+        }
+        if (targets != "") {
+            targets = targets " "
+        }
+        targets = targets target
+    }
+    END { print targets }
+' Makefile)
+test "${project_recipe_order}" = "${project_targets}"
 grep -F ".DEFAULT_GOAL := \$(ALL)" Makefile >/dev/null
 for target_group in COMMON_TARGETS PROJECT_TARGETS INTERNAL_TARGETS; do
     grep -F "${target_group}=" Makefile >/dev/null
