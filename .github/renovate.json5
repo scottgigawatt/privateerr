@@ -17,6 +17,20 @@
     ],
 
     //
+    // Keep the recommended dependency ignores while allowing Renovate to
+    // manage the real Buccaneerr image definition in test/Dockerfile.
+    //
+    "ignorePaths": [
+        "**/node_modules/**",
+        "**/bower_components/**",
+        "**/vendor/**",
+        "**/examples/**",
+        "**/__tests__/**",
+        "**/tests/**",
+        "**/__fixtures__/**"
+    ],
+
+    //
     // Keep dependency work predictable for a single-maintainer repository.
     //
     "timezone": "America/New_York",
