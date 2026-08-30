@@ -45,7 +45,7 @@ Privateerr-owned code wraps the upstream scripts but should keep transparency cl
 
 ## Documentation Voice
 
-Public-facing Markdown uses the project voice: funny, pirate-themed, readable, and useful.
+Public-facing Markdown uses the project voice: funny, lightly pirate-themed, readable, and useful. Put the operational meaning first and use pirate language mainly in short introductions, transitions, and sign-offs.
 
 Use pirate humor in:
 
@@ -56,15 +56,23 @@ Use pirate humor in:
 - GitHub PR templates
 - user-facing Makefile `echo` output when appropriate
 
-Do not let jokes obscure operational meaning. Commands, paths, warnings, examples, and troubleshooting details must remain precise.
+Do not let jokes obscure operational meaning. Commands, paths, user-interface labels, warnings, security guidance, destructive actions, examples, and troubleshooting details must remain literal and precise.
 
-Use GitHub callouts where they help:
+Follow `docs/documentation-style.md` for audience, structure, sentence-case headings, filenames, links, code blocks, alerts, advanced Markdown, and rendered review. Use searchable words before decorative emoji in headings. Emoji must not carry meaning by itself.
+
+Reserve GitHub alerts for information readers must notice while scanning:
 
 - `[!NOTE]`
 - `[!TIP]`
 - `[!IMPORTANT]`
 - `[!WARNING]`
 - `[!CAUTION]`
+
+Most pages should need no more than one or two alerts. Do not wrap routine commands in alerts or place alerts back to back. Put routine copyable commands in `sh` fences without prompt characters or comments. Use `console` for terminal transcripts and `text` for non-executable output.
+
+Write each ordinary Markdown prose paragraph on one physical source line and let editors apply visual word wrapping. Preserve semantic blank lines, lists, tables, code fences, deliberate hard breaks, and other structures that require their own lines.
+
+Keep `README.md`, `AGENTS.md`, `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`, `SECURITY.md`, and `SUPPORT.md` in their established form. Name ordinary documentation pages with lowercase kebab-case.
 
 ## Code Comment Style
 

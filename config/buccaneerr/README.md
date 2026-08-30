@@ -1,6 +1,6 @@
-# Buccaneerr Config Hold 🔎
+# Buccaneerr configuration 🔎
 
-Yo ho! This berth belongs to Buccaneerr, the test deckhand who checks whether the tunnel truly floats.
+Buccaneerr is the test-only deckhand that validates the running tunnel and writes its log here:
 
 Buccaneerr writes validation logs here:
 
@@ -8,9 +8,7 @@ Buccaneerr writes validation logs here:
 config/buccaneerr/logs/buccaneerr.log
 ```
 
-> [!NOTE]
->
-> 🧽 Those logs be ignored by git. They are useful after a voyage, but too full of fresh sea spray for the public ledger.
+The log is ignored by Git because it may contain fresh connection details.
 
 Buccaneerr checks:
 
@@ -19,6 +17,4 @@ Buccaneerr checks:
 - Gluetun reports healthy.
 - PIA port forwarding returns a proper port.
 
-> [!TIP]
->
-> 🦜 If the voyage sinks, start here first. Buccaneerr's log usually points straight at the busted plank.
+If the voyage sinks, inspect this log first; it usually points to the failed handoff.

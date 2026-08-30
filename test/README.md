@@ -1,4 +1,4 @@
-# Buccaneerr Test Hold 🧪🏴‍☠️
+# Buccaneerr test hold 🧪🏴‍☠️
 
 Welcome to the test hold, where Buccaneerr climbs aboard after Privateerr and Gluetun to make sure the whole WireGuard voyage did not spring a leak. ☠️
 
@@ -11,7 +11,7 @@ The test tree keeps responsibilities separate:
 - `examples/` stores the checked-in WireGuard and metadata examples restored after a live voyage.
 - the test-root `Dockerfile` and `buccaneerr-entrypoint.sh` remain the Buccaneerr build context.
 
-## Test Script Chart 🗺️
+## Find a test script 🗺️
 
 | Hold       | Script                                                                   | Purpose                                                            |
 | ---------- | ------------------------------------------------------------------------ | ------------------------------------------------------------------ |
@@ -26,25 +26,17 @@ The test tree keeps responsibilities separate:
 | 🎭 Stubs   | [`stubs/compose-docker-stub.sh`](stubs/compose-docker-stub.sh)           | Supply deterministic Docker output to Compose helper tests          |
 | 🎭 Stubs   | [`stubs/workflow-skopeo-stub.sh`](stubs/workflow-skopeo-stub.sh)         | Simulate registry inspection without network access                 |
 
-The subfolders separate static repository policy, reusable helper tests,
-deterministic command stubs, and checked-in reset examples. Make targets remain
-the public interface; invoke individual scripts only while diagnosing a focused
-failure.
+The subfolders separate static repository policy, reusable helper tests, deterministic command stubs, and checked-in reset examples. Make targets remain the public interface; invoke individual scripts only while diagnosing a focused failure.
 
-## Offline Policy and Helper Checks 🧭
+## Run offline policy and helper checks 🧭
 
-> [!TIP]
->
-> ```sh
-> make test
-> make test-make-helpers
-> make test-workflows
-> ```
+```sh
+make test
+make test-make-helpers
+make test-workflows
+```
 
-The complete local target checks reusable AWK and Compose helpers, config
-backups, release tags, every structured Discord profile, registry mirroring,
-synchronized SHA-256 build pins, and canonical image-tag channels. Disposable
-negative fixtures prove that mismatched pins and unsafe tag rules are rejected.
+The complete local target checks reusable AWK and Compose helpers, config backups, release tags, every structured Discord profile, registry mirroring, synchronized SHA-256 build pins, and canonical image-tag channels. Disposable negative fixtures prove that mismatched pins and unsafe tag rules are rejected.
 
 Run the opt-in live cleanup acceptance after changing Compose lifecycle or
 nuke behavior:
@@ -55,12 +47,9 @@ nuke behavior:
 > test/runtime/test-compose-cleanup-live.sh
 > ```
 
-It creates uniquely named disposable projects and unrelated sentinels on the
-real Docker daemon. The test proves `down` preserves volumes and images, then
-proves `nuke` removes only its project resources and named builder. It never
-uses the repository `.env`, config, backups, or PIA credentials.
+It creates uniquely named disposable projects and unrelated sentinels on the real Docker daemon. The test proves `down` preserves volumes and images, then proves `nuke` removes only its project resources and named builder. It never uses the repository `.env`, config, backups, or PIA credentials.
 
-## What Buccaneerr Be 🦜
+## Understand Buccaneerr 🦜
 
 Buccaneerr is the test-only image for this repo. It does not ship with the production Privateerr image, and it does not generate WireGuard config. Instead, it joins the running test stack after Privateerr has written its files and Gluetun has raised the VPN sails.
 
@@ -71,11 +60,9 @@ Buccaneerr checks the important loot:
 - PIA port forwarding produced a usable forwarded port.
 - The stack behaves like the downstream Synology-friendly Compose setup.
 
-> [!IMPORTANT]
->
-> ⚓ Buccaneerr exists so the main Privateerr image can stay wee, clean, and focused. Test tools like `curl` stay in this image instead of clutterin' the production brig.
+Buccaneerr keeps test tools such as `curl` out of the production Privateerr image, keeping that image wee and focused.
 
-## How It Gets Built 🛠️
+## Build and run Buccaneerr 🛠️
 
 The image is built from [Dockerfile](Dockerfile), using the same pinned Alpine base digest as Privateerr. The build copies [buccaneerr-entrypoint.sh](buccaneerr-entrypoint.sh) into the image and runs that script when the container starts.
 
@@ -92,10 +79,9 @@ make test-e2e
 ```
 
 > [!WARNING]
->
-> 🧨 The e2e voyage uses real PIA credentials from `.env`. Do not commit live credentials, generated VPN configs, or logs from yer secret treasure chest.
+> The end-to-end voyage uses real PIA credentials from `.env`. Do not commit live credentials, generated VPN configuration, or logs.
 
-## What It Does During E2E 🧭
+## Follow the end-to-end voyage 🧭
 
 The Compose stack starts Privateerr first. Privateerr writes:
 
@@ -106,7 +92,7 @@ Then Gluetun uses those files to start WireGuard and request PIA port forwarding
 
 If Buccaneerr exits cleanly, the ship be seaworthy. If it fails, check the service logs before blaming the sea monster in yer YAML.
 
-## Example Files 📜
+## Restore example files 📜
 
 The [examples](examples/) directory stores example files used to reset the repo after a test run:
 
@@ -123,11 +109,6 @@ make restore-test-config
 make nuke
 ```
 
-`clean-test` uses the volume-preserving `down` path and restores the examples.
-`nuke` additionally removes project containers, networks, volumes, images, and
-the `privateerr-local` Buildx cache, but it leaves `.env`, `backups/`, and the
-persistent config directory intact. Shared or in-use base images are retained.
+`clean-test` uses the volume-preserving `down` path and restores the examples. `nuke` additionally removes project containers, networks, volumes, images, and the `privateerr-local` Buildx cache, but it leaves `.env`, `backups/`, and the persistent config directory intact. Shared or in-use base images are retained.
 
-> [!TIP]
->
-> 🏴‍☠️ Run cleanup before committing after any real e2e voyage. Future ye will thank past ye for not smuggling secrets into the cargo hold.
+Run cleanup before committing after any real end-to-end voyage. Future ye will thank past ye for not smuggling secrets into the cargo hold. 🏴‍☠️

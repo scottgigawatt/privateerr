@@ -1,12 +1,12 @@
-# ⚓ Privateerr
+# Privateerr ⚓
 
 Privateerr is a tiny Docker wrapper that packages the original, unmodified [pia-foss/manual-connections](https://github.com/pia-foss/manual-connections) scripts from Private Internet Access (PIA).
 
 > [!IMPORTANT]
 >
-> ⚠️ Privateerr is not a VPN client!️️ ⚠️  It generates a PIA WireGuard config file and a small Gluetun port forwarding metadata file, then gets out of the way.
+> Privateerr is not a VPN client. It generates a PIA WireGuard configuration file and a small Gluetun port-forwarding metadata file, then exits.
 
-## 📦 Images
+## Pull an image 📦
 
 ```sh
 docker pull scottgigawatt/privateerr:latest
@@ -28,8 +28,7 @@ docker pull scottgigawatt/privateerr:edge
 | `sha-cfa2fb5` | Image built from a specific source commit.                          |
 
 Major version zero omits the broad `0` alias. Prerelease versions keep only their own version and commit tags, never replacing movable stable aliases.
-Release publication accepts only `v`-prefixed annotated SemVer tags whose
-commits already belong to `main`.
+Release publication accepts only `v`-prefixed annotated SemVer tags whose commits already belong to `main`.
 
 Published tags are multi-architecture manifests for:
 
@@ -43,15 +42,20 @@ Docker should pull the right image for your host automatically.
 
 Images are built from pinned Alpine digests and scanned before publishing. Dependency updates land through Renovate PRs first, so a rebuild of the same source commit does not silently drift to a new base image.
 
-## ⚡ Fastest Path
+## Generate configuration ⚡
 
-Most users should use the GitHub repo because it includes the Compose file, Makefile, example env file, and mounted config directories:
+Most users should use the GitHub repository because it includes the Compose file, Makefile, example environment file, and mounted config directories:
 
 ```sh
 git clone --recurse-submodules https://github.com/scottgigawatt/privateerr.git
 cd privateerr
 cp example.env .env
-PIA_USER="p1234567" PIA_PASS="p0rtRoya1" PIA_PF="false" make run-privateerr
+```
+
+Set `PIA_USER`, `PIA_PASS`, and `PIA_PF` in the ignored `.env` file, then generate the files:
+
+```sh
+make run-privateerr
 ```
 
 That writes:
@@ -63,9 +67,9 @@ That writes:
 
 > [!WARNING]
 >
-> 🚨 Keep wg0.conf private! 🚨  It contains VPN connection material.
+> Keep live `wg0.conf` and `privateerr.env` files private. They can contain VPN connection material and deployment-specific metadata.
 
-## 🧭 Why Pair It With Gluetun?
+## Pair Privateerr with Gluetun 🧭
 
 Gluetun is a real VPN client. Privateerr is a VPN config generator.
 
@@ -73,10 +77,10 @@ The simple use case is: generate `wg0.conf`, copy it into the VPN client you alr
 
 The powerful use case is: run Privateerr and Gluetun together in Docker Compose. Privateerr writes the WireGuard config plus `PIA_WG_SERVER_NAME`; the included Gluetun wrapper reads that server name, exports it as `SERVER_NAMES`, and Gluetun starts with the right PIA WireGuard server for port forwarding.
 
-## 🔗 Links
+## Continue with the full documentation 🔗
 
 | 📚 Resource | 🔎 Link                                                                       |
 | ----------- | ----------------------------------------------------------------------------- |
-| GitHub repo | [scottgigawatt/privateerr](https://github.com/scottgigawatt/privateerr)       |
+| GitHub repository | [scottgigawatt/privateerr](https://github.com/scottgigawatt/privateerr)       |
 | PIA scripts | [pia-foss/manual-connections](https://github.com/pia-foss/manual-connections) |
 | Gluetun     | [qdm12/gluetun](https://github.com/qdm12/gluetun)                             |
