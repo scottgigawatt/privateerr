@@ -71,7 +71,7 @@ That writes:
 
 ## Pair Privateerr with Gluetun 🧭
 
-Gluetun is a real VPN client. Privateerr is a VPN config generator.
+Gluetun is a real VPN client. Privateerr generates PIA WireGuard configuration and server metadata for that client.
 
 The simple use case is: generate `wg0.conf`, copy it into the VPN client you already use, and leave.
 
