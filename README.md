@@ -46,6 +46,11 @@
 
 # Privateerr 🏴‍☠️
 
+> [!IMPORTANT]
+> **This standalone repository is deprecated.** [Plundarr](https://github.com/scottgigawatt/plundarr#readme) now provides the maintained deployment path and includes Privateerr as the `privateerr` service in its generated VPN-enabled stacks. Use Plundarr for new deployments, migrations, dependency updates, and future releases.
+>
+> Existing deployments can keep sailing, but migrate when practical. After this notice lands, a final archival release will be cut from `main`; no further feature or dependency updates are planned here. This ship's last cargo is aboard. 🏴‍☠️
+
 Privateerr is a containerized configuration tool for [Private Internet Access (PIA)](https://www.privateinternetaccess.com/). It packages PIA's official, unmodified [manual-connection scripts](https://github.com/pia-foss/manual-connections) in a small Alpine container and uses them to generate a WireGuard configuration file plus PIA server metadata for automation.
 
 Use Privateerr when you want `wg0.conf` for Gluetun, WireGuard, or another compatible VPN client—especially when a Docker Compose deployment needs to generate that configuration repeatably.
