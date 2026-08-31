@@ -5,7 +5,7 @@
 
 <!-- markdownlint-disable MD033 -->
 <p align="center">
-  <a href="https://github.com/scottgigawatt/privateerr/actions/workflows/build-and-push.yml"><img src="https://github.com/scottgigawatt/privateerr/actions/workflows/build-and-push.yml/badge.svg" alt="Privateerr build status" /></a>
+  <a href="https://github.com/scottgigawatt/privateerr/actions/workflows/build-and-push.yml"><img src="https://img.shields.io/github/actions/workflow/status/scottgigawatt/privateerr/build-and-push.yml?branch=main&label=Privateerr%20build&logo=githubactions" alt="Privateerr build status" /></a>
   <img src="https://img.shields.io/github/v/release/scottgigawatt/privateerr?label=Release" alt="Latest Privateerr release" />
   <a href="https://www.bestpractices.dev/projects/13442"><img src="https://www.bestpractices.dev/projects/13442/badge" alt="OpenSSF Best Practices" /></a>
   <img src="https://img.shields.io/github/license/scottgigawatt/privateerr?label=License" alt="Apache 2.0 license" />
