@@ -1,8 +1,8 @@
-# Security Policy 🛡️🏴‍☠️
+# Security policy 🛡️🏴‍☠️
 
 Ahoy, security-minded sailor. If ye spot a cursed leak, a leaky hull, or a suspicious barnacle clingin' to Privateerr, this be the proper chart for reportin' it.
 
-## Supported Versions ⚓
+## Supported versions ⚓
 
 Privateerr sails by the stable `latest` image and the `edge` image built from `main`. Since this project be a small vessel, security fixes target those newest charts instead of older treasure maps.
 
@@ -17,7 +17,7 @@ Privateerr sails by the stable `latest` image and the `edge` image built from `m
 >
 > 🧭 Privateerr uses the official PIA manual connection scripts as a submodule. Security issues in those upstream scripts should also be reported to the PIA project, because Privateerr keeps those scrolls untouched.
 
-## Reporting a Vulnerability 🦜
+## Report a vulnerability 🦜
 
 Please do not open a public GitHub issue for secrets, credential leaks, auth bypasses, or anything that could help another scallywag attack a user.
 
@@ -27,11 +27,11 @@ Report vulnerabilities using GitHub's private vulnerability reporting feature:
 2. Choose **Report a vulnerability**.
 3. Include clear steps to reproduce, affected files, logs, container tags, and any relevant Docker Compose settings.
 
-Ye can also send a message through the [🔥HADES🔥](https://discord.gg/BpEGzWwGYf) Discord server if ye need to hail the captain quickly.
+Do not send vulnerability details through Discord, discussions, issues, or pull requests. Those routes are for non-sensitive support and public collaboration.
 
-If private vulnerability reporting is unavailable, open a GitHub issue with only a brief non-sensitive note asking for a secure reporting channel, or use Discord to ask where to send details. Keep the dangerous details off the public deck.
+If private vulnerability reporting is unavailable, open a GitHub issue containing only a brief, non-sensitive request for a private reporting channel. Do not describe the vulnerability publicly.
 
-## What to Include 📜
+## Include useful evidence 📜
 
 Helpful reports include:
 
@@ -45,7 +45,7 @@ Helpful reports include:
 >
 > 💣 Never include real PIA usernames, passwords, WireGuard private keys, generated `wg0.conf` files, or live `privateerr.env` metadata in a public report.
 
-## Response Expectations 🕰️
+## Understand response expectations 🕰️
 
 This be a small maintainer ship, not a giant navy. I will do my best to:
 
@@ -57,7 +57,7 @@ This be a small maintainer ship, not a giant navy. I will do my best to:
 
 If a report is declined, I will try to explain why without leakin' dangerous details into open waters.
 
-## Container Image Security 🔎
+## Understand container image security 🔎
 
 Privateerr images are built from pinned Alpine image digests, not floating `latest` bases. GitHub Actions are pinned to full commit SHAs for the same reason: the same source commit should build from the same known cargo unless a dependency update is reviewed and merged.
 
@@ -78,5 +78,7 @@ Rebuilding the same commit does not automatically pick up a newer Alpine base. T
 > [!TIP]
 >
 > 🏴‍☠️ Pull `latest` for the newest stable patched hull. Pull `edge` only when ye intentionally want the newest successful `main` build.
+
+Use the [support guide](SUPPORT.md) for non-sensitive setup questions and reproducible bugs.
 
 Fair winds, sharp eyes, and may yer secrets stay below deck. ☠️

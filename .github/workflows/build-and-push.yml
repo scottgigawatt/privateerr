@@ -25,7 +25,7 @@ on:
       - "Makefile"
       - "config/**"
       - "docker/**"
-      - "docs/DOCKERHUB_README.md"
+      - "docs/docker-hub-description.md"
       - "docker-compose.yml"
       - "example.env"
       - "test/**"
@@ -407,7 +407,7 @@ jobs:
           password: ${{ secrets.DOCKERHUB_TOKEN }}
           repository: ${{ github.repository_owner }}/privateerr
           short-description: "Generate PIA WireGuard config and Gluetun port forwarding metadata."
-          readme-filepath: ./docs/DOCKERHUB_README.md
+          readme-filepath: ./docs/docker-hub-description.md
 
       #
       # Report the final job state to both optional Discord destinations.

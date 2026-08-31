@@ -1,8 +1,8 @@
-# 🧭 Advanced Usage
+# Advanced usage 🧭
 
 The main README stays focused on the shortest path: generate `wg0.conf`, inspect `privateerr.env`, and move on with your day. This page keeps the deeper project details.
 
-## 🧪 Full Stack Validation
+## Run full-stack validation 🧪
 
 Privateerr includes an end-to-end Compose test path:
 
@@ -21,9 +21,7 @@ make test-e2e
 >
 > The e2e test uses **real PIA credentials** from `.env`. Fake credentials should fail, and live generated VPN files should not be committed.
 
-Before Privateerr starts, Make asks Docker Compose for the resolved environment
-and checks only `PIA_USER` and `PIA_PASS`. The preflight never sources `.env` or
-prints either value, and it rejects the documented examples before a live run.
+Before Privateerr starts, Make asks Docker Compose for the resolved environment and checks only `PIA_USER` and `PIA_PASS`. The preflight never sources `.env` or prints either value, and it rejects the documented examples before a live run.
 
 If the test stack is running and you want to clear it:
 
@@ -31,7 +29,7 @@ If the test stack is running and you want to clear it:
 make clean-test
 ```
 
-## 🏗️ Multi-Architecture Builds
+## Build multiple architectures 🏗️
 
 Published images target:
 
@@ -59,7 +57,7 @@ Override it for one-off checks:
 make build-platforms BUILDX_PLATFORM_OPTIONS="--platform linux/amd64,linux/arm64"
 ```
 
-## 📦 Registry Publishing
+## Understand registry publishing 📦
 
 The `build-and-push` GitHub Actions workflow builds and publishes Privateerr to GHCR first, then mirrors the same multi-architecture image to Docker Hub with Skopeo.
 
@@ -106,9 +104,9 @@ Configure these GitHub Actions values before enabling Docker Hub publishing:
 | Secret  | `DOCKERHUB_USERNAME` | Docker Hub username used to log in.             |
 | Secret  | `DOCKERHUB_TOKEN`    | Docker Hub access token used by GitHub Actions. |
 
-The Docker Hub repository overview is updated by the same workflow from [DOCKERHUB_README.md](./DOCKERHUB_README.md). Keep that file shorter than the GitHub README: Docker Hub readers usually need to know what the image does, how to pull it, what platforms it supports, and where the full project docs live.
+The Docker Hub repository overview is updated by the same workflow from [`docker-hub-description.md`](docker-hub-description.md). Keep that file shorter than the GitHub README: Docker Hub readers usually need to know what the image does, how to pull it, what platforms it supports, and where the full project documentation lives.
 
-## 🧷 Pinned Build Inputs
+## Maintain pinned build inputs 🧷
 
 The release workflow uses pinned GitHub Action SHAs and a pinned Alpine image digest. That makes release builds boring in the best way: the same source commit should use the same action code and base image bits every time.
 
@@ -119,17 +117,13 @@ Renovate keeps those pins from going stale. It tracks:
 - Compose image references.
 - Git submodules.
 
-When Renovate opens a dependency PR, the validation workflow checks that every
-digest-pinned build dependency matches across Dockerfiles, workflow build args,
-and the example environment file. If one build arg drifts away from the fleet,
-[check-build-pin-policy.sh](../test/policy/check-build-pin-policy.sh) fails
-before the PR can merge.
+When Renovate opens a dependency pull request, the validation workflow checks that every digest-pinned build dependency matches across Dockerfiles, workflow build arguments, and the example environment file. If one build argument drifts away from the fleet, [`check-build-pin-policy.sh`](../test/policy/check-build-pin-policy.sh) fails before the pull request can merge.
 
 > [!NOTE]
 >
 > 🧭 `latest` remains the recommended stable image tag for users, while `edge` follows successful `main` builds. Neither tag is used as the Alpine base. The base image is intentionally pinned and moved by reviewed Renovate PRs.
 
-## 🛠️ Useful Maintenance Commands
+## Use maintenance commands 🛠️
 
 | ⚙️ Command              | ✅ Purpose                                                             |
 | ----------------------- | ---------------------------------------------------------------------- |
@@ -150,11 +144,9 @@ before the PR can merge.
 | `make clean-test`       | Stop the live test stack and restore checked-in examples.              |
 | `make nuke`             | Remove project Docker resources/cache and reset transient test state.  |
 
-`make nuke` preserves `.env`, `backups/`, and persistent bind-mounted config.
-Base-image removal is best-effort when another container or project still uses
-the same image.
+`make nuke` preserves `.env`, `backups/`, and persistent bind-mounted config. Base-image removal is best effort when another container or project still uses the same image.
 
-## 📄 Generated Files
+## Restore generated files 📄
 
 Privateerr overwrites these files when it runs:
 
