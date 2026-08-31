@@ -1,22 +1,57 @@
 <!-- markdownlint-disable-next-line MD033 MD041 -->
-<p align="center">
-  <em>🏴‍☠️ Generate PIA WireGuard configuration, hand it to a real VPN client, and get out of the way.</em>
-</p>
+<hr />
 
 <!-- markdownlint-disable MD033 -->
 <p align="center">
-  <a href="https://github.com/scottgigawatt/privateerr/actions/workflows/build-and-push.yml"><img src="https://img.shields.io/github/actions/workflow/status/scottgigawatt/privateerr/build-and-push.yml?branch=main&label=Privateerr%20build&logo=githubactions" alt="Privateerr build status" /></a>
-  <img src="https://img.shields.io/github/v/release/scottgigawatt/privateerr?label=Release" alt="Latest Privateerr release" />
-  <a href="https://www.bestpractices.dev/projects/13442"><img src="https://www.bestpractices.dev/projects/13442/badge" alt="OpenSSF Best Practices" /></a>
-  <img src="https://img.shields.io/github/license/scottgigawatt/privateerr?label=License" alt="Apache 2.0 license" />
-  <img src="https://img.shields.io/badge/Platforms-amd64%20%7C%20arm64%20%7C%20arm%2Fv7-blue?logo=docker" alt="Published for amd64, arm64, and arm/v7" />
-  <img src="https://img.shields.io/badge/Scanned-Trivy-teal?logo=aqua" alt="Container image scanned with Trivy" />
+  <em>🦜 Parrot says: Found this useful? Drop a ⭐ an' help another crew find the map.</em>
+</p>
+
+<p align="center">
+  <a href="https://github.com/scottgigawatt/privateerr/stargazers"><img src="https://img.shields.io/github/stars/scottgigawatt/privateerr?style=social&amp;label=Treasure%20Hunters" alt="GitHub stars: Treasure Hunters" /></a>
+  <a href="https://github.com/scottgigawatt/privateerr/forks"><img src="https://img.shields.io/github/forks/scottgigawatt/privateerr?style=social&amp;label=Mutinous%20Forks" alt="GitHub forks: Mutinous Forks" /></a>
+  <a href="https://github.com/scottgigawatt/privateerr/watchers"><img src="https://img.shields.io/github/watchers/scottgigawatt/privateerr?style=social&amp;label=Crow%27s%20Nest%20Lookouts" alt="GitHub watchers: Crow's Nest Lookouts" /></a>
+</p>
+
+<p align="center">
+  <a href="https://github.com/scottgigawatt/privateerr/releases/latest"><img src="https://img.shields.io/github/v/release/scottgigawatt/privateerr?label=Latest%20Treasure%20Map&amp;logo=github&amp;color=1677B8" alt="Latest Privateerr release" /></a>
+  <a href="https://github.com/scottgigawatt/privateerr/actions/workflows/build-and-push.yml"><img src="https://img.shields.io/github/actions/workflow/status/scottgigawatt/privateerr/build-and-push.yml?branch=main&amp;label=Privateerr%20build&amp;logo=githubactions&amp;logoColor=white" alt="Privateerr build status on main" /></a>
+  <a href="https://www.bestpractices.dev/projects/13442"><img src="https://www.bestpractices.dev/projects/13442/badge" alt="OpenSSF Best Practices badge" /></a>
+</p>
+
+<p align="center">
+  <a href="https://github.com/scottgigawatt/privateerr/actions/workflows/build-and-push.yml"><img src="https://img.shields.io/badge/Scanned-Trivy%20Bilge%20Check-008B8B?logo=aqua&amp;logoColor=white" alt="Container images scanned with Trivy" /></a>
+  <a href="./LICENSE"><img src="https://img.shields.io/github/license/scottgigawatt/privateerr?label=Legal%20Scroll&amp;color=1677B8" alt="Legal Scroll: Apache 2.0 license" /></a>
+  <a href="https://github.com/scottgigawatt/privateerr/pkgs/container/privateerr"><img src="https://img.shields.io/badge/GHCR-Privateerr%20Captain-1677B8?logo=github&amp;logoColor=white" alt="Privateerr image on GitHub Container Registry" /></a>
+  <a href="https://hub.docker.com/r/scottgigawatt/privateerr"><img src="https://img.shields.io/docker/pulls/scottgigawatt/privateerr?label=Docker%20Hub%20Privateerr&amp;logo=docker&amp;color=1677B8" alt="Privateerr pulls from Docker Hub" /></a>
+</p>
+
+<p align="center">
+  <img src="https://img.shields.io/badge/Dockerized-Brig-2496ED?logo=docker&amp;logoColor=white" alt="Dockerized brig" />
+  <img src="https://img.shields.io/badge/Cloaked-by%20PIA%20%26%20WireGuard-2EA44F?logo=wireguard&amp;logoColor=white" alt="Cloaked by PIA and WireGuard" />
+  <a href="./docker/Dockerfile"><img src="https://img.shields.io/badge/Base-Alpine%20Pinned-0D597F?logo=alpinelinux&amp;logoColor=white" alt="Pinned Alpine base image" /></a>
+  <a href="https://github.com/scottgigawatt/privateerr/pkgs/container/privateerr"><img src="https://img.shields.io/badge/Multi--Arch-amd64%20%7C%20arm64%20%7C%20arm%2Fv7-1677B8?logo=docker&amp;logoColor=white" alt="Privateerr images for amd64, arm64, and arm/v7" /></a>
+</p>
+
+<p align="center">
+  <img src="https://img.shields.io/badge/Battle--Tested-Synology%20%7C%20macOS-1677B8" alt="Battle-tested on Synology and macOS" />
+  <a href="https://github.com/scottgigawatt/privateerr/commits/main"><img src="https://img.shields.io/github/last-commit/scottgigawatt/privateerr?label=Last%20Raid&amp;logo=git&amp;color=2EA44F" alt="Date of the last commit to main" /></a>
+  <a href="https://github.com/scottgigawatt/privateerr"><img src="https://img.shields.io/github/repo-size/scottgigawatt/privateerr?label=Hold%20Capacity&amp;color=1677B8" alt="Privateerr repository size" /></a>
+  <img src="https://img.shields.io/badge/Rum%20Rations-Plentiful-E66A24" alt="Rum rations: Plentiful" />
+</p>
+
+<p align="center">─── ⛧ ───</p>
+
+<p align="center">
+  <em>💀 Questions or cursed code? Step forward… <strong>enter 🔥HADES🔥</strong>.</em>
 </p>
 
 <p align="center">
   <a href="https://discord.gg/BpEGzWwGYf"><img src="https://img.shields.io/discord/1403601106315116626?label=%F0%9F%94%A5HADES%F0%9F%94%A5&logo=discord&logoColor=white&color=5865F2" alt="HADES Discord community" /></a>
 </p>
 <!-- markdownlint-enable MD033 -->
+
+<!-- markdownlint-disable-next-line MD033 -->
+<hr />
 
 # Privateerr 🏴‍☠️
 
