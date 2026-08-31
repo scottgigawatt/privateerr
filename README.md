@@ -55,36 +55,36 @@
 
 # Privateerr 🏴‍☠️
 
-Privateerr packages the official, unmodified [Private Internet Access manual-connection scripts](https://github.com/pia-foss/manual-connections) in a small Alpine container. It runs those scripts to generate a PIA WireGuard configuration and writes a companion metadata file for Gluetun automation.
+Privateerr is a containerized configuration tool for [Private Internet Access (PIA)](https://www.privateinternetaccess.com/). It packages PIA's official, unmodified [manual-connection scripts](https://github.com/pia-foss/manual-connections) in a small Alpine container and uses them to generate a WireGuard configuration file plus PIA server metadata for automation.
+
+Use Privateerr when you want `wg0.conf` for Gluetun, WireGuard, or another compatible VPN client—especially when a Docker Compose deployment needs to generate that configuration repeatably.
 
 > [!IMPORTANT]
 > Privateerr is not a virtual private network (VPN) client. It does not create or maintain a tunnel. It generates `wg0.conf` for a VPN client such as Gluetun or WireGuard.
 
-The upstream PIA scripts remain visible as the `docker/pia-manual-connections` submodule. Privateerr adds repeatable container execution, safe defaults, health reporting, and a small metadata handoff without modifying the upstream scripts.
+The upstream PIA scripts remain visible as the `docker/pia-manual-connections` submodule. Privateerr adds repeatable container execution, safe defaults, health reporting, and a small metadata handoff without modifying those scripts.
 
 ## Understand the data flow 🧭
 
-Privateerr runs first and writes two files. Gluetun then uses `wg0.conf` to establish the VPN tunnel and reads `PIA_WG_SERVER_NAME` from `privateerr.env` when PIA port forwarding is enabled. The test-only Buccaneerr image can validate the completed path from inside Gluetun's network namespace.
+Privateerr runs before the VPN client and writes two files. Gluetun—a separate VPN client container—uses `wg0.conf` to establish the tunnel and reads `PIA_WG_SERVER_NAME` from `privateerr.env` when PIA port forwarding is enabled. Other Compose services can then share Gluetun's protected network connection.
 
 ```mermaid
 flowchart TB
     PIA["PIA manual-connection scripts"]
-    Privateerr["Privateerr generates configuration"]
+    Privateerr["Privateerr generates PIA WireGuard configuration"]
     Files["wg0.conf + privateerr.env"]
     Gluetun["Gluetun starts the VPN tunnel"]
     Services["Compose services use Gluetun networking"]
-    Buccaneerr["Buccaneerr validates the test voyage"]
 
     PIA -->|unmodified scripts| Privateerr
     Privateerr -->|writes| Files
     Files -->|WireGuard config and server metadata| Gluetun
     Gluetun -->|protected network namespace| Services
-    Gluetun -.->|test-only validation| Buccaneerr
 ```
 
 ## Generate a WireGuard configuration ⚡
 
-Clone the repository with its PIA submodule, create the private environment file, and edit the PIA values before running Privateerr:
+Before you begin, you need an active PIA subscription plus Git, Docker with Docker Compose, and Make. Clone the repository with its PIA submodule, create the private environment file, and edit the PIA values before running Privateerr:
 
 ```sh
 git clone --recurse-submodules https://github.com/scottgigawatt/privateerr.git
@@ -92,7 +92,7 @@ cd privateerr
 cp example.env .env
 ```
 
-Set `PIA_USER`, `PIA_PASS`, and the desired `PIA_PF` value in `.env`. Keep that file private. Generate fresh configuration:
+Set `PIA_USER` and `PIA_PASS` in `.env`. Set `PIA_PF=true` if you need a PIA endpoint that supports port forwarding; otherwise leave it `false`. Keep the file private, then generate fresh configuration:
 
 ```sh
 make run-privateerr
@@ -100,10 +100,10 @@ make run-privateerr
 
 Privateerr writes:
 
-| File | Purpose |
-| --- | --- |
-| `config/gluetun/wireguard/wg0.conf` | PIA WireGuard configuration for Gluetun, WireGuard, or another compatible client |
-| `config/gluetun/wireguard/privateerr.env` | Selected PIA endpoint, region, and port-forwarding metadata for automation |
+| 📦 Output | 📍 Path | 🎯 Used by |
+| --- | --- | --- |
+| 🛡️ WireGuard configuration | `config/gluetun/wireguard/wg0.conf` | Gluetun, WireGuard, or another compatible VPN client |
+| 🧭 PIA server metadata | `config/gluetun/wireguard/privateerr.env` | Compose automation that needs the selected endpoint, region, or port-forwarding details |
 
 > [!WARNING]
 > Keep live `wg0.conf` and `privateerr.env` files private. They can contain VPN connection material and deployment-specific metadata. Run `make restore-test-config` before committing after a live voyage.
@@ -191,19 +191,19 @@ The `PIA_*` variables map Privateerr defaults to values understood by the upstre
 
 ## Use common maintenance commands ⚙️
 
-| Command | Use it when |
+| ⚙️ Command | 🧭 Use it when |
 | --- | --- |
-| `make run-privateerr` | You need fresh `wg0.conf` and `privateerr.env` only |
-| `make up` | You want the Privateerr and Gluetun Compose stack |
-| `make down` | You want to stop the stack while preserving volumes and images |
-| `make ps` | You need compact service status |
-| `make logs` | You need container output |
-| `make backup` | You want a recoverable archive of `config/` |
-| `make test` | You want the offline policy and helper suite |
-| `make clean-test` | You want to stop tests and restore checked-in examples |
-| `make restore-test-config` | You want to restore only checked-in examples |
-| `make clean` | You want to remove disposable repository artifacts only |
-| `make nuke` | You intend to remove project Docker resources and transient state |
+| ⚡ `make run-privateerr` | You need fresh `wg0.conf` and `privateerr.env` only |
+| 🚢 `make up` | You want the Privateerr and Gluetun Compose stack |
+| ⚓ `make down` | You want to stop the stack while preserving volumes and images |
+| 🔎 `make ps` | You need compact service status |
+| 📜 `make logs` | You need container output |
+| 💾 `make backup` | You want a recoverable archive of `config/` |
+| 🧪 `make test` | You want the offline policy and helper suite |
+| 🧹 `make clean-test` | You want to stop tests and restore checked-in examples |
+| ♻️ `make restore-test-config` | You want to restore only checked-in examples |
+| 🧽 `make clean` | You want to remove disposable repository artifacts only |
+| 💣 `make nuke` | You intend to remove project Docker resources and transient state |
 
 `make nuke` removes this project's containers, networks, volumes, service and local images, and repository-owned Buildx cache. It preserves `.env`, `backups/`, and persistent `config/`, then restores the checked-in WireGuard examples. Shared or in-use base images remain.
 
@@ -211,12 +211,12 @@ The `PIA_*` variables map Privateerr defaults to values understood by the upstre
 
 Images are published to [GitHub Container Registry](https://github.com/scottgigawatt/privateerr/pkgs/container/privateerr) and [Docker Hub](https://hub.docker.com/r/scottgigawatt/privateerr) for `linux/amd64`, `linux/arm64`, and `linux/arm/v7`.
 
-| Channel | Meaning |
+| 📦 Channel | 🧭 Choose it when |
 | --- | --- |
-| `latest` | Newest stable release; recommended for most users |
-| `edge` | Newest successful `main` build; may change before release |
-| Exact version | One immutable semantic-version release, such as `1.2.3` |
-| `sha-...` | Image built from one source revision |
+| ✅ `latest` | You want the newest stable release; recommended for most users |
+| 🧪 `edge` | You want the newest successful `main` build and accept changes before release |
+| ⚓ Exact version | You want one immutable semantic-version release, such as `1.2.3` |
+| 🔬 `sha-...` | You need the image built from one exact source revision |
 
 Stable releases also publish minor and stable-major aliases. Major version zero omits the broad `0` alias, and prereleases never replace movable stable aliases.
 
