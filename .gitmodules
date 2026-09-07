@@ -10,7 +10,8 @@
 #
 # Keep the PIA scripts as a distinct third-party submodule. Clone recursively
 # so the Privateerr image build context contains the pinned upstream revision.
+# Use HTTPS so this public, read-only dependency needs no GitHub SSH key.
 #
 [submodule "docker/pia-manual-connections"]
 	path = docker/pia-manual-connections
-	url = git@github.com:pia-foss/manual-connections.git
+	url = https://github.com/pia-foss/manual-connections.git

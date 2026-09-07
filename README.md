@@ -83,6 +83,8 @@ cd privateerr
 cp example.env .env
 ```
 
+The public PIA submodule needs no GitHub SSH key. If cloning reports a submodule error or building reports a missing `pia-manual-connections/LICENSE`, follow [Recover a missing PIA submodule](docs/SUPPORT.md#recover-a-missing-pia-submodule).
+
 Set `PIA_USER` and `PIA_PASS` in `.env`. Set `PIA_PF=true` if you need a PIA endpoint that supports port forwarding; otherwise leave it `false`. Keep the file private, then generate fresh configuration:
 
 ```sh

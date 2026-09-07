@@ -30,12 +30,14 @@ Questionable cargo includes:
 ## Set up a development checkout 🛠️
 
 ```sh
-git clone --recurse-submodules git@github.com:scottgigawatt/privateerr.git
+git clone --recurse-submodules https://github.com/scottgigawatt/privateerr.git
 cd privateerr
 cp example.env .env
 ```
 
 Edit `.env` with yer own values. Keep that file private.
+
+The public PIA submodule uses HTTPS and needs no GitHub SSH key. If an earlier clone left that directory empty, follow [Recover a missing PIA submodule](SUPPORT.md#recover-a-missing-pia-submodule) before building.
 
 Useful commands:
 
