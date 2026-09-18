@@ -34,7 +34,6 @@ ARG PIA_BIN_HOME=/pia
 # hadolint ignore=DL3064
 ARG PRIVATEERR_BIN_HOME=/privateerr
 ARG EDGE_APK_REPOSITORY=https://dl-cdn.alpinelinux.org/alpine/edge/main
-ARG JQ_APK_MIN_VERSION=1.8.2-r0
 ARG NGHTTP2_APK_MIN_VERSION=1.70.0-r0
 ARG IMAGE_CREATED=unknown
 ARG IMAGE_REVISION=unknown
@@ -82,20 +81,20 @@ COPY privateerr-date.sh             /usr/local/bin/date
 
 #
 # Upgrade the base OpenSSL runtime libraries to Alpine's current fixed release,
-# then install the small runtime needed to generate PIA WireGuard configs. jq
-# and nghttp2-libs come from the configured edge repository until Alpine stable
-# has the required versions.
+# then install the small runtime needed to generate PIA WireGuard configs.
+# Stable Alpine provides fixed jq; only nghttp2-libs needs the configured edge
+# repository until stable provides version 1.70.0 or newer.
 #
 RUN apk upgrade --no-cache libcrypto3 libssl3 && \
     apk add --no-cache \
         bash \
         ca-certificates \
         curl \
+        jq \
         openresolv \
         wireguard-tools && \
     apk add --no-cache \
         --repository="${EDGE_APK_REPOSITORY}" \
-        "jq>=${JQ_APK_MIN_VERSION}" \
         "nghttp2-libs>=${NGHTTP2_APK_MIN_VERSION}" && \
     chmod +x \
         "${PRIVATEERR_BIN_HOME}/privateerr-entrypoint.sh" \
