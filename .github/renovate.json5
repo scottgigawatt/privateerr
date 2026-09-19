@@ -53,6 +53,13 @@
     ],
 
     //
+    // Opt in to submodule updates; listing the manager alone does not enable it.
+    //
+    "git-submodules": {
+        "enabled": true
+    },
+
+    //
     // Track Alpine pins across Dockerfiles, workflows, and the example
     // environment, plus the digest-pinned Hadolint image in pre-commit.
     //
