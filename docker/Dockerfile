@@ -9,7 +9,7 @@
 #
 # Default Alpine image tag that can be overridden using build args.
 #
-ARG ALPINE_TAG=3.24@sha256:e7c4abb69531cb09e2a2bbb56fad3367ab694865c49df898c1c683185cc4376c
+ARG ALPINE_TAG=3.24@sha256:294b683cb724975bec92580e1e685676bd4b50bda910ddb8c51d4cabeaec77e6
 
 #
 # Stage 1 of 1: Build the production Privateerr image on the pinned Alpine base.
@@ -20,7 +20,7 @@ FROM alpine:${ALPINE_TAG}
 #
 # Re-declare the Alpine tag after FROM so labels can record the base image.
 #
-ARG ALPINE_TAG=3.24@sha256:e7c4abb69531cb09e2a2bbb56fad3367ab694865c49df898c1c683185cc4376c
+ARG ALPINE_TAG=3.24@sha256:294b683cb724975bec92580e1e685676bd4b50bda910ddb8c51d4cabeaec77e6
 
 #
 # Default install locations and image metadata that can be overridden using build args.
