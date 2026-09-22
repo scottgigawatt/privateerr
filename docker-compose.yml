@@ -48,7 +48,7 @@ services:
         IMAGE_REVISION: ${IMAGE_REVISION}                                 # OCI image source revision
         IMAGE_VERSION: ${PRIVATEERR_TAG}                                  # OCI image version
     container_name: ${COMPOSE_PROJECT_NAME}-privateerr-${PRIVATEERR_TAG}  # Container name including the tag
-    restart: no                                                           # Container will not restart automatically
+    restart: unless-stopped                                               # Restart the supervisor unless explicitly stopped
     hostname: privateerr                                                  # Set hostname inside the container
 
     # Generate configuration without container privileges or capability escalation
@@ -114,7 +114,7 @@ services:
     # Docker image and container information
     image: qmcgaw/gluetun:${GLUETUN_TAG}                            # Gluetun image used for live VPN validation
     container_name: ${COMPOSE_PROJECT_NAME}-gluetun-${GLUETUN_TAG}  # Container name including the tag
-    restart: no                                                     # Test stack should not restart forever
+    restart: unless-stopped                                         # Restart Gluetun unless explicitly stopped
     hostname: gluetun                                               # Set hostname inside the container
 
     # Load Privateerr metadata before Gluetun starts
@@ -241,7 +241,7 @@ services:
         IMAGE_REVISION: ${IMAGE_REVISION}                                 # OCI image source revision
         IMAGE_VERSION: ${BUCCANEERR_TAG}                                  # OCI image version
     container_name: ${COMPOSE_PROJECT_NAME}-buccaneerr-${BUCCANEERR_TAG}  # Buccaneerr container name
-    restart: no                                                           # Buccaneerr exits with pass/fail status
+    restart: "no"                                                         # Buccaneerr exits with pass/fail status
     network_mode: service:gluetun                                         # Test from inside Gluetun's network namespace
 
     # Allow the test-only validator to inject and remove a VPN endpoint failure

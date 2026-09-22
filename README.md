@@ -99,7 +99,7 @@ cp example.env .env
 
 The public PIA submodule needs no GitHub SSH key. If cloning reports a submodule error or building reports a missing `pia-manual-connections/LICENSE`, follow [Recover a missing PIA submodule](docs/SUPPORT.md#recover-a-missing-pia-submodule).
 
-Set `PIA_USER` and `PIA_PASS` in `.env`. The example sets `PIA_PF=true` to select a region supporting port forwarding for qBittorrent. The example enables automatic recovery: generate a key with `openssl rand -hex 24` and set `PRIVATEERR_GLUETUN_API_KEY` in `.env`. For configuration generation without Gluetun, set `PRIVATEERR_AUTO_RECOVER=false`. Keep the file private, then generate fresh configuration:
+Set `PIA_USER` and `PIA_PASS` in `.env`. The example sets `PIA_PF=true` to select a region supporting port forwarding for qBittorrent. The example enables automatic recovery: generate a key with `openssl rand -hex 24` and set `PRIVATEERR_GLUETUN_API_KEY` in `.env`. `make run-privateerr` disables recovery and keepalive for that one-shot run without changing `.env`. Stop any running supervisor before generating into its configuration directory. Keep the file private, then generate fresh configuration:
 
 ```sh
 make run-privateerr

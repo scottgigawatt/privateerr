@@ -199,14 +199,14 @@ COMPOSE_TEST_OPTIONS ?= \
 	--exit-code-from $(BUCCANEERR_SERVICE)
 
 #
-# Docker Compose options for running only Privateerr.
+# Docker Compose options for disposable generation without automatic restarts.
 #
 COMPOSE_PRIVATEERR_ONLY_OPTIONS ?= \
 	--build \
-	--force-recreate \
-	--remove-orphans \
-	--abort-on-container-exit \
-	--exit-code-from $(PRIVATEERR_SERVICE)
+	--rm \
+	--no-deps \
+	--env PRIVATEERR_AUTO_RECOVER=false \
+	--env PRIVATEERR_KEEPALIVE=false
 
 #
 # Docker Buildx options used to verify multi-architecture image builds.
@@ -705,7 +705,7 @@ $(HELP):
 #
 $(RUN_PRIVATEERR): $(CHECK_PIA) $(ENSURE_BUILDX_BUILDER)
 	$(call announce,Generating WireGuard config and Gluetun metadata. 📜)
-	PRIVATEERR_KEEPALIVE=false $(PRIVATEERR_COMPOSE) up \
+	$(PRIVATEERR_COMPOSE) run \
 		$(COMPOSE_PRIVATEERR_ONLY_OPTIONS) \
 		$(PRIVATEERR_SERVICE)
 

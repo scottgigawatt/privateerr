@@ -77,6 +77,10 @@ A small Python supervisor runs in the existing Privateerr container. It uses the
 
 The supervisor uses a monotonic clock for outage and retry timing and bounds both HTTP requests and PIA generation. Container shutdown interrupts waits and stops the active generation process group. Existing environment variables, output paths, one-shot generation, and keepalive behavior remain available. Python test and lint tools stay in Buccaneerr.
 
+The example uses `restart: unless-stopped` for Privateerr, Gluetun, and qBittorrent so Docker restarts exited services and brings them back after a host reboot unless you explicitly stopped them. This container policy is separate from tunnel recovery and does not restart a container merely because its healthcheck fails. Buccaneerr keeps `restart: "no"` so its test result remains final.
+
+For one-shot generation, `make run-privateerr` disables recovery and keepalive for a disposable `docker compose run --rm` container; it exits after generation without changing `.env`. Stop the running supervisor before generating into the same configuration directory. Custom one-shot deployments should set `PRIVATEERR_AUTO_RECOVER=false`, `PRIVATEERR_KEEPALIVE=false`, and `restart: "no"`.
+
 ## Understand the recovery sequence
 
 Privateerr generates and validates the initial configuration before reporting ready. Gluetun can therefore retain `depends_on: service_healthy`; Privateerr's Docker healthcheck does not depend on a working tunnel.
