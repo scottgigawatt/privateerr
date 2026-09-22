@@ -10,4 +10,5 @@
 
 from .supervisor import main
 
+# Return the supervisor result as the container exit code for Docker and one-shot callers.
 raise SystemExit(main())
