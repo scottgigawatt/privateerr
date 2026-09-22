@@ -75,6 +75,43 @@ Recovery tries another advertised endpoint in the selected region. A pinned regi
 
 Privateerr generates and validates the initial configuration before reporting ready. Gluetun can therefore retain `depends_on: service_healthy`; Privateerr's Docker healthcheck does not depend on a working tunnel.
 
+With recovery enabled, the monitor follows this sequence after the startup grace period. Blue marks monitoring, purple marks the settings handoff, green marks a verified save, and amber marks waiting or retrying. The arrow labels explain each transition.
+
+```mermaid
+flowchart TD
+  accTitle: Privateerr automatic recovery sequence
+  accDescr: After startup, Privateerr monitors Gluetun. A sustained outage triggers a fresh PIA registration and a control API update. Privateerr saves the replacement files only after the settings match and the tunnel is healthy. Other paths wait or retry while retaining the saved files.
+
+  monitor["🔎 Monitor Gluetun"]
+  generate["🛟 Generate and validate<br/>a fresh PIA registration"]
+  apply["Update Gluetun settings<br/>through its control API"]
+  verify{"Settings match and<br/>tunnel is healthy?"}
+  save["✅ Save matching configuration<br/>and PIA metadata"]
+  wait["Wait for the next probe"]
+  retry["Keep saved files;<br/>wait or retry after cooldown"]
+
+  monitor -->|"Sustained outage; cooldown elapsed"| generate
+  monitor -.->|"Healthy, stopped, or API unavailable"| wait
+  generate -->|"Valid candidate; tunnel still needs recovery"| apply
+  generate -.->|"Generation fails"| retry
+  apply -->|"Read back applied settings"| verify
+  verify -->|"Yes"| save
+  verify -.->|"Not yet, or API response uncertain"| retry
+  save -->|"Resume monitoring"| wait
+
+  classDef monitoring fill:#dbeafe,stroke:#2563eb,color:#172554,stroke-width:2px
+  classDef handoff fill:#ede9fe,stroke:#7c3aed,color:#2e1065,stroke-width:2px
+  classDef success fill:#dcfce7,stroke:#16a34a,color:#14532d,stroke-width:2px
+  classDef waiting fill:#fef3c7,stroke:#d97706,color:#451a03,stroke-width:2px
+
+  class monitor monitoring
+  class generate,apply,verify handoff
+  class save success
+  class wait,retry waiting
+```
+
+Waiting returns to the next monitoring cycle. Before retrying an uncertain update, Privateerr checks what Gluetun actually applied; it does not immediately generate another candidate.
+
 After the startup grace period, Privateerr checks Gluetun's control API and tunnel health. A sustained outage triggers one fresh PIA registration. Generation uses staging files and a deadline, leaving saved configuration untouched on failure. The upstream PIA scripts remain unmodified.
 
 Privateerr submits the new WireGuard keys, address, endpoint, and PIA server name together through `PUT /v1/vpn/settings`. Gluetun restarts its internal tunnel. Privateerr reads back the applied settings and waits for tunnel health before saving the new configuration and metadata. An ambiguous API timeout is reconciled before another candidate is generated. Pending candidates and an interrupted publication can be recovered after Privateerr restarts.
