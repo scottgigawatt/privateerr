@@ -283,17 +283,17 @@ select_recovery_endpoint() {
     selected="$(jq -er --arg current "${current_ip}" --arg region "${region}" \
         --arg auto "${AUTOCONNECT:-true}" --arg pf "${PIA_PF:-false}" \
         --rawfile failed "${privateerr_failed_ips}" '
-      ($failed | split("\n")) as $excluded
-      | [.regions[] | select($pf != "true" or .port_forward == true)
-        | select($auto != "false" or .id == $region)
-        | . as $regionData | .servers.wg[]
-        | select(.ip | test("^[0-9.]+$"))
-        | select(.cn | test("^[A-Za-z0-9][A-Za-z0-9.-]*$"))
-        | {ip, cn, priority: (if $regionData.id == $region then 0 else 1 end)}]
-      | sort_by(.priority) as $all
-      | ([$all[] | select(.ip as $ip | $excluded | index($ip) | not)][0]
-        // [$all[] | select(.ip == $current)][0])
-      | if . == null then error("No permitted endpoint") else [.ip, .cn] | @tsv end
+        ($failed | split("\n")) as $excluded
+        | [.regions[] | select($pf != "true" or .port_forward == true)
+            | select($auto != "false" or .id == $region)
+            | . as $regionData | .servers.wg[]
+            | select(.ip | test("^[0-9.]+$"))
+            | select(.cn | test("^[A-Za-z0-9][A-Za-z0-9.-]*$"))
+            | {ip, cn, priority: (if $regionData.id == $region then 0 else 1 end)}]
+        | sort_by(.priority) as $all
+        | ([$all[] | select(.ip as $ip | $excluded | index($ip) | not)][0]
+            // [$all[] | select(.ip == $current)][0])
+        | if . == null then error("No permitted endpoint") else [.ip, .cn] | @tsv end
     ' "${privateerr_runtime}/catalog.json" 2>/dev/null)" || return 1
     IFS=$'\t' read -r PRIVATEERR_CANDIDATE_IP PRIVATEERR_CANDIDATE_NAME <<< "${selected}"
     export PRIVATEERR_CANDIDATE_IP PRIVATEERR_CANDIDATE_NAME
