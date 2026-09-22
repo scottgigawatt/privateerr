@@ -21,7 +21,7 @@ HOOK = ROOT / "config/gluetun/scripts/qbittorrent-port-forwarding.sh"
 class ForwardingTests(unittest.TestCase):
     """Use a command stub to distinguish a reachable API from a successful update."""
 
-    def run_hook(self, *args, post_fails=False, unavailable=False):
+    def run_hook(self, *args, post_fails=False, unavailable=False, enabled=True):
         """Return the real shell helper's status and logs with a deterministic API stub."""
         with tempfile.TemporaryDirectory() as temporary:
             wget = Path(temporary) / "wget"
@@ -42,6 +42,7 @@ class ForwardingTests(unittest.TestCase):
                     "POST_FAILS": str(post_fails).lower(),
                     "UNAVAILABLE": str(unavailable).lower(),
                     "QBITTORRENT_API_WAIT_SECONDS": "0",
+                    "QBITTORRENT_PORT_SYNC": str(enabled).lower(),
                 },
                 capture_output=True,
                 text=True,
@@ -77,3 +78,10 @@ class ForwardingTests(unittest.TestCase):
         result = self.run_hook("up", "45678", "tun0")
         self.assertEqual(result.returncode, 0)
         self.assertIn("Set qBittorrent", result.stdout)
+
+    def test_disabled_application_does_not_wait_for_api(self):
+        for args in (("up", "45678", "tun0"), ("down",)):
+            with self.subTest(args=args):
+                result = self.run_hook(*args, enabled=False, unavailable=True)
+                self.assertEqual(result.returncode, 0)
+                self.assertEqual(result.stdout, "")

@@ -148,6 +148,13 @@ reset_forwarded_port() {
 }
 
 #
+# Skip application updates when the optional downloader is explicitly disabled.
+#
+if [ "${QBITTORRENT_PORT_SYNC:-true}" = false ]; then
+    exit 0
+fi
+
+#
 # Dispatch supported commands.
 #
 case "${1:-}" in

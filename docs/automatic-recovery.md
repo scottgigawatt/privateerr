@@ -1,10 +1,10 @@
 # Automatic Gluetun recovery 🧭
 
-Privateerr can refresh a stale PIA WireGuard connection after a sustained tunnel outage. Enable it when a tunnel repeatedly retries an unusable endpoint. Privateerr remains a configuration generator; Gluetun still owns the tunnel, firewall, DNS, and port forwarding.
+Privateerr can refresh a stale PIA WireGuard connection after a sustained tunnel outage. The supplied environment example enables it by default; configure its shared API key before starting. Privateerr remains a configuration generator; Gluetun still owns the tunnel, firewall, DNS, and port forwarding.
 
 Recovery runs inside the existing Privateerr container and uses Gluetun's authenticated control API. It needs no additional service or Docker socket. The Gluetun container stays running, preserving the network namespace shared by applications such as qBittorrent. Existing connections may still disconnect while the tunnel changes.
 
-## Enable recovery
+## Configure recovery
 
 Before you begin, use the updated Privateerr image, Compose file, and Gluetun entrypoint wrapper together. The integration is tested against Gluetun **v3.41.3**. Other versions must support the same authenticated control API routes and settings schema. The reference deployment keeps your chosen Gluetun image tag.
 
@@ -130,7 +130,7 @@ Defaults work without adding the new timing variables to an existing `.env`.
 
 | Variable | Default | Purpose |
 | --- | --- | --- |
-| `PRIVATEERR_AUTO_RECOVER` | `false` | Enable the optional monitor |
+| `PRIVATEERR_AUTO_RECOVER` | `true` in the environment example | Enable the recovery monitor |
 | `PRIVATEERR_GLUETUN_URL` | `http://gluetun:8000` | Authenticated control API |
 | `PRIVATEERR_GLUETUN_HEALTH_URL` | `http://gluetun:9999` | Tunnel health endpoint |
 | `PRIVATEERR_RECOVERY_INTERVAL_SECONDS` | `30` | Seconds between probes |
@@ -142,7 +142,7 @@ At startup, Privateerr waits through the grace period before monitoring. Recover
 
 ## Compatibility and limits
 
-Recovery defaults to off. Existing deployments using the image alone continue generating once and optionally keeping the container alive. Existing `.env` files can omit the new settings; the wrapper supplies defaults. An explicitly selected region requires `PIA_AUTOCONNECT=false`; the new default removes the need for interactive region selection when no preference was supplied.
+The repository environment example enables recovery by default. The image itself retains recovery-disabled behavior when `PRIVATEERR_AUTO_RECOVER` is omitted, preserving existing custom deployments. When upgrading this repository's Compose deployment, copy missing variables from `example.env` into your existing `.env` and configure a private shared API key. Preserve your credentials and paths; Compose contains no fallback defaults. An explicitly selected region requires `PIA_AUTOCONNECT=false`; the new default removes the need for interactive region selection when no preference was supplied.
 
 Recovery requires the configuration and metadata to share a directory mount and one Privateerr instance to own those files. The existing `wg0.conf` and `privateerr.env` paths remain regular files. Privateerr keeps copies of both files in `.privateerr-commit` until both replacements finish, allowing startup to complete an interrupted save. It stores a candidate awaiting API and health confirmation in `.privateerr-pending`. Both directories sit beside the generated files. Do not delete those directories during recovery. A normal one-shot regeneration still replaces saved files; avoid running it concurrently with the monitor.
 
@@ -188,7 +188,7 @@ Set `QBITTORRENT_PUID`, `QBITTORRENT_PGID`, and the configuration/download paths
 docker compose up -d privateerr gluetun qbittorrent
 ```
 
-The Web UI is available at `http://127.0.0.1:8080` on the Docker host. For a remote host, use an SSH tunnel or an authenticated reverse proxy. The Gluetun API and health listener remain unpublished. With an older `.env` that omits `QBITTORRENT_WEBUI_PORT`, Docker chooses a free localhost port, avoiding a new fixed-port conflict.
+The Web UI is available at `http://127.0.0.1:8080` on the Docker host. For a remote host, use an SSH tunnel or an authenticated reverse proxy. The Gluetun API and health listener remain unpublished. Set `QBITTORRENT_WEBUI_PORT` in `.env` if port 8080 is already in use.
 
 The seed configuration allows unauthenticated API access only from loopback, where Gluetun's hook runs. Remote Web UI sessions still require authentication; obtain the initial password from qBittorrent's local container logs and change it in the Web UI. Do not share those logs. Other containers deliberately sharing Gluetun's namespace also share that loopback trust boundary.
 

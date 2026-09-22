@@ -99,7 +99,7 @@ cp example.env .env
 
 The public PIA submodule needs no GitHub SSH key. If cloning reports a submodule error or building reports a missing `pia-manual-connections/LICENSE`, follow [Recover a missing PIA submodule](docs/SUPPORT.md#recover-a-missing-pia-submodule).
 
-Set `PIA_USER` and `PIA_PASS` in `.env`. Set `PIA_PF=true` if you need a PIA endpoint that supports port forwarding; otherwise leave it `false`. Keep the file private, then generate fresh configuration:
+Set `PIA_USER` and `PIA_PASS` in `.env`. Set `PIA_PF=true` if you need a PIA endpoint that supports port forwarding; otherwise leave it `false`. The example enables automatic recovery: generate a key with `openssl rand -hex 24` and set `PRIVATEERR_GLUETUN_API_KEY` in `.env`. For configuration generation without Gluetun, set `PRIVATEERR_AUTO_RECOVER=false`. Keep the file private, then generate fresh configuration:
 
 ```sh
 make run-privateerr
@@ -160,7 +160,7 @@ PIA_PREFERRED_REGION=ca
 
 ## Recover stale VPN connections ⚓
 
-Privateerr can optionally monitor Gluetun and refresh stale PIA WireGuard settings through Gluetun's authenticated control API. It keeps Gluetun's container running and needs no extra service or Docker socket. Recovery is disabled by default, preserving existing deployments.
+Privateerr can optionally monitor Gluetun and refresh stale PIA WireGuard settings through Gluetun's authenticated control API. It keeps Gluetun's container running and needs no extra service or Docker socket. The supplied environment example enables recovery by default. Set a private shared API key before starting; image-only deployments that omit the setting retain their existing behavior.
 
 See [automatic Gluetun recovery](docs/automatic-recovery.md) for setup, API authentication, timing, and limitations. Gluetun remains responsible for the VPN tunnel and port forwarding.
 

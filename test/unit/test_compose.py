@@ -10,6 +10,7 @@
 
 import json
 import os
+import re
 import subprocess
 import tempfile
 import unittest
@@ -21,15 +22,9 @@ ROOT = Path(__file__).resolve().parents[2]
 class ComposeTests(unittest.TestCase):
     """Keep existing service selection and new application defaults independently valid."""
 
-    def model(self, *, application=False, legacy=False):
-        """Resolve example settings with the real Compose binary installed in Buccaneerr."""
-        content = (ROOT / "example.env").read_text()
-        if legacy:
-            content = "\n".join(
-                line
-                for line in content.splitlines()
-                if not line.startswith(("QBITTORRENT_", "HOST_TORRENTS_", "COMPOSE_PROFILES="))
-            )
+    def model(self, *, application=False, overrides=""):
+        """Resolve example defaults and operator overrides with Buccaneerr's Compose binary."""
+        content = (ROOT / "example.env").read_text() + "\n" + overrides
         with tempfile.TemporaryDirectory() as temporary:
             environment = Path(temporary) / "example.env"
             environment.write_text(content)
@@ -54,21 +49,37 @@ class ComposeTests(unittest.TestCase):
             )
             return json.loads(result.stdout)["services"]
 
-    def test_older_environment_does_not_start_application(self):
-        services = self.model(legacy=True)
+    def test_example_enables_recovery_without_starting_optional_application(self):
+        services = self.model()
         self.assertNotIn("qbittorrent", services)
+        self.assertEqual(services["privateerr"]["environment"]["PRIVATEERR_AUTO_RECOVER"], "true")
+        self.assertEqual(services["gluetun"]["environment"]["PRIVATEERR_AUTO_RECOVER"], "true")
         self.assertEqual(services["gluetun"]["environment"]["QBITTORRENT_PORT_SYNC"], "false")
         self.assertEqual(services["gluetun"]["ports"][0]["host_ip"], "127.0.0.1")
-        self.assertEqual(services["gluetun"]["ports"][0]["published"], "0")
+        self.assertEqual(services["gluetun"]["ports"][0]["published"], "8080")
+
+    def test_environment_owns_defaults_and_operator_overrides(self):
+        source = (ROOT / "docker-compose.yml").read_text()
+        self.assertIsNone(re.search(r"\$\{[^}]+:-", source))
+        services = self.model(
+            overrides="PRIVATEERR_AUTO_RECOVER=false\nQBITTORRENT_WEBUI_PORT=8090\n"
+        )
+        self.assertEqual(services["privateerr"]["environment"]["PRIVATEERR_AUTO_RECOVER"], "false")
+        self.assertEqual(services["gluetun"]["ports"][0]["published"], "8090")
+        environment = services["gluetun"]["environment"]
+        self.assertEqual(
+            environment["VPN_PORT_FORWARDING_UP_COMMAND"],
+            '/bin/sh -c "/gluetun/scripts/qbittorrent-port-forwarding.sh up {{PORT}} {{VPN_INTERFACE}}"',
+        )
+        self.assertEqual(
+            environment["VPN_PORT_FORWARDING_DOWN_COMMAND"],
+            '/bin/sh -c "/gluetun/scripts/qbittorrent-port-forwarding.sh down"',
+        )
 
     def test_selected_application_uses_shared_network_and_persistent_storage(self):
-        for legacy in (False, True):
-            with self.subTest(legacy=legacy):
-                services = self.model(application=True, legacy=legacy)
-                application = services["qbittorrent"]
-                self.assertEqual(application["network_mode"], "service:gluetun")
-                self.assertNotIn("ports", application)
-                self.assertEqual(len(application["volumes"]), 2)
-                self.assertEqual(
-                    application["depends_on"]["gluetun"]["condition"], "service_healthy"
-                )
+        services = self.model(application=True)
+        application = services["qbittorrent"]
+        self.assertEqual(application["network_mode"], "service:gluetun")
+        self.assertNotIn("ports", application)
+        self.assertEqual(len(application["volumes"]), 2)
+        self.assertEqual(application["depends_on"]["gluetun"]["condition"], "service_healthy")

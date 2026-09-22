@@ -169,7 +169,8 @@ Compose conventions:
 
 - keep service image names fixed when possible
 - keep image tags configurable through `.env`
-- define defaults in `.env` / `example.env`; the optional qBittorrent example also uses Compose fallbacks so older environment files remain valid
+- define deployment defaults only in `.env` / `example.env`, never in Compose interpolation
+- enable recovery in public deployment examples; retain the image-only compatibility default when no setting is supplied
 - use YAML anchors for reusable labels or healthcheck settings
 - mount directories, not individual generated config files
 - group environment variables by owner/purpose
