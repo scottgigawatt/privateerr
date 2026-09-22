@@ -116,9 +116,6 @@ def main(env_file=None, smoke=False):
             wrapper = directory / "wrapper.sh"
             shutil.copyfile(ROOT / "config/gluetun/scripts/gluetun-entrypoint-wrapper.sh", wrapper)
             os.environ["PRIVATEERR_GLUETUN_API_KEY"] = secrets.token_hex(24)
-            (directory / "curl-auth").write_text(
-                f'header = "X-API-Key: {os.environ["PRIVATEERR_GLUETUN_API_KEY"]}"\n'
-            )
 
             # Start real PIA generation only when the caller supplied a credential file.
             if env_file is not None:
@@ -306,8 +303,6 @@ def main(env_file=None, smoke=False):
                 f"{LABEL}={RUN_ID}",
                 "--network",
                 RUN_ID,
-                "--volume",
-                f"{directory}:/test:ro",
                 "--entrypoint",
                 "sleep",
                 IMAGE,
@@ -333,16 +328,18 @@ def main(env_file=None, smoke=False):
                     "--request",
                     method,
                 ]
+                # Send authentication and optional JSON through stdin, never a key file or argv.
+                configuration = []
                 if authenticate:
-                    args.extend(["--config", "/test/curl-auth"])
-                if body is not None:
-                    args.extend(
-                        ["--header", "Content-Type: application/json", "--data-binary", "@-"]
+                    configuration.append(
+                        "header = "
+                        + json.dumps("X-API-Key: " + os.environ["PRIVATEERR_GLUETUN_API_KEY"])
                     )
-                args.append(f"http://gluetun:8000{route}")
-                response = docker(
-                    *args, stdin=json.dumps(body) if body is not None else None, check=False
-                )
+                if body is not None:
+                    configuration.append('header = "Content-Type: application/json"')
+                    configuration.append("data-binary = " + json.dumps(json.dumps(body)))
+                args.extend(["--config", "-", f"http://gluetun:8000{route}"])
+                response = docker(*args, stdin="\n".join(configuration) + "\n", check=False)
                 content, _, status = response.stdout.rpartition("\n")
                 return status, content
 

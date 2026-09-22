@@ -51,6 +51,14 @@ case "${suite}" in
     runtime|live|smoke|precommit)
         test_root=$(mktemp -d "${TMPDIR:-/tmp}/privateerr-checks.XXXXXX")
         trap 'rm -rf "${test_root}"' EXIT HUP INT TERM
+        container_tmp=${test_root}
+
+        # Keep root-owned tool caches inside the container so Linux runners can remove host fixtures.
+
+        if [ "${suite}" = precommit ]; then
+            container_tmp=/tmp
+        fi
+
         docker_socket=$("${DOCKER_BIN}" context inspect --format '{{.Endpoints.docker.Host}}')
 
         #
@@ -66,7 +74,7 @@ case "${suite}" in
             --volume "${test_root}:${test_root}" \
             --volume "${docker_socket}:/var/run/docker.sock" \
             --workdir "${repository_root}" \
-            --env "TMPDIR=${test_root}" \
+            --env "TMPDIR=${container_tmp}" \
             --env "PRIVATEERR_TEST_IMAGE=${PRIVATEERR_TEST_IMAGE}" \
             --env "BUCCANEERR_TEST_IMAGE=${BUCCANEERR_TEST_IMAGE}" \
             --env GLUETUN_TEST_IMAGE \
