@@ -38,14 +38,11 @@ make test-workflows
 
 The complete local target checks reusable AWK and Compose helpers, config backups, release tags, every structured Discord profile, registry mirroring, synchronized SHA-256 build pins, and canonical image-tag channels. Disposable negative fixtures prove that mismatched pins and unsafe tag rules are rejected.
 
-Run the opt-in live cleanup acceptance after changing Compose lifecycle or
-nuke behavior:
+Run the opt-in live cleanup acceptance after changing Compose lifecycle or `nuke` behavior:
 
-> [!CAUTION]
->
-> ```sh
-> test/runtime/test-compose-cleanup-live.sh
-> ```
+```sh
+test/runtime/test-compose-cleanup-live.sh
+```
 
 It creates uniquely named disposable projects and unrelated sentinels on the real Docker daemon. The test proves `down` preserves volumes and images, then proves `nuke` removes only its project resources and named builder. It never uses the repository `.env`, config, backups, or PIA credentials.
 
@@ -60,7 +57,7 @@ Buccaneerr checks the important loot:
 - PIA port forwarding produced a usable forwarded port.
 - The stack behaves like the downstream Synology-friendly Compose setup.
 
-Buccaneerr keeps test tools such as `curl` out of the production Privateerr image, keeping that image wee and focused.
+Buccaneerr keeps its verification scripts and additional test tools in a separate image. Privateerr retains the tools required by upstream PIA scripts and recovery, including `curl`.
 
 ## Build and run Buccaneerr 🛠️
 
@@ -121,7 +118,10 @@ Build a local image and exercise generation failures and shutdown inside its act
 
 ```sh
 docker build -t privateerr:recovery-review docker
-docker run --rm --network none -v "$PWD:/src:ro" --entrypoint bash privateerr:recovery-review /src/test/runtime/test-generation.sh
+docker run --rm --network none \
+  -v "$PWD:/src:ro" --entrypoint bash \
+  privateerr:recovery-review \
+  /src/test/runtime/test-generation.sh
 ```
 
 Verify authenticated settings replacement against Gluetun v3.41.3:
@@ -130,7 +130,9 @@ Verify authenticated settings replacement against Gluetun v3.41.3:
 python3 test/runtime/test-recovery-api.py
 ```
 
-The API test creates uniquely named, labeled containers and a network, verifies their labels before cleanup, and uses temporary generated keys. It checks changed keys, addresses, endpoint and server name, preservation of unrelated settings, rejected invalid updates, and unchanged container/network identity. Without credentials, it does not establish a real PIA tunnel. To exercise generation, sustained endpoint failure, automatic endpoint rotation, saved configuration, port forwarding, shared-network client connectivity, and traffic blocking outside the VPN, provide the path to an environment file containing real PIA credentials:
+The API test creates uniquely named, labeled containers and a network, verifies their labels before cleanup, and uses temporary generated keys. It checks connection-field replacement, preservation of unrelated settings, invalid-update rejection, and unchanged container and network identity. Without credentials, it does not establish a real PIA tunnel.
+
+To test a real tunnel, provide an environment file containing your PIA credentials. This also tests endpoint failure, automatic recovery, saved configuration, port forwarding, dependent-client connectivity, and traffic blocking outside the VPN:
 
 ```sh
 python3 test/runtime/test-recovery-api.py --env-file .env

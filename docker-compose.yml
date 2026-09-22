@@ -81,9 +81,9 @@ services:
       PRIVATEERR_GLUETUN_URL: ${PRIVATEERR_GLUETUN_URL}                            # Internal control API address
       PRIVATEERR_GLUETUN_HEALTH_URL: ${PRIVATEERR_GLUETUN_HEALTH_URL}              # Internal health endpoint
       PRIVATEERR_RECOVERY_INTERVAL: ${PRIVATEERR_RECOVERY_INTERVAL}                # Seconds between probes
-      PRIVATEERR_RECOVERY_FAILURE_SECONDS: ${PRIVATEERR_RECOVERY_FAILURE_SECONDS}  # Grace period before refreshing
-      PRIVATEERR_RECOVERY_COOLDOWN: ${PRIVATEERR_RECOVERY_COOLDOWN}                # Initial recovery retry delay
-      PRIVATEERR_GENERATION_TIMEOUT: ${PRIVATEERR_GENERATION_TIMEOUT}              # Bound each PIA generation
+      PRIVATEERR_RECOVERY_FAILURE_SECONDS: ${PRIVATEERR_RECOVERY_FAILURE_SECONDS}  # Startup grace and failure threshold in seconds
+      PRIVATEERR_RECOVERY_COOLDOWN: ${PRIVATEERR_RECOVERY_COOLDOWN}                # Initial recovery retry delay in seconds
+      PRIVATEERR_GENERATION_TIMEOUT: ${PRIVATEERR_GENERATION_TIMEOUT}              # Maximum seconds for each PIA generation
 
     # Report healthy after the wrapper finishes successfully
     healthcheck:
@@ -136,10 +136,10 @@ services:
       GLUETUN_DEFAULT_ENTRYPOINT: ${GLUETUN_DEFAULT_ENTRYPOINT}              # Original Gluetun entrypoint
 
       # Define Privateerr metadata environment variables for Gluetun
-      PRIVATEERR_METADATA_PATH: ${PRIVATEERR_METADATA_PATH}
-      PRIVATEERR_GLUETUN_METADATA_WAIT_SECONDS: ${PRIVATEERR_GLUETUN_METADATA_WAIT_SECONDS}
-      PRIVATEERR_AUTO_RECOVER: ${PRIVATEERR_AUTO_RECOVER}        # Enable the internal health listener and API role
-      PRIVATEERR_GLUETUN_API_KEY: ${PRIVATEERR_GLUETUN_API_KEY}  # Same key used by Privateerr
+      PRIVATEERR_METADATA_PATH: ${PRIVATEERR_METADATA_PATH}                                  # Path to the generated PIA metadata
+      PRIVATEERR_GLUETUN_METADATA_WAIT_SECONDS: ${PRIVATEERR_GLUETUN_METADATA_WAIT_SECONDS}  # Maximum seconds to wait for metadata
+      PRIVATEERR_AUTO_RECOVER: ${PRIVATEERR_AUTO_RECOVER}                                    # Enable the internal health listener and API role
+      PRIVATEERR_GLUETUN_API_KEY: ${PRIVATEERR_GLUETUN_API_KEY}                              # Shared API key used by Privateerr
 
     # Mount host directories into the container
     volumes:

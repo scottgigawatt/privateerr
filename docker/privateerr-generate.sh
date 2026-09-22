@@ -5,8 +5,7 @@
 #
 # Licensed under the Apache License, Version 2.0.
 #
-# privateerr-generate.sh: This script launches the unmodified PIA manual connection
-#                           scripts, then writes a dotenv metadata file for Gluetun.
+# privateerr-generate.sh: Run unmodified PIA scripts and write matching Gluetun metadata.
 #
 # Usage: docker/privateerr-generate.sh
 #
@@ -96,6 +95,8 @@ mkdir -p \
 touch "${PRIVATEERR_LOG_PATH}"
 
 #
+# Run upstream scripts from their own directory so their relative paths remain valid.
+#
 cd "${PIA_BIN_HOME}"
 
 #
@@ -106,18 +107,26 @@ cd "${PIA_BIN_HOME}"
 # Returns: The upstream script exit status.
 #
 # Run the upstream PIA setup exactly as shipped in the submodule.
-# Some PIA output mentions connecting to WireGuard because the upstream script
-# uses shared messaging. With PIA_CONNECT=false, Privateerr only writes config.
+# With PIA_CONNECT=false, upstream connection messages describe config generation only.
 #
 run_pia() {
+
+    #
+    # Use normal upstream setup unless recovery selected a specific endpoint.
+    #
     if [[ -z "${PRIVATEERR_CANDIDATE_IP:-}" ]]; then
         ./run_setup.sh
         return
     fi
 
+    #
     # Recovery selects an advertised endpoint; upstream still owns authentication and key registration.
+    #
     ./get_token.sh || return
     local token
+    #
+    # Read the upstream token file once and remove it after transferring the value to memory.
+    #
     token="$(head -n 1 /opt/piavpn-manual/token)"
     rm -f /opt/piavpn-manual/token
     [[ -n "${token}" && "${token}" != "null" ]] || return 1
@@ -127,6 +136,9 @@ run_pia() {
         ./connect_to_wireguard_with_token.sh
 }
 
+#
+# Redact credential fields before copying upstream output into either log.
+#
 run_pia 2>&1 | sed -E \
     -e 's/(PIA_TOKEN=)[^[:space:]\\]+/\1[redacted]/g' \
     -e 's/(DIP_TOKEN=)[^[:space:]\\]+/\1[redacted]/g' \
@@ -210,10 +222,13 @@ server_metadata="$(printf '%s' "${server_data}" | jq -r --arg ENDPOINT_IP "${end
 if [[ -n "${server_metadata}" ]]; then
     IFS=$'\t' read -r region_id region_name port_forwarding_supported geolocated_region matched_wg_server_name <<< "${server_metadata}"
 
+    #
     # If the matched WireGuard server name is not empty or "null", use it as the authoritative value.
+    #
     if [[ -n "${matched_wg_server_name}" && "${matched_wg_server_name}" != "null" ]]; then
         wg_server_name="${matched_wg_server_name}"
     fi
+
 fi
 
 #

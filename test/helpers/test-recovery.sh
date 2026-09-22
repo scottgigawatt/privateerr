@@ -9,8 +9,21 @@
 #
 # Usage: test/helpers/test-recovery.sh
 #
+# The script:
+#   - Builds isolated example configuration and metadata files.
+#   - Checks validation, interrupted saves, and uncertain API updates.
+#   - Verifies region selection and recovery timing with simulated API responses.
+#   - Uses a virtual clock so the monitor scenarios need no network or real delays.
+#
 
+#
+# Fail on command errors, unset variables, and failed assertions in pipelines.
+#
 set -euo pipefail
+
+#
+# Keep test files in an isolated temporary directory.
+#
 repo_root="$(cd "$(dirname "$0")/../.." && pwd)"
 test_root="$(mktemp -d)"
 export PRIVATEERR_BIN_HOME="${repo_root}/docker"
@@ -64,19 +77,29 @@ METADATA
         -f "${PRIVATEERR_BIN_HOME}/privateerr-vpn-settings.jq" > "$1/settings.json"
 }
 
+#
+# Confirm valid files produce matching connection fields before testing duplicate rejection.
+#
 fixture "${test_root}/wireguard" 198.51.100.10 example-one
 jq -e '.wireguard.addresses == ["10.0.0.2/32"] and .provider.server_selection.names == ["example-one"]' \
     "${test_root}/wireguard/settings.json" >/dev/null
 cp "${test_root}/wireguard/settings.json" "${privateerr_runtime}/active.json"
 printf '\nPIA_WG_ENDPOINT_PORT=9999\n' >> "${test_root}/wireguard/privateerr.env"
+
+#
+# Reject duplicate metadata fields instead of accepting an ambiguous configuration.
+#
 if jq -en --rawfile config "${PIA_CONF_PATH}" --rawfile metadata "${PRIVATEERR_METADATA_PATH}" \
     -f "${PRIVATEERR_BIN_HOME}/privateerr-vpn-settings.jq" >/dev/null 2>&1; then
     echo 'FAIL: duplicate metadata accepted' >&2
     exit 1
 fi
+
 fixture "${test_root}/wireguard" 198.51.100.10 example-one
 
-# A failed publication remains replayable without discarding either candidate file.
+#
+# An interrupted save retains both source files so the next start can finish replacing them.
+#
 fixture "${test_root}/candidate" 198.51.100.11 example-two
 publish_privateerr "${test_root}/candidate"
 cmp "${PIA_CONF_PATH}" "${test_root}/candidate/wg0.conf"
@@ -105,9 +128,19 @@ api_calls="${test_root}/api-calls"
 gluetun_api() {
     printf '%s %s\n' "$1" "$2" >> "${api_calls}"
     [[ "${api_available}" == true ]] || return 1
+
+    #
+    # Return the response fixture for the requested API route.
+    #
     case "$2" in
-        /v1/vpn/status) printf '{"status":"%s"}\n' "${api_status:-running}" > "$3" ;;
+        /v1/vpn/status)
+            printf '{"status":"%s"}\n' "${api_status:-running}" > "$3"
+            ;;
         /v1/vpn/settings)
+
+            #
+            # Simulate an accepted update with a lost response, or return the selected settings fixture.
+            #
             if [[ "$1" == PUT ]]; then
                 cp "$4" "${test_root}/applied.json"
                 return 1
@@ -116,9 +149,13 @@ gluetun_api() {
             else
                 cp "${test_root}/wireguard/settings.json" "$3"
             fi
+
             ;;
-        /v1/portforward) printf '{"port":12345}\n' > "$3" ;;
+        /v1/portforward)
+            printf '{"port":12345}\n' > "$3"
+            ;;
     esac
+
 }
 
 #
@@ -132,6 +169,9 @@ gluetun_healthy() {
     [[ "${tunnel_healthy}" == true ]]
 }
 
+#
+# Preserve pending files until the API confirms both applied settings and tunnel health.
+#
 fixture "${privateerr_pending}" 198.51.100.11 example-two
 touch "${privateerr_pending}/ready"
 api_available=false
@@ -152,7 +192,9 @@ api_match=false
 resolve_pending
 [[ ! -e "${privateerr_pending}" ]]
 
+#
 # Endpoint selection stays in a pinned region and skips endpoints already tried.
+#
 cat > "${test_root}/catalog" <<'CATALOG'
 {"regions":[{"id":"ca","port_forward":true,"servers":{"wg":[{"ip":"198.51.100.10","cn":"example-one"},{"ip":"198.51.100.11","cn":"example-two"}]}},{"id":"ca_toronto","port_forward":true,"servers":{"wg":[{"ip":"198.51.100.12","cn":"example-three"}]}},{"id":"no_pf","port_forward":false,"servers":{"wg":[{"ip":"198.51.100.13","cn":"example-four"}]}}]}
 CATALOG
@@ -167,6 +209,10 @@ CATALOG
 curl() {
     cat "${test_root}/catalog"
 }
+
+#
+# Try unused endpoints first, then the current endpoint, without leaving a pinned region.
+#
 cp "${test_root}/wireguard/settings.json" "${privateerr_runtime}/active.json"
 : > "${privateerr_failed_ips}"
 select_recovery_endpoint
@@ -182,7 +228,9 @@ select_recovery_endpoint
 [[ -z "${PRIVATEERR_CANDIDATE_IP:-}" ]]
 unset DIP_TOKEN
 
+#
 # Run the real monitor's decisions with a virtual clock, without sleeping.
+#
 PRIVATEERR_RECOVERY_INTERVAL=1
 PRIVATEERR_RECOVERY_FAILURE_SECONDS=2
 PRIVATEERR_RECOVERY_COOLDOWN=5
@@ -211,30 +259,61 @@ recover_gluetun() {
 wait_privateerr() {
     SECONDS=$((SECONDS + $1))
     (( SECONDS < 20 )) || exit 0
+
+    #
+    # Simulate brief stopped states during repeated internal VPN restarts.
+    #
     if [[ "${cycling:-false}" == true ]]; then
         api_status=running
         (( SECONDS % 3 != 0 )) || api_status=stopped
     fi
+
+    #
+    # Restore health before the sustained-failure threshold in the transient scenario.
+    #
     if [[ "${transient:-false}" == true && "${SECONDS}" -gt 3 ]]; then
         tunnel_healthy=true
     fi
+
 }
 
+#
+# Run each health, API, and process-state scenario against the real monitor.
+#
 for scenario in healthy transient stopped unavailable sustained cycling; do
     api_available=true
     api_status=running
     tunnel_healthy=false
     transient=false
     cycling=false
+
+    #
+    # Set the condition that distinguishes this scenario from sustained failure.
+    #
     case "${scenario}" in
-        healthy) tunnel_healthy=true ;;
-        transient) transient=true ;;
-        cycling) cycling=true ;;
-        stopped) api_status=stopped ;;
-        unavailable) api_available=false ;;
+        healthy)
+            tunnel_healthy=true
+            ;;
+        transient)
+            transient=true
+            ;;
+        cycling)
+            cycling=true
+            ;;
+        stopped)
+            api_status=stopped
+            ;;
+        unavailable)
+            api_available=false
+            ;;
     esac
+
     : > "${recoveries}"
     ( trap - EXIT; SECONDS=0; monitor_gluetun ) > "${test_root}/monitor.log"
+
+    #
+    # Check that only sustained outages recover and that retries respect the cooldown.
+    #
     if [[ "${scenario}" == cycling ]]; then
         [[ -s "${recoveries}" ]]
     elif [[ "${scenario}" == sustained ]]; then
@@ -243,5 +322,7 @@ for scenario in healthy transient stopped unavailable sustained cycling; do
     else
         [[ ! -s "${recoveries}" ]]
     fi
+
 done
+
 printf 'Recovery tests passed: validation, publication, reconciliation, region selection, pause and backoff.\n'

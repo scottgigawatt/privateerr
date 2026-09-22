@@ -6,7 +6,12 @@ Recovery runs inside the existing Privateerr container and uses Gluetun's authen
 
 ## Enable recovery
 
-Use the updated Privateerr image, Compose file, and Gluetun entrypoint wrapper together. The API integration is tested against Gluetun **v3.41.3**. Other versions must support authenticated `GET` and `PUT /v1/vpn/settings` with the same settings schema. The reference deployment keeps your chosen Gluetun image tag.
+Before you begin, use the updated Privateerr image, Compose file, and Gluetun entrypoint wrapper together. The integration is tested against Gluetun **v3.41.3**. Other versions must support the same authenticated control API routes and settings schema. The reference deployment keeps your chosen Gluetun image tag.
+
+> [!IMPORTANT]
+> Recovery makes Privateerr responsible for sustained-outage recovery and sets Gluetun's `HEALTH_RESTART_VPN=off`. Keep Privateerr outside Gluetun's VPN network namespace so it can reach PIA when the tunnel fails.
+
+Follow these steps from the repository root:
 
 1. Generate an API key:
 
@@ -28,14 +33,30 @@ Use the updated Privateerr image, Compose file, and Gluetun entrypoint wrapper t
    make up
    ```
 
-4. Check Privateerr's logs for `Automatic recovery enabled` and subsequently `Gluetun tunnel is healthy`.
+4. Read Privateerr's logs:
 
-> [!IMPORTANT]
-> When recovery is enabled, the supplied wrapper sets Gluetun's `HEALTH_RESTART_VPN=off` so Privateerr is the sole owner of sustained-outage recovery. Concurrent health-triggered restarts can race Gluetun's settings-update handler. WireGuard still reconnects naturally after brief network interruptions. Keep Privateerr outside Gluetun's VPN network namespace so it can reach PIA when the tunnel fails. Do not publish Gluetun's control or health ports to the host for this feature.
+   ```sh
+   docker compose logs privateerr
+   ```
+
+   Confirm that you see `Automatic recovery enabled`, followed by `Gluetun tunnel is healthy` after startup.
+
+## Configure a custom deployment
+
+The supplied wrapper disables Gluetun's health-triggered restarts when recovery is enabled because those restarts can race a settings update. WireGuard still reconnects naturally after brief network interruptions. Do not publish Gluetun's control or health ports to the host for this feature.
 
 The supplied Compose stack gives both containers a shared Docker network. When recovery is enabled, the Gluetun wrapper changes the default health listener from `127.0.0.1:9999` to `0.0.0.0:9999` and creates a temporary API authentication file with only the required routes. When recovery is disabled, the listener, authentication, and Gluetun restart policy remain unchanged.
 
-For a custom deployment, configure `HEALTH_RESTART_VPN=off`, the shared network, health listener, and API authentication yourself or adopt the updated wrapper. If an authentication file already exists at the default path or `HTTP_CONTROL_SERVER_AUTH_CONFIG_FILEPATH` names a custom path, the wrapper preserves that file; add a role with your shared key and these routes: `GET /v1/vpn/status`, `GET /v1/vpn/settings`, `PUT /v1/vpn/settings`, and `GET /v1/portforward`. Follow [Gluetun's authentication documentation](https://github.com/qdm12/gluetun-wiki/blob/main/setup/advanced/control-server.md#authentication). A settings response contains secrets; do not paste it into support discussions.
+For a custom deployment, adopt the updated wrapper or configure `HEALTH_RESTART_VPN=off`, the shared network, health listener, and API authentication yourself.
+
+If an authentication file already exists at `/gluetun/auth/config.toml`, or `HTTP_CONTROL_SERVER_AUTH_CONFIG_FILEPATH` names a custom path, the wrapper preserves that file. Add a role with your shared key and these routes:
+
+- `GET /v1/vpn/status`
+- `GET /v1/vpn/settings`
+- `PUT /v1/vpn/settings`
+- `GET /v1/portforward`
+
+Follow [Gluetun's authentication documentation](https://github.com/qdm12/gluetun-wiki/blob/main/setup/advanced/control-server.md#authentication). Settings responses contain secrets; do not paste them into support discussions.
 
 ## Choose a region
 
@@ -71,7 +92,7 @@ Defaults work without adding the new timing variables to an existing `.env`.
 | `PRIVATEERR_GLUETUN_HEALTH_URL` | `http://gluetun:9999` | Tunnel health endpoint |
 | `PRIVATEERR_RECOVERY_INTERVAL` | `30` | Seconds between probes |
 | `PRIVATEERR_RECOVERY_FAILURE_SECONDS` | `120` | Startup grace and continuous failure threshold, in seconds |
-| `PRIVATEERR_RECOVERY_COOLDOWN` | `300` | Initial delay between attempts; doubles on failures up to one hour |
+| `PRIVATEERR_RECOVERY_COOLDOWN` | `300` | Initial seconds between attempts; doubles on failures up to one hour |
 | `PRIVATEERR_GENERATION_TIMEOUT` | `180` | Maximum seconds for each upstream generation |
 
 At startup, Privateerr waits through the grace period before monitoring. Recovery then requires a continuous failure lasting the configured threshold, measured from an unhealthy probe. Gluetun's own periodic probes and retries add detection time, so a blocked endpoint can take several minutes to trigger recovery. Healthy probes reset the failure timer. A manually stopped VPN pauses recovery. Failed API authentication or an unreachable control server does not cause repeated configuration generation.
@@ -80,8 +101,10 @@ At startup, Privateerr waits through the grace period before monitoring. Recover
 
 Recovery defaults to off. Existing deployments using the image alone continue generating once and optionally keeping the container alive. Existing `.env` files can omit the new settings; the wrapper supplies defaults. An explicitly selected region requires `PIA_AUTOCONNECT=false`; the new default removes the need for interactive region selection when no preference was supplied.
 
-Recovery requires the configuration and metadata to share a directory mount and one Privateerr instance to own those files. The existing `wg0.conf` and `privateerr.env` paths remain regular files. Privateerr keeps a temporary publication journal and a pending candidate in hidden directories beside them. Do not delete those directories during recovery. A normal one-shot regeneration still replaces saved files; avoid running it concurrently with the monitor.
+Recovery requires the configuration and metadata to share a directory mount and one Privateerr instance to own those files. The existing `wg0.conf` and `privateerr.env` paths remain regular files. Privateerr keeps copies of both files in `.privateerr-commit` until both replacements finish, allowing startup to complete an interrupted save. It stores a candidate awaiting API and health confirmation in `.privateerr-pending`. Both directories sit beside the generated files. Do not delete those directories during recovery. A normal one-shot regeneration still replaces saved files; avoid running it concurrently with the monitor.
 
 This feature cannot start a stopped Gluetun container or repair a hung Docker daemon. An unavailable PIA service, invalid account credentials, or a fully unavailable pinned region can also prevent recovery. Logs identify those failures while the saved configuration remains available. Repeated failures use a cooldown rather than a container restart loop.
 
-Set `PRIVATEERR_AUTO_RECOVER=false` and recreate both containers to disable recovery. The last verified generated configuration remains available.
+## Disable recovery
+
+Set `PRIVATEERR_AUTO_RECOVER=false` in `.env` and recreate both containers with `make up`. Gluetun resumes its configured health-restart policy. Privateerr returns to ordinary startup behavior and generates a fresh configuration pair.
