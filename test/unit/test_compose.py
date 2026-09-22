@@ -3,7 +3,7 @@
 #
 # Licensed under the Apache License, Version 2.0.
 #
-# test_compose.py: Keep the optional application compatible with older deployment settings.
+# test_compose.py: Verify the complete example and its environment-driven application settings.
 #
 
 """Validate real Compose interpolation without starting deployment containers."""
@@ -20,11 +20,17 @@ ROOT = Path(__file__).resolve().parents[2]
 
 
 class ComposeTests(unittest.TestCase):
-    """Keep existing service selection and new application defaults independently valid."""
+    """Check the default service graph and shared application settings."""
 
-    def model(self, *, application=False, overrides=""):
+    def model(self, *, overrides=""):
         """Resolve example defaults and operator overrides with Buccaneerr's Compose binary."""
-        content = (ROOT / "example.env").read_text() + "\n" + overrides
+        content = (ROOT / "example.env").read_text()
+
+        # Edit settings in place, as operators do, before Compose resolves dependent values.
+        for override in overrides.splitlines():
+            name, value = override.split("=", 1)
+            content = re.sub(rf"^{name}=.*$", f"{name}={value}", content, flags=re.MULTILINE)
+
         with tempfile.TemporaryDirectory() as temporary:
             environment = Path(temporary) / "example.env"
             environment.write_text(content)
@@ -36,8 +42,6 @@ class ComposeTests(unittest.TestCase):
                 "--env-file",
                 str(environment),
             ]
-            if application:
-                command.extend(["--profile", "downloads"])
             command.extend(["config", "--format", "json"])
             result = subprocess.run(
                 command,
@@ -49,13 +53,15 @@ class ComposeTests(unittest.TestCase):
             )
             return json.loads(result.stdout)["services"]
 
-    def test_example_enables_recovery_without_starting_optional_application(self):
+    def test_example_enables_complete_recovery_stack(self):
         services = self.model()
-        self.assertNotIn("qbittorrent", services)
+        self.assertEqual(set(services), {"privateerr", "gluetun", "qbittorrent", "buccaneerr"})
+        self.assertNotIn("profiles", services["qbittorrent"])
+        self.assertIn("qbittorrent", services["buccaneerr"]["depends_on"])
+        self.assertEqual(services["buccaneerr"]["environment"]["BUCCANEERR_TEST_RECOVERY"], "true")
         self.assertEqual(services["privateerr"]["environment"]["PRIVATEERR_AUTO_RECOVER"], "true")
         self.assertEqual(services["gluetun"]["environment"]["PRIVATEERR_AUTO_RECOVER"], "true")
-        self.assertEqual(services["gluetun"]["environment"]["QBITTORRENT_PORT_SYNC"], "false")
-        self.assertEqual(services["gluetun"]["ports"][0]["host_ip"], "127.0.0.1")
+        self.assertEqual(services["gluetun"]["environment"]["QBITTORRENT_PORT_SYNC"], "true")
         self.assertEqual(services["gluetun"]["ports"][0]["published"], "8080")
 
     def test_environment_owns_defaults_and_operator_overrides(self):
@@ -66,6 +72,15 @@ class ComposeTests(unittest.TestCase):
         )
         self.assertEqual(services["privateerr"]["environment"]["PRIVATEERR_AUTO_RECOVER"], "false")
         self.assertEqual(services["gluetun"]["ports"][0]["published"], "8090")
+        self.assertEqual(services["gluetun"]["ports"][0]["target"], 8090)
+        self.assertEqual(services["qbittorrent"]["environment"]["WEBUI_PORT"], "8090")
+        self.assertEqual(
+            services["gluetun"]["environment"]["QBITTORRENT_API_URL"], "http://127.0.0.1:8090"
+        )
+        self.assertEqual(
+            services["buccaneerr"]["environment"]["QBITTORRENT_API_URL"], "http://127.0.0.1:8090"
+        )
+        self.assertIn("http://127.0.0.1:8090/", services["qbittorrent"]["healthcheck"]["test"])
         environment = services["gluetun"]["environment"]
         self.assertEqual(
             environment["VPN_PORT_FORWARDING_UP_COMMAND"],
@@ -77,7 +92,7 @@ class ComposeTests(unittest.TestCase):
         )
 
     def test_selected_application_uses_shared_network_and_persistent_storage(self):
-        services = self.model(application=True)
+        services = self.model()
         application = services["qbittorrent"]
         self.assertEqual(application["network_mode"], "service:gluetun")
         self.assertNotIn("ports", application)

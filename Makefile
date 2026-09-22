@@ -583,7 +583,7 @@ $(TEST_RECOVERY):
 #   $(CHECK_PIA) - Reject missing or example PIA credentials.
 #
 $(TEST_E2E): $(CHECK_PIA) $(ENSURE_BUILDX_BUILDER)
-	$(call announce,Starting Privateerr$(COMMA) Gluetun$(COMMA) and Buccaneerr for e2e validation. 🌊)
+	$(call announce,Starting Privateerr$(COMMA) Gluetun$(COMMA) qBittorrent$(COMMA) and Buccaneerr for e2e validation. 🌊)
 	$(PRIVATEERR_COMPOSE) up $(COMPOSE_TEST_OPTIONS)
 
 #
@@ -684,7 +684,7 @@ $(HELP):
 	$(call help_line,$(SPELLCHECK),Check project spelling inside Buccaneerr.)
 	$(call help_line,$(TEST_MAKE_HELPERS),Test reusable Make and Compose helpers.)
 	$(call help_line,$(TEST_WORKFLOWS),Test workflow helpers and shared publishing policies.)
-	$(call help_line,$(TEST_E2E),Run the live Privateerr and Gluetun test.)
+	$(call help_line,$(TEST_E2E),Validate the application stack and automatic VPN recovery.)
 	$(call help_heading,🧹 Maintenance)
 	$(call help_line,$(BACKUP),Archive the complete config directory.)
 	$(call help_line,$(RESTORE_TEST_CONFIG),Restore checked-in example VPN config.)

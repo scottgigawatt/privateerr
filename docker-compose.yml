@@ -3,7 +3,7 @@
 #
 # Licensed under the Apache License, Version 2.0.
 #
-# docker-compose.yml: Docker Compose configuration for building, running, and validating Privateerr with Gluetun.
+# docker-compose.yml: Docker Compose configuration for building, running, and validating Privateerr with Gluetun and qBittorrent.
 #
 # Learn more about manual PIA VPN connections here: https://github.com/pia-foss/manual-connections
 #
@@ -36,21 +36,21 @@ services:
   #
   privateerr:
     # Docker image build and container information
-    image: ghcr.io/scottgigawatt/privateerr:${PRIVATEERR_TAG}  # Set the image tag for the container
-    build:                                                     # Define build context and arguments
-      context: docker                                          # Directory containing the Dockerfile
-      dockerfile: Dockerfile                                   # Dockerfile used for building the image
-      args:                                                    # Arguments passed to the Dockerfile build stage
-        ALPINE_TAG: ${ALPINE_TAG}                              # Base Alpine image version
-        PIA_BIN_HOME: ${PIA_BIN_HOME}                          # Directory where PIA scripts will reside
-        PRIVATEERR_BIN_HOME: ${PRIVATEERR_BIN_HOME}            # Directory where helper scripts will reside
-        IMAGE_CREATED: ${IMAGE_CREATED}                        # OCI image creation timestamp
-        IMAGE_REVISION: ${IMAGE_REVISION}                      # OCI image source revision
-        IMAGE_VERSION: ${PRIVATEERR_TAG}                       # OCI image version
-    container_name: privateerr-${PRIVATEERR_TAG}               # Container name including the tag
-    restart: no                                                # Container will not restart automatically
-    hostname: privateerr                                       # Set hostname inside the container
-    privileged: true                                           # Required for upstream IPv6 sysctl behavior
+    image: ghcr.io/scottgigawatt/privateerr:${PRIVATEERR_TAG}             # Set the image tag for the container
+    build:                                                                # Define build context and arguments
+      context: docker                                                     # Directory containing the Dockerfile
+      dockerfile: Dockerfile                                              # Dockerfile used for building the image
+      args:                                                               # Arguments passed to the Dockerfile build stage
+        ALPINE_TAG: ${ALPINE_TAG}                                         # Base Alpine image version
+        PIA_BIN_HOME: ${PIA_BIN_HOME}                                     # Directory where PIA scripts will reside
+        PRIVATEERR_BIN_HOME: ${PRIVATEERR_BIN_HOME}                       # Directory where helper scripts will reside
+        IMAGE_CREATED: ${IMAGE_CREATED}                                   # OCI image creation timestamp
+        IMAGE_REVISION: ${IMAGE_REVISION}                                 # OCI image source revision
+        IMAGE_VERSION: ${PRIVATEERR_TAG}                                  # OCI image version
+    container_name: ${COMPOSE_PROJECT_NAME}-privateerr-${PRIVATEERR_TAG}  # Container name including the tag
+    restart: no                                                           # Container will not restart automatically
+    hostname: privateerr                                                  # Set hostname inside the container
+    privileged: true                                                      # Required for upstream IPv6 sysctl behavior
 
     # Apply Docker labels to the container
     labels: *disable-watchtower-updates  # VPN bootstrap component; update intentionally
@@ -102,10 +102,10 @@ services:
   #
   gluetun:
     # Docker image and container information
-    image: qmcgaw/gluetun:${GLUETUN_TAG}    # Gluetun image used for live VPN validation
-    container_name: gluetun-${GLUETUN_TAG}  # Container name including the tag
-    restart: no                             # Test stack should not restart forever
-    hostname: gluetun                       # Set hostname inside the container
+    image: qmcgaw/gluetun:${GLUETUN_TAG}                            # Gluetun image used for live VPN validation
+    container_name: ${COMPOSE_PROJECT_NAME}-gluetun-${GLUETUN_TAG}  # Container name including the tag
+    restart: no                                                     # Test stack should not restart forever
+    hostname: gluetun                                               # Set hostname inside the container
 
     # Load Privateerr metadata before Gluetun starts
     entrypoint: ["/bin/sh", "${GLUETUN_ENTRYPOINT_WRAPPER}"]
@@ -135,8 +135,9 @@ services:
       HEALTH_RESTART_VPN: ${GLUETUN_HEALTH_RESTART_VPN}                      # Gluetun restart policy when Privateerr recovery is disabled
       GLUETUN_DEFAULT_ENTRYPOINT: ${GLUETUN_DEFAULT_ENTRYPOINT}              # Original Gluetun entrypoint
 
-      # Synchronize the optional qBittorrent application with the VPN port lease
-      QBITTORRENT_PORT_SYNC: ${QBITTORRENT_PORT_SYNC}                # Opt in when the downloads profile is enabled
+      # Synchronize qBittorrent with the VPN port lease
+      QBITTORRENT_PORT_SYNC: ${QBITTORRENT_PORT_SYNC}                # Keep the application synchronized with the VPN lease
+      QBITTORRENT_API_URL: ${QBITTORRENT_API_URL}                    # Application API inside the shared VPN namespace
       QBITTORRENT_API_WAIT_SECONDS: ${QBITTORRENT_API_WAIT_SECONDS}  # Maximum seconds to wait for the Web API
 
       # Define downloader port-forwarding commands for Gluetun
@@ -149,9 +150,9 @@ services:
       PRIVATEERR_AUTO_RECOVER: ${PRIVATEERR_AUTO_RECOVER}                                    # Enable the internal health listener and API role
       PRIVATEERR_GLUETUN_API_KEY: ${PRIVATEERR_GLUETUN_API_KEY}                              # Shared API key used by Privateerr
 
-    # Publish only the application Web UI on the configured localhost port
+    # Publish only the application Web UI on the configured Web UI port
     ports:
-      - "127.0.0.1:${QBITTORRENT_WEBUI_PORT}:8080"  # Keep the Web UI local unless explicitly proxied
+      - "${QBITTORRENT_WEBUI_PORT}:${QBITTORRENT_WEBUI_PORT}"  # Publish the configured application Web UI port
 
     # Mount host directories into the container
     volumes:
@@ -176,21 +177,21 @@ services:
         condition: service_healthy  # Wait for Privateerr to generate config and metadata
 
   #
-  # Configure an optional torrent client sharing Gluetun's protected network.
+  # Configure the torrent client sharing Gluetun's protected network.
   #
   qbittorrent:
-    # Keep the example opt-in so existing deployments retain their service selection
-    profiles: [downloads]                                      # Enable with COMPOSE_PROFILES=downloads
-    image: lscr.io/linuxserver/qbittorrent:${QBITTORRENT_TAG}  # Use the selected application release
-    restart: unless-stopped                                    # Restart exited processes unless explicitly stopped
-    network_mode: service:gluetun                              # Route all application traffic through Gluetun
+    # Docker image and container information
+    image: lscr.io/linuxserver/qbittorrent:${QBITTORRENT_TAG}               # Use the selected application release
+    container_name: ${COMPOSE_PROJECT_NAME}-qbittorrent-${QBITTORRENT_TAG}  # Namespace the application container
+    restart: unless-stopped                                                 # Restart exited processes unless explicitly stopped
+    network_mode: service:gluetun                                           # Route all application traffic through Gluetun
 
     # Set host ownership for persistent application files
     environment:
-      PUID: ${QBITTORRENT_PUID}  # Host user owning configuration and downloads
-      PGID: ${QBITTORRENT_PGID}  # Host group owning configuration and downloads
-      TZ: ${QBITTORRENT_TZ}      # Application time zone
-      WEBUI_PORT: 8080           # Internal port used by the forwarding hook
+      PUID: ${QBITTORRENT_PUID}              # Host user owning configuration and downloads
+      PGID: ${QBITTORRENT_PGID}              # Host group owning configuration and downloads
+      TZ: ${QBITTORRENT_TZ}                  # Application time zone
+      WEBUI_PORT: ${QBITTORRENT_WEBUI_PORT}  # Internal and published application port
 
     # Preserve application state and downloads across container replacement
     volumes:
@@ -200,7 +201,13 @@ services:
     # Check application readiness independently of tunnel health
     healthcheck:
       <<: *default-healthcheck-settings  # Reuse the stack's healthcheck timing
-      test: [CMD, wget, --no-verbose, --tries=1, --spider, http://127.0.0.1:8080/]
+      test:
+        - CMD
+        - wget
+        - --no-verbose
+        - --tries=1
+        - --spider
+        - ${QBITTORRENT_API_URL}/
 
     # Start the application only after Gluetun establishes a healthy tunnel
     depends_on:
@@ -213,30 +220,41 @@ services:
   #
   buccaneerr:
     # Docker image build and container information
-    image: ghcr.io/scottgigawatt/buccaneerr:${BUCCANEERR_TAG}  # Buccaneerr image name and tag
-    build:                                                     # Define build context and Dockerfile
-      context: test                                            # Directory containing Buccaneerr Dockerfile
-      dockerfile: Dockerfile                                   # Dockerfile used for validation tools
-      args:                                                    # Arguments passed to the Buccaneerr image
-        ALPINE_TAG: ${ALPINE_TAG}                              # Base Alpine image version
-        BUCCANEERR_BIN_HOME: ${BUCCANEERR_BIN_HOME}            # Directory where Buccaneerr scripts will reside
-        IMAGE_CREATED: ${IMAGE_CREATED}                        # OCI image creation timestamp
-        IMAGE_REVISION: ${IMAGE_REVISION}                      # OCI image source revision
-        IMAGE_VERSION: ${BUCCANEERR_TAG}                       # OCI image version
-    container_name: buccaneerr-${BUCCANEERR_TAG}               # Buccaneerr container name
-    restart: no                                                # Buccaneerr exits with pass/fail status
-    network_mode: service:gluetun                              # Test from inside Gluetun's network namespace
+    image: ghcr.io/scottgigawatt/buccaneerr:${BUCCANEERR_TAG}             # Buccaneerr image name and tag
+    build:                                                                # Define build context and Dockerfile
+      context: test                                                       # Directory containing Buccaneerr Dockerfile
+      dockerfile: Dockerfile                                              # Dockerfile used for validation tools
+      args:                                                               # Arguments passed to the Buccaneerr image
+        ALPINE_TAG: ${ALPINE_TAG}                                         # Base Alpine image version
+        BUCCANEERR_BIN_HOME: ${BUCCANEERR_BIN_HOME}                       # Directory where Buccaneerr scripts will reside
+        IMAGE_CREATED: ${IMAGE_CREATED}                                   # OCI image creation timestamp
+        IMAGE_REVISION: ${IMAGE_REVISION}                                 # OCI image source revision
+        IMAGE_VERSION: ${BUCCANEERR_TAG}                                  # OCI image version
+    container_name: ${COMPOSE_PROJECT_NAME}-buccaneerr-${BUCCANEERR_TAG}  # Buccaneerr container name
+    restart: no                                                           # Buccaneerr exits with pass/fail status
+    network_mode: service:gluetun                                         # Test from inside Gluetun's network namespace
+
+    # Allow the test-only validator to inject and remove a VPN endpoint failure
+    cap_add:
+      - NET_ADMIN  # Change firewall rules only inside the shared test namespace
 
     # Apply Docker labels to the container
     labels: *disable-watchtower-updates  # VPN validation component; update intentionally
 
     # Define the container environment
     environment:
-      BUCCANEERR_CONFIG_PATH: ${BUCCANEERR_CONFIG_PATH}                    # Mounted generated config directory
-      BUCCANEERR_GLUETUN_PATH: ${BUCCANEERR_GLUETUN_PATH}                  # Mounted Gluetun state directory
-      BUCCANEERR_HEALTH_URL: ${BUCCANEERR_HEALTH_URL}                      # Gluetun unauthenticated health URL
-      BUCCANEERR_REQUIRE_PORT_FORWARD: ${BUCCANEERR_REQUIRE_PORT_FORWARD}  # Require port-forwarding success
-      BUCCANEERR_LOG_PATH: ${BUCCANEERR_LOG_PATH}                          # Buccaneerr log file path
+      BUCCANEERR_CONFIG_PATH: ${BUCCANEERR_CONFIG_PATH}                            # Mounted generated config directory
+      BUCCANEERR_GLUETUN_PATH: ${BUCCANEERR_GLUETUN_PATH}                          # Mounted Gluetun state directory
+      BUCCANEERR_HEALTH_URL: ${BUCCANEERR_HEALTH_URL}                              # Gluetun unauthenticated health URL
+      BUCCANEERR_REQUIRE_PORT_FORWARD: ${BUCCANEERR_REQUIRE_PORT_FORWARD}          # Require port-forwarding success
+      QBITTORRENT_API_URL: ${QBITTORRENT_API_URL}                                  # Application API inside the shared VPN namespace
+      BUCCANEERR_GLUETUN_URL: ${BUCCANEERR_GLUETUN_URL}                            # Local Gluetun control API
+      PRIVATEERR_GLUETUN_API_KEY: ${PRIVATEERR_GLUETUN_API_KEY}                    # Shared key for read-only recovery verification
+      BUCCANEERR_TEST_RECOVERY: ${BUCCANEERR_TEST_RECOVERY}                        # Inject a stale endpoint and require automatic recovery
+      BUCCANEERR_RECOVERY_WAIT_SECONDS: ${BUCCANEERR_RECOVERY_WAIT_SECONDS}        # Maximum seconds for automatic recovery
+      BUCCANEERR_APPLICATION_WAIT_SECONDS: ${BUCCANEERR_APPLICATION_WAIT_SECONDS}  # Maximum seconds for application port synchronization
+      BUCCANEERR_VPN_INTERFACE: ${BUCCANEERR_VPN_INTERFACE}                        # Expected application VPN interface
+      BUCCANEERR_LOG_PATH: ${BUCCANEERR_LOG_PATH}                                  # Buccaneerr log file path
 
     # Mount host directories into the container
     volumes:
@@ -248,3 +266,5 @@ services:
     depends_on:
       gluetun:
         condition: service_healthy  # Wait for Gluetun to report healthy
+      qbittorrent:
+        condition: service_healthy  # Validate only after the application Web UI is ready

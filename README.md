@@ -99,7 +99,7 @@ cp example.env .env
 
 The public PIA submodule needs no GitHub SSH key. If cloning reports a submodule error or building reports a missing `pia-manual-connections/LICENSE`, follow [Recover a missing PIA submodule](docs/SUPPORT.md#recover-a-missing-pia-submodule).
 
-Set `PIA_USER` and `PIA_PASS` in `.env`. Set `PIA_PF=true` if you need a PIA endpoint that supports port forwarding; otherwise leave it `false`. The example enables automatic recovery: generate a key with `openssl rand -hex 24` and set `PRIVATEERR_GLUETUN_API_KEY` in `.env`. For configuration generation without Gluetun, set `PRIVATEERR_AUTO_RECOVER=false`. Keep the file private, then generate fresh configuration:
+Set `PIA_USER` and `PIA_PASS` in `.env`. The example sets `PIA_PF=true` to select a region supporting port forwarding for qBittorrent. The example enables automatic recovery: generate a key with `openssl rand -hex 24` and set `PRIVATEERR_GLUETUN_API_KEY` in `.env`. For configuration generation without Gluetun, set `PRIVATEERR_AUTO_RECOVER=false`. Keep the file private, then generate fresh configuration:
 
 ```sh
 make run-privateerr
@@ -178,7 +178,7 @@ If you only need a WireGuard file, take `wg0.conf` and use it with the compatibl
 
 ## Start Privateerr with Gluetun 🐳
 
-The repository includes one Synology-friendly `docker-compose.yml` that runs Privateerr before Gluetun:
+The repository includes one Synology-friendly `docker-compose.yml` that starts Privateerr, Gluetun, qBittorrent, and the Buccaneerr validator in dependency order. The validator briefly interrupts the VPN to prove automatic recovery; this is a working test example:
 
 ```sh
 make up
@@ -269,4 +269,4 @@ Fair winds, private keys below deck, and no VPN-client identity crises. 🏴‍�
 
 ### Try a torrent client 🧲
 
-The optional qBittorrent example shares Gluetun's protected network and follows its forwarded port. See [the setup and recovery comparison](docs/automatic-recovery.md#try-the-qbittorrent-example) for environment settings, localhost Web UI access, and Buccaneerr's application-level tests.
+The default qBittorrent service shares Gluetun's protected network and follows its forwarded port. See [the setup and recovery comparison](docs/automatic-recovery.md#try-the-qbittorrent-example) for environment settings, configurable Web UI access, and Buccaneerr's application and automatic-recovery tests.

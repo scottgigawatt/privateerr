@@ -75,6 +75,7 @@ RUN apk upgrade --no-cache libcrypto3 libssl3 && \
         grep \
         coreutils \
         jq \
+        iptables \
         python3 \
         ruff \
         actionlint \

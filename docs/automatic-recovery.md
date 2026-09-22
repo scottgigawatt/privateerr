@@ -173,10 +173,9 @@ The bounded forwarding hook reports failed application updates. If qBittorrent s
 
 ## Try the qBittorrent example
 
-The root Compose file includes an optional `downloads` profile after Gluetun. Existing deployments keep their original service selection. Add or edit these values in `.env`:
+The root Compose file is a complete development and test example: Privateerr generates configuration, Gluetun creates the VPN namespace, qBittorrent runs inside it, and Buccaneerr validates the application and automatic recovery. All four services start by default. Configure these values in `.env`:
 
 ```dotenv
-COMPOSE_PROFILES=downloads
 QBITTORRENT_PORT_SYNC=true
 QBITTORRENT_WEBUI_PORT=8080
 QBITTORRENT_API_WAIT_SECONDS=300
@@ -185,10 +184,10 @@ QBITTORRENT_API_WAIT_SECONDS=300
 Set `QBITTORRENT_PUID`, `QBITTORRENT_PGID`, and the configuration/download paths from `example.env` to match the host. Then start the application and its dependencies:
 
 ```sh
-docker compose up -d privateerr gluetun qbittorrent
+make test-e2e
 ```
 
-The Web UI is available at `http://127.0.0.1:8080` on the Docker host. For a remote host, use an SSH tunnel or an authenticated reverse proxy. The Gluetun API and health listener remain unpublished. Set `QBITTORRENT_WEBUI_PORT` in `.env` if port 8080 is already in use.
+The Web UI is published on the Docker host at the port selected by `QBITTORRENT_WEBUI_PORT` (8080 by default). Changing that value also changes the internal application port, healthcheck, forwarding hook API URL, and Buccaneerr checks. The Gluetun API and health listener remain unpublished. Set `QBITTORRENT_WEBUI_PORT` in `.env` if port 8080 is already in use.
 
 The seed configuration allows unauthenticated API access only from loopback, where Gluetun's hook runs. Remote Web UI sessions still require authentication; obtain the initial password from qBittorrent's local container logs and change it in the Web UI. Do not share those logs. Other containers deliberately sharing Gluetun's namespace also share that loopback trust boundary.
 
@@ -201,4 +200,8 @@ make test-recovery-api
 make test-recovery-live
 ```
 
-Both drivers and their tools run inside Buccaneerr. Tests create labeled temporary Gluetun and qBittorrent containers, clean up only their own resources, and do not start the root example or download torrents. LinuxServer's current qBittorrent image supports amd64 and arm64; the optional application is not part of Privateerr's arm/v7 image support.
+Both drivers and their tools run inside Buccaneerr. Tests create labeled temporary Gluetun and qBittorrent containers, clean up only their own resources, and do not start the root example or download torrents. LinuxServer's current qBittorrent image supports amd64 and arm64; the application is not part of Privateerr's arm/v7 image support.
+
+Buccaneerr waits for a healthy qBittorrent Web UI, verifies the assigned VPN port and interface, and briefly blocks the active VPN endpoint when `BUCCANEERR_TEST_RECOVERY=true` (the example default). It requires a new registration, healthy tunnel, matching saved configuration, and restored application settings before reporting success. Its `NET_ADMIN` capability applies only inside the demo VPN namespace; it needs no Docker socket and removes its own firewall rule on completion or failure. The default recovery deadline is 600 seconds, including Gluetun's health-detection delay.
+
+This deliberate outage is part of the test example. Set `BUCCANEERR_TEST_RECOVERY=false` for a connectivity-only run. To use the example as a lasting application deployment, start `privateerr gluetun qbittorrent` explicitly and run Buccaneerr only when testing. `make build` and `make build-buccaneerr` still build only their respective images.

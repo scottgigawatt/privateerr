@@ -16,7 +16,7 @@ Privateerr is not a VPN client. Gluetun owns the tunnel and port lease; the opti
 
 Keep lint, formatting, unit tests, and runtime test drivers in the test-only Buccaneerr image. Production Python uses only the standard library; do not add test packages to Privateerr. `ruff.toml` defines shared Python rules.
 
-The companion Buccaneerr image is test-only. It validates the Privateerr + Gluetun flow, including PIA WireGuard port forwarding.
+The companion Buccaneerr image is test-only. The default Compose example includes Privateerr, Gluetun, qBittorrent, and Buccaneerr without application profiles. Buccaneerr verifies PIA forwarding, application settings, and automatic recovery through a temporary firewall fault inside the shared VPN namespace. Keep the Web UI port and API endpoints driven by environment settings.
 
 ## Repository Layout
 

@@ -211,7 +211,7 @@ jobs:
           fi
 
           # Exercise legacy generation independently of the example's recovery default.
-          PRIVATEERR_AUTO_RECOVER=false make test-e2e
+          PRIVATEERR_AUTO_RECOVER=false BUCCANEERR_TEST_RECOVERY=false make test-e2e
 
       #
       # Always stop test resources and restore checked-in example configuration.
