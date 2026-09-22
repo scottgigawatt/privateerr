@@ -362,10 +362,14 @@ ENV_FILE=.env
 EXAMPLE_ENV_FILE=example.env
 
 #
+# Show the command chart when no target is supplied.
+#
+.DEFAULT_GOAL := $(HELP)
+
+#
 # Targets that are not files (i.e. never up-to-date); these will run every
 # time the target is called or required.
 #
-.DEFAULT_GOAL := $(ALL)
 .PHONY: $(TARGETS)
 
 #

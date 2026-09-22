@@ -397,7 +397,7 @@ project_recipe_order=$(awk -v project_targets=" ${project_targets} " '
     END { print targets }
 ' Makefile)
 test "${project_recipe_order}" = "${project_targets}"
-grep -F ".DEFAULT_GOAL := \$(ALL)" Makefile >/dev/null
+grep -F ".DEFAULT_GOAL := \$(HELP)" Makefile >/dev/null
 for target_group in COMMON_TARGETS PROJECT_TARGETS INTERNAL_TARGETS; do
     grep -F "${target_group}=" Makefile >/dev/null
 done
