@@ -108,7 +108,7 @@ services:
     hostname: gluetun                                               # Set hostname inside the container
 
     # Load Privateerr metadata before Gluetun starts
-    entrypoint: ["/bin/sh", "${GLUETUN_ENTRYPOINT_WRAPPER}"]
+    entrypoint: ["/bin/sh", "${GLUETUN_ENTRYPOINT_WRAPPER}"]  # Load Privateerr metadata before starting Gluetun
 
     # Add additional linux capabilities
     cap_add:
