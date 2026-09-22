@@ -178,7 +178,7 @@ publish_privateerr() {
 #
 # Load recovery functions without starting the monitor.
 #
-# shellcheck source=docker/privateerr-recovery.sh
+# shellcheck source=privateerr-recovery.sh
 source "${PRIVATEERR_BIN_HOME}/privateerr-recovery.sh"
 
 #

@@ -1,0 +1,17 @@
+#
+# Copyright 2025-2026 Scott Gigawatt
+#
+# Licensed under the Apache License, Version 2.0.
+#
+# .shellcheckrc: Resolve sourced project scripts consistently in editors and CLI checks.
+#
+
+#
+# Follow local source files even when checking only one script.
+#
+external-sources=true
+
+#
+# Resolve source annotations relative to the script being checked.
+#
+source-path=SCRIPTDIR

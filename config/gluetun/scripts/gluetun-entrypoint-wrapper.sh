@@ -138,7 +138,7 @@ fi
 #
 # Load the generated server name from the operator-configured metadata path.
 #
-# shellcheck disable=SC1090
+# shellcheck disable=SC1090 # Privateerr generates this metadata file at runtime.
 . "${PRIVATEERR_METADATA_PATH}"
 
 #

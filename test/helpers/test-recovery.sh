@@ -41,7 +41,11 @@ export PIA_PF=true
 export AUTOCONNECT=false
 mkdir "${test_root}/wireguard"
 
-# shellcheck source=docker/privateerr-entrypoint.sh
+#
+# Locate the entrypoint and its recovery library relative to this test script.
+#
+# shellcheck source-path=SCRIPTDIR/../../docker
+# shellcheck source=privateerr-entrypoint.sh
 source "${PRIVATEERR_BIN_HOME}/privateerr-entrypoint.sh"
 trap 'cleanup_privateerr; rm -rf "${test_root}"' EXIT
 configure_recovery

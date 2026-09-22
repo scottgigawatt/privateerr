@@ -53,7 +53,6 @@ done
 # If no date value is provided, delegate to BusyBox date with the accumulated arguments.
 #
 if [ -z "${date_value}" ]; then
-    # shellcheck disable=SC2086
     eval "exec /bin/date ${date_args}"
 fi
 
@@ -72,5 +71,4 @@ esac
 #
 # Finally, execute BusyBox date with the processed date value and any additional arguments.
 #
-# shellcheck disable=SC2086
 eval "exec /bin/date -d '$(printf '%s\n' "${date_value}" | sed "s/'/'\\\\''/g")' ${date_args}"
