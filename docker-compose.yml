@@ -72,18 +72,18 @@ services:
       PIA_PASS: ${PIA_PASS}                      # PIA account password
 
       # Privateerr environment variables
-      PRIVATEERR_METADATA_PATH: ${PRIVATEERR_METADATA_PATH}                        # Path where metadata will be generated
-      PRIVATEERR_HEALTHCHECK_MARKER: ${PRIVATEERR_HEALTHCHECK_MARKER}              # File written after successful generation
-      PRIVATEERR_KEEPALIVE: ${PRIVATEERR_KEEPALIVE}                                # Keep the container alive after successful generation
-      PRIVATEERR_LOG_PATH: ${PRIVATEERR_LOG_PATH}                                  # Privateerr log file path
-      PRIVATEERR_AUTO_RECOVER: ${PRIVATEERR_AUTO_RECOVER}                          # Opt in to API-based tunnel recovery
-      PRIVATEERR_GLUETUN_API_KEY: ${PRIVATEERR_GLUETUN_API_KEY}                    # Shared Gluetun control API key
-      PRIVATEERR_GLUETUN_URL: ${PRIVATEERR_GLUETUN_URL}                            # Internal control API address
-      PRIVATEERR_GLUETUN_HEALTH_URL: ${PRIVATEERR_GLUETUN_HEALTH_URL}              # Internal health endpoint
-      PRIVATEERR_RECOVERY_INTERVAL: ${PRIVATEERR_RECOVERY_INTERVAL}                # Seconds between probes
-      PRIVATEERR_RECOVERY_FAILURE_SECONDS: ${PRIVATEERR_RECOVERY_FAILURE_SECONDS}  # Startup grace and failure threshold in seconds
-      PRIVATEERR_RECOVERY_COOLDOWN: ${PRIVATEERR_RECOVERY_COOLDOWN}                # Initial recovery retry delay in seconds
-      PRIVATEERR_GENERATION_TIMEOUT: ${PRIVATEERR_GENERATION_TIMEOUT}              # Maximum seconds for each PIA generation
+      PRIVATEERR_METADATA_PATH: ${PRIVATEERR_METADATA_PATH}                            # Path where metadata will be generated
+      PRIVATEERR_HEALTHCHECK_MARKER: ${PRIVATEERR_HEALTHCHECK_MARKER}                  # File written after successful generation
+      PRIVATEERR_KEEPALIVE: ${PRIVATEERR_KEEPALIVE}                                    # Keep the container alive after successful generation
+      PRIVATEERR_LOG_PATH: ${PRIVATEERR_LOG_PATH}                                      # Privateerr log file path
+      PRIVATEERR_AUTO_RECOVER: ${PRIVATEERR_AUTO_RECOVER}                              # Opt in to API-based tunnel recovery
+      PRIVATEERR_GLUETUN_API_KEY: ${PRIVATEERR_GLUETUN_API_KEY}                        # Shared Gluetun control API key
+      PRIVATEERR_GLUETUN_URL: ${PRIVATEERR_GLUETUN_URL}                                # Internal control API address
+      PRIVATEERR_GLUETUN_HEALTH_URL: ${PRIVATEERR_GLUETUN_HEALTH_URL}                  # Internal health endpoint
+      PRIVATEERR_RECOVERY_INTERVAL_SECONDS: ${PRIVATEERR_RECOVERY_INTERVAL_SECONDS}    # Seconds between probes
+      PRIVATEERR_RECOVERY_FAILURE_SECONDS: ${PRIVATEERR_RECOVERY_FAILURE_SECONDS}      # Startup grace and failure threshold in seconds
+      PRIVATEERR_RECOVERY_COOLDOWN_SECONDS: ${PRIVATEERR_RECOVERY_COOLDOWN_SECONDS}    # Initial recovery retry delay in seconds
+      PRIVATEERR_GENERATION_TIMEOUT_SECONDS: ${PRIVATEERR_GENERATION_TIMEOUT_SECONDS}  # Maximum seconds for each PIA generation
 
     # Report healthy after the wrapper finishes successfully
     healthcheck:

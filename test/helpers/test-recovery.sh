@@ -235,9 +235,9 @@ unset DIP_TOKEN
 #
 # Run the real monitor's decisions with a virtual clock, without sleeping.
 #
-PRIVATEERR_RECOVERY_INTERVAL=1
+PRIVATEERR_RECOVERY_INTERVAL_SECONDS=1
 PRIVATEERR_RECOVERY_FAILURE_SECONDS=2
-PRIVATEERR_RECOVERY_COOLDOWN=5
+PRIVATEERR_RECOVERY_COOLDOWN_SECONDS=5
 recoveries="${test_root}/recoveries"
 : > "${recoveries}"
 

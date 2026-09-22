@@ -139,11 +139,11 @@ def main(env_file=None):
                     "--env",
                     "AUTOCONNECT=false",
                     "--env",
-                    "PRIVATEERR_RECOVERY_INTERVAL=2",
+                    "PRIVATEERR_RECOVERY_INTERVAL_SECONDS=2",
                     "--env",
                     "PRIVATEERR_RECOVERY_FAILURE_SECONDS=15",
                     "--env",
-                    "PRIVATEERR_RECOVERY_COOLDOWN=30",
+                    "PRIVATEERR_RECOVERY_COOLDOWN_SECONDS=30",
                     IMAGE,
                 ).stdout.strip()
                 containers.append(privateerr)

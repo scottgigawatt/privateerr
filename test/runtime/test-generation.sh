@@ -110,7 +110,7 @@ unset TEST_GENERATION_FAIL
 # Shorten the deadline to verify that a hung upstream process is terminated.
 #
 export TEST_GENERATION_HANG=true
-export PRIVATEERR_GENERATION_TIMEOUT=1
+export PRIVATEERR_GENERATION_TIMEOUT_SECONDS=1
 started=${SECONDS}
 
 #

@@ -31,9 +31,9 @@ configure_recovery() {
     #
     : "${PRIVATEERR_GLUETUN_URL:=http://gluetun:8000}"
     : "${PRIVATEERR_GLUETUN_HEALTH_URL:=http://gluetun:9999}"
-    : "${PRIVATEERR_RECOVERY_INTERVAL:=30}"
+    : "${PRIVATEERR_RECOVERY_INTERVAL_SECONDS:=30}"
     : "${PRIVATEERR_RECOVERY_FAILURE_SECONDS:=120}"
-    : "${PRIVATEERR_RECOVERY_COOLDOWN:=300}"
+    : "${PRIVATEERR_RECOVERY_COOLDOWN_SECONDS:=300}"
     : "${PRIVATEERR_SERVERLIST_URL:=https://serverlist.piaservers.net/vpninfo/servers/v6}"
 
     #
@@ -57,7 +57,7 @@ configure_recovery() {
     #
     # Validate each recovery timing value as a positive number of seconds.
     #
-    for setting in PRIVATEERR_RECOVERY_INTERVAL PRIVATEERR_RECOVERY_FAILURE_SECONDS PRIVATEERR_RECOVERY_COOLDOWN; do
+    for setting in PRIVATEERR_RECOVERY_INTERVAL_SECONDS PRIVATEERR_RECOVERY_FAILURE_SECONDS PRIVATEERR_RECOVERY_COOLDOWN_SECONDS; do
 
         #
         # Reject zero, negative, or excessively large timing values.
@@ -366,7 +366,7 @@ recover_gluetun() {
 # Returns: Runs until shutdown; generation/API failures do not terminate the monitor.
 #
 monitor_gluetun() {
-    local failed_since=-1 next_attempt=0 delay="${PRIVATEERR_RECOVERY_COOLDOWN}" pending_result status
+    local failed_since=-1 next_attempt=0 delay="${PRIVATEERR_RECOVERY_COOLDOWN_SECONDS}" pending_result status
 
     #
     # Allow Gluetun to start before counting any failed health probes.
@@ -405,7 +405,7 @@ monitor_gluetun() {
                 elif gluetun_healthy; then
                     recovery_status "Gluetun tunnel is healthy."
                     failed_since=-1
-                    delay="${PRIVATEERR_RECOVERY_COOLDOWN}"
+                    delay="${PRIVATEERR_RECOVERY_COOLDOWN_SECONDS}"
                     : > "${privateerr_failed_ips}"
                 else
                     [[ "${failed_since}" != -1 ]] || failed_since=${SECONDS}
@@ -440,7 +440,7 @@ monitor_gluetun() {
             failed_since=-1
         fi
 
-        wait_privateerr "${PRIVATEERR_RECOVERY_INTERVAL}"
+        wait_privateerr "${PRIVATEERR_RECOVERY_INTERVAL_SECONDS}"
     done
 
 }

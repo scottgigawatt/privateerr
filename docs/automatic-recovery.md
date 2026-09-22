@@ -127,10 +127,10 @@ Defaults work without adding the new timing variables to an existing `.env`.
 | `PRIVATEERR_AUTO_RECOVER` | `false` | Enable the optional monitor |
 | `PRIVATEERR_GLUETUN_URL` | `http://gluetun:8000` | Authenticated control API |
 | `PRIVATEERR_GLUETUN_HEALTH_URL` | `http://gluetun:9999` | Tunnel health endpoint |
-| `PRIVATEERR_RECOVERY_INTERVAL` | `30` | Seconds between probes |
+| `PRIVATEERR_RECOVERY_INTERVAL_SECONDS` | `30` | Seconds between probes |
 | `PRIVATEERR_RECOVERY_FAILURE_SECONDS` | `120` | Startup grace and continuous failure threshold, in seconds |
-| `PRIVATEERR_RECOVERY_COOLDOWN` | `300` | Initial seconds between attempts; doubles on failures up to one hour |
-| `PRIVATEERR_GENERATION_TIMEOUT` | `180` | Maximum seconds for each upstream generation |
+| `PRIVATEERR_RECOVERY_COOLDOWN_SECONDS` | `300` | Initial seconds between attempts; doubles on failures up to one hour |
+| `PRIVATEERR_GENERATION_TIMEOUT_SECONDS` | `180` | Maximum seconds for each upstream generation |
 
 At startup, Privateerr waits through the grace period before monitoring. Recovery then requires a continuous failure lasting the configured threshold, measured from an unhealthy probe. Gluetun's own periodic probes and retries add detection time, so a blocked endpoint can take several minutes to trigger recovery. Healthy probes reset the failure timer. A manually stopped VPN pauses recovery. Failed API authentication or an unreachable control server does not cause repeated configuration generation.
 

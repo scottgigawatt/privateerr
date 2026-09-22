@@ -40,7 +40,7 @@ umask 077
 : "${PRIVATEERR_KEEPALIVE:=true}"
 : "${PRIVATEERR_LOG_PATH:=/privateerr-config/logs/privateerr.log}"
 : "${PRIVATEERR_AUTO_RECOVER:=false}"
-: "${PRIVATEERR_GENERATION_TIMEOUT:=180}"
+: "${PRIVATEERR_GENERATION_TIMEOUT_SECONDS:=180}"
 export PIA_BIN_HOME PREFERRED_REGION PRIVATEERR_LOG_PATH
 
 #
@@ -128,7 +128,7 @@ generate_privateerr() {
     # Isolate upstream processes so a timeout or shutdown stops the whole generation.
     #
     PIA_CONF_PATH="${privateerr_stage}/wg0.conf" PRIVATEERR_METADATA_PATH="${privateerr_stage}/privateerr.env" \
-        setsid timeout -s TERM -k 5 "${PRIVATEERR_GENERATION_TIMEOUT}" \
+        setsid timeout -s TERM -k 5 "${PRIVATEERR_GENERATION_TIMEOUT_SECONDS}" \
         bash "${PRIVATEERR_BIN_HOME}/privateerr-generate.sh" </dev/null &
     privateerr_child_pid=$!
     local result=0
@@ -201,8 +201,8 @@ main() {
     #
     # Reject invalid generation deadlines before invoking the timeout command.
     #
-    if [[ ! "${PRIVATEERR_GENERATION_TIMEOUT}" =~ ^[1-9][0-9]{0,3}$ ]]; then
-        log_privateerr "PRIVATEERR_GENERATION_TIMEOUT must be between 1 and 9999 seconds."
+    if [[ ! "${PRIVATEERR_GENERATION_TIMEOUT_SECONDS}" =~ ^[1-9][0-9]{0,3}$ ]]; then
+        log_privateerr "PRIVATEERR_GENERATION_TIMEOUT_SECONDS must be between 1 and 9999 seconds."
         exit 1
     fi
 
