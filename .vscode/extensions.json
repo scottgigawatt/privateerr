@@ -13,6 +13,8 @@
     // End-of-line notes distinguish formatters from validators and highlighting.
     //
     "recommendations": [
+        "charliermarsh.ruff",                              // Lint and format Python using ruff.toml.
+        "ms-python.python",                               // Navigate Python supervisor and test code.
         "davidanson.vscode-markdownlint",                  // Lint Markdown structure and style.
         "EditorConfig.EditorConfig",                       // Apply portable repository whitespace rules.
         "esbenp.prettier-vscode",                          // Format supported languages on explicit request.

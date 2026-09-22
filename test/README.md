@@ -6,6 +6,7 @@ The test tree keeps responsibilities separate:
 
 - `policy/` verifies repository-wide dependency and image-tag rules.
 - `helpers/` exercises Make and workflow helpers without external writes.
+- `unit/` tests Python recovery decisions, HTTP behavior, persistence, and generation lifecycle.
 - `runtime/` performs opt-in acceptance checks against isolated Docker resources.
 - `stubs/` supplies deterministic Docker and Skopeo stand-ins for those tests.
 - `examples/` stores the checked-in WireGuard and metadata examples restored after a live voyage.
@@ -36,6 +37,8 @@ make test-make-helpers
 make test-workflows
 ```
 
+These targets build the cached Buccaneerr image and run inside it, with source mounted read-only and networking disabled. No host Python, jq, Ruff, or ShellCheck installation is needed. `make test` also checks Python imports and formatting, ShellCheck, and the Python unit suite.
+
 The complete local target checks reusable AWK and Compose helpers, config backups, release tags, every structured Discord profile, registry mirroring, synchronized SHA-256 build pins, and canonical image-tag channels. Disposable negative fixtures prove that mismatched pins and unsafe tag rules are rejected.
 
 Run the opt-in live cleanup acceptance after changing Compose lifecycle or `nuke` behavior:
@@ -61,7 +64,7 @@ Buccaneerr keeps its verification scripts and additional test tools in a separat
 
 ## Build and run Buccaneerr 🛠️
 
-The image is built from [Dockerfile](Dockerfile), using the same pinned Alpine base digest as Privateerr. The build copies [buccaneerr-entrypoint.sh](buccaneerr-entrypoint.sh) into the image and runs that script when the container starts.
+The image is built from [Dockerfile](Dockerfile), using the same pinned Alpine base digest as Privateerr. Its default command runs [buccaneerr-entrypoint.sh](buccaneerr-entrypoint.sh) for stack validation. Make uses [checks.sh](checks.sh) for Python, shell, workflow, formatting, and spelling checks in the same image.
 
 Build it directly with:
 
@@ -112,30 +115,38 @@ Run cleanup before committing after any real end-to-end voyage. Future ye will t
 
 ## Test automatic recovery
 
-`make test-recovery` runs deterministic recovery tests with Bash and jq, without Docker or PIA credentials. It is also part of `make test`.
+`make test-recovery` runs Python unit tests inside Buccaneerr without PIA credentials. It is also part of `make test`. The suite covers endpoint selection, backoff, manual stops, uncertain API responses, interrupted publication, generation failures, secret redaction, deadlines, and shutdown. Shell helper tests remain shell because they directly exercise Make, AWK, and shell commands.
 
-Build a local image and exercise generation failures and shutdown inside its actual runtime:
+Use the same Ruff configuration in your editor and CI:
+
+```sh
+make lint
+make format
+make test-precommit
+make spellcheck
+```
+
+`make format` applies Python formatting and import fixes. Other lint commands only check. Pre-commit runs inside Buccaneerr and may normalize repository whitespace; it downloads pinned hook environments and uses Docker for the existing Hadolint hook. Python linting and formatting also run independently in `make test`, so new Python files are checked before they are staged.
+
+Build the production image and verify authenticated settings replacement against Gluetun v3.41.3:
 
 ```sh
 docker build -t privateerr:recovery-review docker
-docker run --rm --network none \
-  -v "$PWD:/src:ro" --entrypoint bash \
-  privateerr:recovery-review \
-  /src/test/runtime/test-generation.sh
+make test-recovery-api
 ```
 
-Verify authenticated settings replacement against Gluetun v3.41.3:
+The API test runs in Buccaneerr with Docker socket access. It creates uniquely named, labeled containers and a network, verifies their labels before cleanup, and uses temporary generated keys. It checks connection-field replacement, preservation of unrelated settings, invalid-update rejection, and unchanged container and network identity. Without credentials, it does not establish a real PIA tunnel. Ordinary offline suites have no Docker socket access.
+
+To test a real tunnel, put your PIA credentials in `.env` and run:
 
 ```sh
-python3 test/runtime/test-recovery-api.py
+make test-recovery-live
 ```
 
-The API test creates uniquely named, labeled containers and a network, verifies their labels before cleanup, and uses temporary generated keys. It checks connection-field replacement, preservation of unrelated settings, invalid-update rejection, and unchanged container and network identity. Without credentials, it does not establish a real PIA tunnel.
+Run `scripts/compose/test.sh smoke` to validate real PIA generation and forwarding with recovery disabled, using the original Buccaneerr validator in an isolated stack.
 
-To test a real tunnel, provide an environment file containing your PIA credentials. This also tests endpoint failure, automatic recovery, saved configuration, port forwarding, dependent-client connectivity, and traffic blocking outside the VPN:
+Override `PRIVATEERR_TEST_IMAGE` to select another locally built production image, or `PRIVATEERR_TEST_ENV_FILE` to use another credential file. The live test checks endpoint failure, automatic recovery, saved configuration, port forwarding, dependent-client connectivity, and traffic blocking outside the VPN.
 
-```sh
-python3 test/runtime/test-recovery-api.py --env-file .env
-```
+Runtime checks require a local Unix Docker socket. A shared temporary directory lets the test driver and Docker daemon see the same isolated files. The live test reads only the required credentials from Compose's resolved environment, blocks the current endpoint only inside the test Gluetun container, and cleans up its labeled resources on exit. It does not modify existing deployments or the supplied environment file. The ordinary deployment smoke test remains `make test-e2e`; run `make clean-test` afterward.
 
-The live test reads only the required credentials from Compose's resolved environment, keeps generated state in a temporary directory, blocks the current endpoint only inside the test Gluetun container, and cleans up its labeled resources on exit. It does not modify existing deployments or the supplied environment file. The ordinary deployment smoke test remains `make test-e2e`; run `make clean-test` afterward.
+The real API suite also starts qBittorrent and checks both forwarding hooks against its Web API without requiring PIA credentials. The live suite keeps that application running during endpoint failure, verifies its restored port and VPN binding, and connects to the forwarded TCP port from outside the VPN. UDP reachability and torrent throughput are not measured. All test containers have unique ownership labels and disposable configuration.

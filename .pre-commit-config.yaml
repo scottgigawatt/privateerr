@@ -33,9 +33,7 @@ repos:
     rev: v6.0.0
     hooks:
       - id: check-added-large-files
-      - id: check-executables-have-shebangs
       - id: check-merge-conflict
-      - id: check-shebang-scripts-are-executable
       - id: check-toml
       - id: check-yaml
       - id: end-of-file-fixer
@@ -108,3 +106,26 @@ repos:
         language: docker_image
         types: [dockerfile]
         args: ["--ignore", "DL3018"]
+
+  #
+  # Use Buccaneerr's Ruff for the same Python checks as Make and PR validation.
+  #
+  - repo: local
+    hooks:
+      - id: check-executable-modes
+        name: Check executable modes and shebangs
+        entry: python3 test/policy/check-executable-modes.py
+        language: system
+        types: [file]
+      - id: ruff-check
+        name: Check Python with Ruff
+        entry: scripts/compose/test.sh python-lint
+        language: script
+        pass_filenames: false
+        types: [python]
+      - id: ruff-format
+        name: Check Python formatting with Ruff
+        entry: scripts/compose/test.sh python-format
+        language: script
+        pass_filenames: false
+        types: [python]

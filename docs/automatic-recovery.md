@@ -71,6 +71,12 @@ PIA_PREFERRED_REGION=ca
 
 Recovery tries another advertised endpoint in the selected region. A pinned region never falls back to another region. Automatic selection prefers other endpoints in the current region, then other eligible regions in the server catalog; recovery does not rerun a full latency benchmark. With `PIA_PF=true`, only regions advertising port forwarding are eligible. If no unused endpoint remains, Privateerr attempts fresh registration against the current permitted endpoint. Dedicated IPs retain their dedicated endpoint through upstream setup.
 
+## How the supervisor runs
+
+A small Python supervisor runs in the existing Privateerr container. It uses the standard library to manage recovery state, validate connection settings, and call Gluetun. A shell adapter invokes the unmodified upstream PIA scripts; Gluetun's startup wrapper remains shell. There is no additional container, web server, or production Docker socket.
+
+The supervisor uses a monotonic clock for outage and retry timing and bounds both HTTP requests and PIA generation. Container shutdown interrupts waits and stops the active generation process group. Existing environment variables, output paths, one-shot generation, and keepalive behavior remain available. Python test and lint tools stay in Buccaneerr.
+
 ## Understand the recovery sequence
 
 Privateerr generates and validates the initial configuration before reporting ready. Gluetun can therefore retain `depends_on: service_healthy`; Privateerr's Docker healthcheck does not depend on a working tunnel.
@@ -145,3 +151,54 @@ This feature cannot start a stopped Gluetun container or repair a hung Docker da
 ## Disable recovery
 
 Set `PRIVATEERR_AUTO_RECOVER=false` in `.env` and recreate both containers with `make up`. Gluetun resumes its configured health-restart policy. Privateerr returns to ordinary startup behavior and generates a fresh configuration pair.
+
+## Compare with the discussion's watchdog setup
+
+[Discussion #66](https://github.com/scottgigawatt/privateerr/discussions/66) demonstrates a working operator strategy: combine tunnel health with Privateerr readiness, let deunhealth restart unhealthy containers through the Docker socket, stagger Privateerr and Gluetun failure thresholds, and restart qBittorrent when its internet probe fails.
+
+| Scenario | Discussion setup | Privateerr supervisor |
+| --- | --- | --- |
+| Stale PIA registration or endpoint | Restart Privateerr to generate new files, then rely on tunnel or container restart | Generate a validated replacement and explicitly apply it through Gluetun's API |
+| Healthy process with an unusable tunnel | Escalate through timed health failures | Require sustained failure, then reconcile settings and tunnel health |
+| Gluetun container replacement | qBittorrent's internet check can trigger a restart to rejoin networking | Preserve the existing namespace by changing only the internal VPN connection |
+| Hung container or stopped service | deunhealth can restart a running unhealthy container; restart policy handles exited processes | Outside supervisor scope; no Docker socket or container lifecycle authority |
+| Intentional VPN stop | Tunnel-dependent health checks may trigger watchdog intervention | Pause recovery while the API reports the VPN stopped |
+| Port forwarding | Gluetun obtains the lease and updates qBittorrent through hooks | Same ownership; a forwarding-only failure does not rotate a healthy VPN |
+
+The watchdog covers more container-level failures, at the cost of Docker socket access and coordinated restart timing. The supervisor focuses on the stale-PIA problem while keeping recovery inside Privateerr. Rewriting `wg0.conf` is not treated as proof that a running Gluetun has loaded it: the supervisor applies all changed connection fields through the API and verifies the result.
+
+Docker health status alone does not restart a container. Also, [`depends_on.restart: true`](https://docs.docker.com/reference/compose-file/services/#depends_on) follows explicit Compose operations; it does not propagate every Docker runtime restart. If an operator recreates Gluetun outside Compose, dependent applications may still need recreation. Privateerr cannot repair that condition without acquiring container-management privileges, which this design intentionally avoids.
+
+The bounded forwarding hook reports failed application updates. If qBittorrent stays unavailable longer than its configured wait, restore the application and reapply the current port with the hook or restart forwarding. There is no extra application watchdog. The live suite verifies qBittorrent's actual preferences, continued container identity, VPN egress, and incoming TCP through the PIA lease; it does not claim UDP reachability or torrent download throughput.
+
+## Try the qBittorrent example
+
+The root Compose file includes an optional `downloads` profile after Gluetun. Existing deployments keep their original service selection. Add or edit these values in `.env`:
+
+```dotenv
+COMPOSE_PROFILES=downloads
+QBITTORRENT_PORT_SYNC=true
+QBITTORRENT_WEBUI_PORT=8080
+QBITTORRENT_API_WAIT_SECONDS=300
+```
+
+Set `QBITTORRENT_PUID`, `QBITTORRENT_PGID`, and the configuration/download paths from `example.env` to match the host. Then start the application and its dependencies:
+
+```sh
+docker compose up -d privateerr gluetun qbittorrent
+```
+
+The Web UI is available at `http://127.0.0.1:8080` on the Docker host. For a remote host, use an SSH tunnel or an authenticated reverse proxy. The Gluetun API and health listener remain unpublished. With an older `.env` that omits `QBITTORRENT_WEBUI_PORT`, Docker chooses a free localhost port, avoiding a new fixed-port conflict.
+
+The seed configuration allows unauthenticated API access only from loopback, where Gluetun's hook runs. Remote Web UI sessions still require authentication; obtain the initial password from qBittorrent's local container logs and change it in the Web UI. Do not share those logs. Other containers deliberately sharing Gluetun's namespace also share that loopback trust boundary.
+
+The hook binds qBittorrent to the VPN interface and assigned port, with random ports and UPnP disabled. On lease removal it binds to loopback. An existing application configuration is not overwritten; ensure its localhost API access permits the hook. VPN peer ports do not need host publication.
+
+Run the isolated application and API check without PIA credentials, or the full recovery test with your local credentials:
+
+```sh
+make test-recovery-api
+make test-recovery-live
+```
+
+Both drivers and their tools run inside Buccaneerr. Tests create labeled temporary Gluetun and qBittorrent containers, clean up only their own resources, and do not start the root example or download torrents. LinuxServer's current qBittorrent image supports amd64 and arm64; the optional application is not part of Privateerr's arm/v7 image support.

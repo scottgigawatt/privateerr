@@ -135,11 +135,21 @@ services:
       HEALTH_RESTART_VPN: ${GLUETUN_HEALTH_RESTART_VPN}                      # Gluetun restart policy when Privateerr recovery is disabled
       GLUETUN_DEFAULT_ENTRYPOINT: ${GLUETUN_DEFAULT_ENTRYPOINT}              # Original Gluetun entrypoint
 
+      # Synchronize the optional qBittorrent application with the VPN port lease
+      QBITTORRENT_PORT_SYNC: ${QBITTORRENT_PORT_SYNC:-false}              # Opt in when the downloads profile is enabled
+      QBITTORRENT_API_WAIT_SECONDS: ${QBITTORRENT_API_WAIT_SECONDS:-300}  # Maximum seconds to wait for the Web API
+      VPN_PORT_FORWARDING_UP_COMMAND: /bin/sh -c 'if [ "$${QBITTORRENT_PORT_SYNC}" = true ]; then /bin/sh /gluetun/scripts/qbittorrent-port-forwarding.sh up {{PORT}} {{VPN_INTERFACE}}; fi'
+      VPN_PORT_FORWARDING_DOWN_COMMAND: /bin/sh -c 'if [ "$${QBITTORRENT_PORT_SYNC}" = true ]; then /bin/sh /gluetun/scripts/qbittorrent-port-forwarding.sh down; fi'
+
       # Define Privateerr metadata environment variables for Gluetun
       PRIVATEERR_METADATA_PATH: ${PRIVATEERR_METADATA_PATH}                                  # Path to the generated PIA metadata
       PRIVATEERR_GLUETUN_METADATA_WAIT_SECONDS: ${PRIVATEERR_GLUETUN_METADATA_WAIT_SECONDS}  # Maximum seconds to wait for metadata
       PRIVATEERR_AUTO_RECOVER: ${PRIVATEERR_AUTO_RECOVER}                                    # Enable the internal health listener and API role
       PRIVATEERR_GLUETUN_API_KEY: ${PRIVATEERR_GLUETUN_API_KEY}                              # Shared API key used by Privateerr
+
+    # Publish only the application Web UI; older environment files use a free local port
+    ports:
+      - "127.0.0.1:${QBITTORRENT_WEBUI_PORT:-0}:8080"  # Keep the Web UI local unless explicitly proxied
 
     # Mount host directories into the container
     volumes:
@@ -162,6 +172,39 @@ services:
     depends_on:
       privateerr:
         condition: service_healthy  # Wait for Privateerr to generate config and metadata
+
+  #
+  # Configure an optional torrent client sharing Gluetun's protected network.
+  #
+  qbittorrent:
+    # Keep the example opt-in so existing deployments retain their service selection
+    profiles: [downloads]                                              # Enable with COMPOSE_PROFILES=downloads
+    image: lscr.io/linuxserver/qbittorrent:${QBITTORRENT_TAG:-latest}  # Use the selected application release
+    restart: unless-stopped                                            # Restart exited processes unless explicitly stopped
+    network_mode: service:gluetun                                      # Route all application traffic through Gluetun
+
+    # Set host ownership for persistent application files
+    environment:
+      PUID: ${QBITTORRENT_PUID:-1000}  # Host user owning configuration and downloads
+      PGID: ${QBITTORRENT_PGID:-1000}  # Host group owning configuration and downloads
+      TZ: ${QBITTORRENT_TZ:-Etc/UTC}   # Application time zone
+      WEBUI_PORT: 8080                 # Internal port used by the forwarding hook
+
+    # Preserve application state and downloads across container replacement
+    volumes:
+      - ${QBITTORRENT_CONFIG_PATH:-./config/qbittorrent}:/config:rw                   # Persistent application configuration
+      - ${HOST_TORRENTS_DOWNLOADS_PATH:-./downloads/torrents}:/downloads/torrents:rw  # Torrent downloads only
+
+    # Check application readiness independently of tunnel health
+    healthcheck:
+      <<: *default-healthcheck-settings  # Reuse the stack's healthcheck timing
+      test: [CMD, wget, --no-verbose, --tries=1, --spider, http://127.0.0.1:8080/]
+
+    # Start the application only after Gluetun establishes a healthy tunnel
+    depends_on:
+      gluetun:
+        condition: service_healthy  # Wait for a working VPN
+        restart: true               # Follow explicit Compose-managed Gluetun updates
 
   #
   # Configure the service that validates Gluetun and port forwarding.

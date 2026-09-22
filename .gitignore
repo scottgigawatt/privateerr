@@ -41,3 +41,14 @@ backups/
 test/logs/
 .pytest_cache/
 .ruff_cache/
+
+# Python bytecode and tool caches are disposable.
+__pycache__/
+*.py[cod]
+
+# Optional qBittorrent application state and downloaded content.
+config/qbittorrent/*
+!config/qbittorrent/qBittorrent/
+config/qbittorrent/qBittorrent/*
+!config/qbittorrent/qBittorrent/qBittorrent.conf
+downloads/

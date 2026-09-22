@@ -7,7 +7,7 @@
 #
 # test-recovery-api.py: Validate settings replacement against an isolated real Gluetun.
 #
-# Usage: python3 test/runtime/test-recovery-api.py
+# Usage: make test-recovery-api, make test-recovery-live, or scripts/compose/test.sh smoke
 # Requires a built privateerr:recovery-review image and Docker.
 # Pass --env-file .env to additionally test live PIA recovery.
 #
@@ -18,6 +18,7 @@ import json
 import os
 import secrets
 import shutil
+import socket
 import subprocess
 import tempfile
 import time
@@ -45,7 +46,7 @@ def docker(*args, stdin=None, check=True):
     )
 
 
-def main(env_file=None):
+def main(env_file=None, smoke=False):
     """Verify API handoff, optionally including live PIA recovery with supplied credentials."""
 
     # Record resources as they are created so partial setup failures can be cleaned up.
@@ -93,6 +94,24 @@ def main(env_file=None):
                 os.environ["VPN_PORT_FORWARDING_USERNAME"] = values["PIA_USER"]
                 os.environ["VPN_PORT_FORWARDING_PASSWORD"] = values["PIA_PASS"]
 
+            # Mount the production forwarding hook and an isolated application configuration.
+            scripts = config / "scripts"
+            scripts.mkdir()
+            shutil.copyfile(
+                ROOT / "config/gluetun/scripts/qbittorrent-port-forwarding.sh",
+                scripts / "qbittorrent-port-forwarding.sh",
+            )
+            application = directory / "qbittorrent"
+            (application / "qBittorrent").mkdir(parents=True)
+            shutil.copyfile(
+                ROOT / "config/qbittorrent/qBittorrent/qBittorrent.conf",
+                application / "qBittorrent/qBittorrent.conf",
+            )
+            qbittorrent_image = os.environ.get(
+                "QBITTORRENT_TEST_IMAGE", "lscr.io/linuxserver/qbittorrent:latest"
+            )
+            docker("pull", qbittorrent_image)
+
             # Use the checked-out wrapper and a per-run API key for the isolated control server.
             wrapper = directory / "wrapper.sh"
             shutil.copyfile(ROOT / "config/gluetun/scripts/gluetun-entrypoint-wrapper.sh", wrapper)
@@ -120,7 +139,7 @@ def main(env_file=None):
                     "--env",
                     "PRIVATEERR_GLUETUN_API_KEY",
                     "--env",
-                    "PRIVATEERR_AUTO_RECOVER=true",
+                    f"PRIVATEERR_AUTO_RECOVER={str(not smoke).lower()}",
                     "--env",
                     "PRIVATEERR_KEEPALIVE=true",
                     "--env",
@@ -188,17 +207,25 @@ def main(env_file=None):
                 "--env",
                 "VERSION_INFORMATION=off",
                 "--env",
+                "QBITTORRENT_API_WAIT_SECONDS=300",
+                "--env",
+                "VPN_PORT_FORWARDING_UP_COMMAND=/bin/sh /gluetun/scripts/qbittorrent-port-forwarding.sh up {{PORT}} {{VPN_INTERFACE}}",
+                "--env",
+                "VPN_PORT_FORWARDING_DOWN_COMMAND=/bin/sh /gluetun/scripts/qbittorrent-port-forwarding.sh down",
+                "--env",
                 "VPN_PORT_FORWARDING_PROVIDER=private internet access",
                 "--env",
                 "VPN_PORT_FORWARDING_USERNAME",
                 "--env",
                 "VPN_PORT_FORWARDING_PASSWORD",
                 "--env",
-                "PRIVATEERR_AUTO_RECOVER=true",
+                f"PRIVATEERR_AUTO_RECOVER={str(not smoke).lower()}",
                 "--env",
                 "PRIVATEERR_GLUETUN_API_KEY",
                 "--volume",
                 f"{config}:/gluetun",
+                "--volume",
+                f"{config}:/tmp/gluetun",
                 "--volume",
                 f"{wrapper}:/wrapper.sh:ro",
                 "--entrypoint",
@@ -208,6 +235,67 @@ def main(env_file=None):
             ).stdout.strip()
             containers.append(gluetun)
             docker("start", gluetun)
+
+            # Run a real application in the VPN namespace, with no published host ports.
+            qbittorrent = docker(
+                "create",
+                "--name",
+                f"{RUN_ID}-qbittorrent",
+                "--label",
+                f"{LABEL}={RUN_ID}",
+                "--network",
+                f"container:{gluetun}",
+                "--volume",
+                f"{application}:/config",
+                "--env",
+                "PUID=0",
+                "--env",
+                "PGID=0",
+                qbittorrent_image,
+            ).stdout.strip()
+            containers.append(qbittorrent)
+            docker("start", qbittorrent)
+            wait_qbittorrent(qbittorrent)
+
+            # Exercise the original Buccaneerr validator with automatic recovery disabled.
+            if smoke:
+                for _ in range(120):
+                    state = json.loads(docker("inspect", gluetun).stdout)[0]["State"]
+                    if state.get("Health", {}).get("Status") == "healthy":
+                        break
+                    time.sleep(2)
+                else:
+                    raise RuntimeError(
+                        "Gluetun did not become healthy during the compatibility test"
+                    )
+                validator = docker(
+                    "create",
+                    "--name",
+                    f"{RUN_ID}-validator",
+                    "--label",
+                    f"{LABEL}={RUN_ID}",
+                    "--network",
+                    f"container:{gluetun}",
+                    "--volume",
+                    f"{wireguard}:/config:ro",
+                    "--volume",
+                    f"{config}:/gluetun:ro",
+                    "--env",
+                    "BUCCANEERR_LOG_PATH=/tmp/validation.log",
+                    os.environ.get("BUCCANEERR_TEST_IMAGE", "privateerr-buccaneerr:test"),
+                ).stdout.strip()
+                containers.append(validator)
+                docker("start", validator)
+                result = docker("wait", validator)
+                if result.stdout.strip() != "0":
+                    print(docker("logs", validator).stdout)
+                    raise RuntimeError("Buccaneerr rejected the recovery-disabled stack")
+                wait_application_port(qbittorrent, config)
+                print(
+                    "PASS: recovery-disabled generation, Gluetun startup, and Buccaneerr forwarding validation.",
+                    flush=True,
+                )
+                return
 
             # Probe the control API from outside the VPN network namespace.
             probe = docker(
@@ -258,6 +346,28 @@ def main(env_file=None):
                 content, _, status = response.stdout.rpartition("\n")
                 return status, content
 
+            # Application API bypass is restricted to loopback, not the Docker bridge.
+            for _ in range(30):
+                response = docker(
+                    "exec",
+                    probe,
+                    "curl",
+                    "--silent",
+                    "--max-time",
+                    "5",
+                    "--output",
+                    "/dev/null",
+                    "--write-out",
+                    "%{http_code}",
+                    "http://gluetun:8080/api/v2/app/preferences",
+                    check=False,
+                )
+                if response.stdout == "403":
+                    break
+                time.sleep(1)
+            else:
+                raise RuntimeError("qBittorrent API did not require authentication off loopback")
+
             # Wait for authenticated API access before testing replacement settings.
             for _ in range(40):
                 status, _ = request("GET", "/v1/vpn/status")
@@ -270,8 +380,22 @@ def main(env_file=None):
 
             # Exercise real endpoint failure and recovery when credentials were supplied.
             if env_file is not None:
-                live_recovery(gluetun, probe, privateerr, containers, config, request)
+                live_recovery(gluetun, probe, privateerr, qbittorrent, config, request)
                 return
+
+            # Exercise actual application preferences without needing a PIA account in CI.
+            hook = "/gluetun/scripts/qbittorrent-port-forwarding.sh"
+            docker("exec", gluetun, "sh", hook, "up", "45678", "tun0")
+            preferences = qbittorrent_preferences(qbittorrent)
+            assert preferences["listen_port"] == 45678
+            assert preferences["current_network_interface"] == "tun0"
+            assert preferences["upnp"] is False
+            assert preferences["random_port"] is False
+            docker("exec", gluetun, "sh", hook, "down")
+            assert qbittorrent_preferences(qbittorrent)["current_network_interface"] == "lo"
+            print(
+                "PASS: real qBittorrent accepts forwarded-port updates and safe down-hook binding."
+            )
 
             # Snapshot container identity and submit a complete synthetic connection update.
             before = json.loads(docker("inspect", gluetun).stdout)[0]
@@ -317,10 +441,8 @@ def main(env_file=None):
             assert before["NetworkSettings"]["SandboxID"] == after["NetworkSettings"]["SandboxID"]
 
             # An invalid candidate must not replace the currently applied key.
-            assert (
-                request("PUT", "/v1/vpn/settings", {"wireguard": {"private_key": "invalid"}})[0]  # pragma: allowlist secret
-                == "400"
-            )
+            invalid_key = {"private_key": "invalid"}  # pragma: allowlist secret
+            assert request("PUT", "/v1/vpn/settings", {"wireguard": invalid_key})[0] == "400"
             assert (
                 json.loads(request("GET", "/v1/vpn/settings")[1])["wireguard"]["private_key"]
                 == new_key
@@ -335,7 +457,6 @@ def main(env_file=None):
                 "PIA connectivity and port forwarding are not exercised by this credential-free test."
             )
         finally:
-
             # Delete only resources recorded by this run and still carrying its ownership label.
             for container in reversed(containers):
                 result = docker("inspect", container, check=False)
@@ -352,7 +473,55 @@ def main(env_file=None):
                     docker("network", "rm", network)
 
 
-def live_recovery(gluetun, probe, privateerr, containers, config, request):
+def qbittorrent_preferences(container):
+    """Read application preferences only over loopback within the shared VPN namespace."""
+    result = docker(
+        "exec",
+        container,
+        "curl",
+        "-fsS",
+        "--max-time",
+        "5",
+        "http://127.0.0.1:8080/api/v2/app/preferences",
+        check=False,
+    )
+    if result.returncode:
+        return {}
+    try:
+        return json.loads(result.stdout)
+    except ValueError:
+        return {}
+
+
+def wait_qbittorrent(container):
+    """Allow application initialization without exposing its temporary Web UI password."""
+    for _ in range(90):
+        if qbittorrent_preferences(container):
+            return
+        time.sleep(2)
+    raise RuntimeError("qBittorrent Web API did not become ready")
+
+
+def wait_application_port(container, config):
+    """Require the application to adopt the live lease, interface, and mapping restrictions."""
+    for _ in range(90):
+        preferences = qbittorrent_preferences(container)
+        lease = config / "forwarded_port"
+        port = lease.read_text().strip() if lease.exists() else ""
+        if (
+            port.isdigit()
+            and int(port) > 0
+            and preferences.get("listen_port") == int(port)
+            and preferences.get("current_network_interface") == "tun0"
+            and preferences.get("upnp") is False
+            and preferences.get("random_port") is False
+        ):
+            return
+        time.sleep(2)
+    raise RuntimeError("qBittorrent did not adopt Gluetun's forwarded port and VPN interface")
+
+
+def live_recovery(gluetun, probe, privateerr, qbittorrent, config, request):
     """Blackhole the active endpoint and verify recovery, forwarding and leak protection."""
 
     def healthy():
@@ -387,22 +556,9 @@ def live_recovery(gluetun, probe, privateerr, containers, config, request):
     old_ip = active["provider"]["server_selection"]["wireguard"]["endpoint_ip"]
     old_key = active["wireguard"]["private_key"]
 
-    # Keep a dependent client in Gluetun's namespace throughout the outage and recovery.
-    dependent = docker(
-        "create",
-        "--name",
-        f"{RUN_ID}-dependent",
-        "--label",
-        f"{LABEL}={RUN_ID}",
-        "--network",
-        f"container:{gluetun}",
-        "--entrypoint",
-        "sleep",
-        IMAGE,
-        "1800",
-    ).stdout.strip()
-    containers.append(dependent)
-    docker("start", dependent)
+    # Keep the actual torrent application running across the tunnel replacement.
+    dependent = qbittorrent
+    wait_application_port(qbittorrent, config)
     dependent_before = json.loads(docker("inspect", dependent).stdout)[0]
 
     # Record only success/failure; do not print public IPs or configuration.
@@ -456,7 +612,6 @@ def live_recovery(gluetun, probe, privateerr, containers, config, request):
                 break
         time.sleep(2)
     else:
-
         # Keep failure diagnostics public and limited to controller status transitions.
         logs = docker("logs", privateerr, check=False)
         for line in (logs.stdout + logs.stderr).splitlines():
@@ -464,6 +619,7 @@ def live_recovery(gluetun, probe, privateerr, containers, config, request):
                 print(line)
         raise RuntimeError("Privateerr did not recover the blocked PIA endpoint")
     wait_forwarding()
+    wait_application_port(qbittorrent, config)
 
     # Wait until Privateerr has saved the verified pair and removed the pending candidate.
     for _ in range(30):
@@ -486,6 +642,27 @@ def live_recovery(gluetun, probe, privateerr, containers, config, request):
     dependent_after = json.loads(docker("inspect", dependent).stdout)[0]
     assert dependent_before["State"]["StartedAt"] == dependent_after["State"]["StartedAt"]
     docker("exec", dependent, "curl", "-fsS", "--max-time", "20", "https://api.ipify.org")
+    public_ip = docker(
+        "exec", dependent, "curl", "-fsS", "--max-time", "20", "https://api.ipify.org"
+    ).stdout.strip()
+    port = qbittorrent_preferences(qbittorrent)["listen_port"]
+    # Application sockets may reopen shortly after the preference update returns.
+    for _ in range(15):
+        try:
+            with socket.create_connection((public_ip, port), timeout=5):
+                break
+        except OSError:
+            time.sleep(2)
+    else:
+        # Report only listener presence, never credentials or full application logs.
+        listeners = docker("exec", dependent, "cat", "/proc/net/tcp").stdout
+        listening = any(
+            line.split()[1].endswith(f":{port:04X}") and line.split()[3] == "0A"
+            for line in listeners.splitlines()[1:]
+        )
+        print(f"Forwarded TCP port has a local listening socket: {listening}", flush=True)
+        raise RuntimeError("The assigned PIA port was not reachable from outside the VPN")
+    print("PASS: incoming TCP reaches qBittorrent through the PIA forwarded port.", flush=True)
     print(
         "PASS: new PIA endpoint and keys, matching saved metadata, restored forwarding and dependent connectivity.",
         flush=True,
@@ -505,4 +682,10 @@ if __name__ == "__main__":
         type=Path,
         help="Enable live PIA tests using credentials from this Compose environment file",
     )
-    main(parser.parse_args().env_file)
+    parser.add_argument(
+        "--smoke", action="store_true", help="Validate a live stack with recovery disabled"
+    )
+    arguments = parser.parse_args()
+    if arguments.smoke and arguments.env_file is None:
+        parser.error("--smoke requires --env-file")
+    main(arguments.env_file, arguments.smoke)

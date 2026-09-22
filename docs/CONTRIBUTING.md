@@ -49,7 +49,7 @@ make build-buccaneerr
 make build-platforms
 make test-e2e
 make clean-test
-pre-commit run --all-files
+make test-precommit
 ```
 
 `make down` preserves volumes and images. `make clean` never touches Docker, `.env`, generated WireGuard state, config, or backups. Use `make nuke` only for an intentionally destructive reset of this repository's Docker resources and scoped Buildx cache; it still preserves `.env`, `backups/`, and persistent config before restoring the checked-in examples.
@@ -96,7 +96,7 @@ Before opening a pull request:
 
 - Run relevant `make` targets.
 - Run `make test-workflows` for workflow, release, build-pin, or image-tag changes.
-- Run `pre-commit run --all-files`.
+- Run `make test-precommit`.
 - Let Renovate handle routine dependency bumps when possible.
 - Restore example config with `make clean-test` or `make nuke`.
 - Confirm no secrets, live VPN configs, or logs slipped into the hold.

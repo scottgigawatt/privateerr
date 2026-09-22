@@ -266,3 +266,7 @@ Successful `main` builds publish `edge`; only a reviewed stable version advances
 Privateerr is licensed under the [Apache License 2.0](LICENSE). The bundled PIA manual-connection scripts remain under PIA's [MIT license](https://github.com/pia-foss/manual-connections/blob/master/LICENSE).
 
 Fair winds, private keys below deck, and no VPN-client identity crises. 🏴‍☠️
+
+### Try a torrent client 🧲
+
+The optional qBittorrent example shares Gluetun's protected network and follows its forwarded port. See [the setup and recovery comparison](docs/automatic-recovery.md#try-the-qbittorrent-example) for environment settings, localhost Web UI access, and Buccaneerr's application-level tests.

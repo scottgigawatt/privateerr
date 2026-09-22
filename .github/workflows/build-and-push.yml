@@ -23,6 +23,9 @@ on:
       - ".github/scripts/**"
       - ".github/workflows/build-and-push.yml"
       - "Makefile"
+      - "ruff.toml"
+      - ".pre-commit-config.yaml"
+      - "scripts/compose/test.sh"
       - "config/**"
       - "docker/**"
       - "docs/docker-hub-description.md"
@@ -192,6 +195,7 @@ jobs:
         run: |
           make build
           make build-buccaneerr
+          PRIVATEERR_TEST_IMAGE="${PRIVATEERR_LOCAL_IMAGE_REF}:latest" make test-recovery-api
 
       #
       # Run the credential-backed e2e voyage when both optional PIA secrets exist.

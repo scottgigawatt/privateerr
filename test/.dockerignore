@@ -12,3 +12,7 @@
 .DS_Store
 *.log
 logs/
+
+# Python bytecode and tool caches are disposable.
+__pycache__/
+*.py[cod]

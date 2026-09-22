@@ -72,6 +72,11 @@ run_release_helper() {
 #
 git init --quiet --bare "${TEST_ROOT}/origin.git"
 git init --quiet --initial-branch=main "${RELEASE_REPOSITORY}"
+
+# Keep disposable fixture commits independent of the contributor's signing agent.
+git -C "${RELEASE_REPOSITORY}" config commit.gpgsign false
+git -C "${RELEASE_REPOSITORY}" config tag.gpgsign false
+
 git -C "${RELEASE_REPOSITORY}" config user.email test@example.invalid
 git -C "${RELEASE_REPOSITORY}" config user.name "Workflow Helper Tests"
 printf '%s\n' 'release fixture' > "${RELEASE_REPOSITORY}/release.txt"

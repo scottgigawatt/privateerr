@@ -17,3 +17,7 @@ logs/
 # Exclude the PIA submodule's Git metadata while retaining its checked-out files.
 #
 pia-manual-connections/.git
+
+# Python bytecode and tool caches are disposable.
+__pycache__/
+*.py[cod]

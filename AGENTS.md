@@ -12,16 +12,21 @@
 
 Privateerr packages the official, unmodified [PIA manual connection scripts](https://github.com/pia-foss/manual-connections) into a small Docker image that generates a WireGuard config file and Gluetun metadata.
 
-Privateerr is not a VPN client. It does not establish or maintain a VPN tunnel. It generates `config/gluetun/wireguard/wg0.conf` and `config/gluetun/wireguard/privateerr.env` so Gluetun or another WireGuard-capable VPN client can use them.
+Privateerr is not a VPN client. Gluetun owns the tunnel and port lease; the optional Python supervisor renews stale PIA registrations through Gluetun's authenticated API without restarting containers. Privateerr generates `config/gluetun/wireguard/wg0.conf` and `config/gluetun/wireguard/privateerr.env` so Gluetun or another WireGuard-capable VPN client can use them.
+
+Keep lint, formatting, unit tests, and runtime test drivers in the test-only Buccaneerr image. Production Python uses only the standard library; do not add test packages to Privateerr. `ruff.toml` defines shared Python rules.
 
 The companion Buccaneerr image is test-only. It validates the Privateerr + Gluetun flow, including PIA WireGuard port forwarding.
 
 ## Repository Layout
 
-- `docker/`: Privateerr image build context and Privateerr-owned entrypoint scripts.
+- `docker/`: Privateerr image build context, Python supervisor, and shell integration helpers.
+- `docker/privateerr/`: Standard-library Python supervisor, API client, configuration validation, and persistence.
 - `docker/pia-manual-connections/`: PIA upstream scripts as a git submodule. Treat this as third-party code.
 - `test/`: Buccaneerr image build context and organized test support files.
 - `test/policy/`: Static repository policy checks used by Make and pre-commit.
+- `test/unit/`: Python supervisor, client, generation, and forwarding-hook tests.
+- `test/runtime/`: Real Gluetun and qBittorrent integration tests, including optional live PIA recovery.
 - `test/helpers/`: Isolated Make and workflow helper tests.
 - `test/stubs/`: Deterministic command stubs used by the helper tests.
 - `test/examples/`: Checked-in example reset files restored after live tests.
@@ -110,6 +115,31 @@ purpose, parameters, and return behavior. Use `Parameters: None.` when a
 function accepts nothing, keep one parameter per comment line, and use one
 space after `Returns:`.
 
+## Shared shell and Python style
+
+Keep these conventions aligned between Privateerr and Plundarr while preserving each repository's architecture and test tooling.
+
+Use four spaces in shell and Python, two spaces in YAML, TOML, AWK, and jq, and four spaces in JSON and JSON with Comments. `.editorconfig` is the portable source of truth; VS Code settings must agree. Put a blank line before and after logical control-flow blocks, and place a concise explanatory comment above non-obvious checks, loops, and operations. Do not add comments that merely repeat the code.
+
+Shell functions use this exact documentation shape:
+
+```sh
+#
+# function_name: Describe the function's purpose.
+#
+# Parameters: $1 - Describe the first parameter.
+#             $2 - Describe the second parameter.
+#
+# Returns: Describe the return value or exit behavior.
+#
+```
+
+Use `Parameters: None.` when appropriate. Keep each short explanatory sentence on one comment line. Use targeted ShellCheck suppressions only when a documented runtime constraint prevents a correct code fix; never disable a diagnostic across the repository to hide individual findings. `.shellcheckrc` supplies shared source resolution for editors and checks.
+
+Python modules and tests start with the copyright, Apache-2.0, and filename summary block, followed by a useful module docstring. Prefer small functions, explicit types at application boundaries, standard-library facilities, and concise docstrings for public classes and non-obvious helpers. `ruff.toml` owns lint and formatting rules, including import order, four-space indentation, and Unix line endings. Run both Ruff lint and format checks during pull-request validation; editors and pre-commit must use the same configuration. Keep lint and test dependencies out of published production images.
+
+Run CSpell across project-owned files after changes. Correct misspellings; add genuine project vocabulary to `.vscode/settings.json` under `cSpell.words`. Do not add secrets or whole arbitrary strings to silence spelling diagnostics.
+
 ## Docker Rules
 
 Dockerfiles should be professional and registry-friendly:
@@ -139,7 +169,7 @@ Compose conventions:
 
 - keep service image names fixed when possible
 - keep image tags configurable through `.env`
-- define defaults in `.env` / `example.env`, not inline Compose fallback syntax
+- define defaults in `.env` / `example.env`; the optional qBittorrent example also uses Compose fallbacks so older environment files remain valid
 - use YAML anchors for reusable labels or healthcheck settings
 - mount directories, not individual generated config files
 - group environment variables by owner/purpose
@@ -242,7 +272,7 @@ Build/publish behavior:
 Security/scanning:
 
 - keep Trivy scanning in workflows
-- keep Dependabot configuration current
+- keep Renovate configuration current; do not add a competing Dependabot configuration
 - keep OpenSSF / best-practice metadata current where present
 - keep provenance/SBOM enabled unless there is a specific reason not to
 
@@ -253,7 +283,7 @@ Expect GHCR to show `unknown/unknown` entries for attestation manifests. Those a
 For small documentation-only changes, run:
 
 ```sh
-pre-commit run --all-files
+make test-precommit
 ```
 
 For Docker or workflow changes, run as applicable:
@@ -266,7 +296,7 @@ make build-buccaneerr
 make build-platforms
 make test
 make test-workflows
-pre-commit run --all-files
+make test-precommit
 ```
 
 For behavior changes touching Privateerr, Gluetun handoff, WireGuard config generation, or port forwarding, run:

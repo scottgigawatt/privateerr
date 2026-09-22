@@ -12,8 +12,13 @@
 ARG ALPINE_TAG=3.24@sha256:294b683cb724975bec92580e1e685676bd4b50bda910ddb8c51d4cabeaec77e6
 
 #
-# Stage 1 of 1: Build the test-only Buccaneerr validator on pinned Alpine.
-# Keeping this separate prevents validation tools entering the production image.
+# Stage 1 of 2: Obtain the same static ShellCheck binary for every supported CPU.
+# The official image includes ARMv6, which also runs on ARMv7 where Alpine lacks the package.
+#
+FROM koalaman/shellcheck:v0.11.0@sha256:61862eba1fcf09a484ebcc6feea46f1782532571a34ed51fedf90dd25f925a8d AS shellcheck
+
+#
+# Stage 2 of 2: Keep all validation tools in the test-only Buccaneerr image.
 #
 FROM alpine:${ALPINE_TAG}
 
@@ -33,7 +38,9 @@ ARG IMAGE_VERSION=latest
 #
 # Set the Buccaneerr script location.
 #
-ENV BUCCANEERR_BIN_HOME=${BUCCANEERR_BIN_HOME}
+ENV BUCCANEERR_BIN_HOME=${BUCCANEERR_BIN_HOME} \
+    PYTHONDONTWRITEBYTECODE=1 \
+    RUFF_NO_CACHE=true
 
 #
 # Add Open Container Initiative image labels. These support container registry
@@ -59,13 +66,39 @@ RUN apk upgrade --no-cache libcrypto3 libssl3 && \
     apk add --no-cache \
         bash \
         ca-certificates \
-        curl
+        curl \
+        docker-cli \
+        docker-cli-compose \
+        git \
+        make \
+        gawk \
+        grep \
+        coreutils \
+        jq \
+        python3 \
+        ruff \
+        actionlint \
+        pre-commit \
+        nodejs \
+        npm
+
+COPY --from=shellcheck /bin/shellcheck /usr/local/bin/shellcheck
+
+# Keep the spelling tool in the test image with a fixed release.
+RUN npm install --global cspell@9.2.2 && npm cache clean --force
 
 #
 # Copy over the project license and Buccaneerr script, then make the script executable.
 #
 COPY LICENSE                  /LICENSE
 COPY buccaneerr-entrypoint.sh ${BUCCANEERR_BIN_HOME}/buccaneerr-entrypoint.sh
+COPY checks.sh               ${BUCCANEERR_BIN_HOME}/checks.sh
+COPY helpers                 ${BUCCANEERR_BIN_HOME}/helpers
+COPY policy                  ${BUCCANEERR_BIN_HOME}/policy
+COPY stubs                   ${BUCCANEERR_BIN_HOME}/stubs
+COPY examples                ${BUCCANEERR_BIN_HOME}/examples
+COPY unit                    ${BUCCANEERR_BIN_HOME}/unit
+COPY runtime                 ${BUCCANEERR_BIN_HOME}/runtime
 
 #
 # Make the Buccaneerr entrypoint script executable.

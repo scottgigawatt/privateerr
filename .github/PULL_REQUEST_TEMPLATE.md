@@ -13,7 +13,7 @@
 - [ ] `make help`
 - [ ] `make test`
 - [ ] `make test-workflows` if workflow helpers changed
-- [ ] `pre-commit run --all-files`
+- [ ] `make test-precommit`
 - [ ] `make config`
 - [ ] `make build`
 - [ ] `make build-buccaneerr`
