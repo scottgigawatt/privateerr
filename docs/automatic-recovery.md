@@ -148,6 +148,16 @@ Recovery requires the configuration and metadata to share a directory mount and 
 
 This feature cannot start a stopped Gluetun container or repair a hung Docker daemon. An unavailable PIA service, invalid account credentials, or a fully unavailable pinned region can also prevent recovery. Logs identify those failures while the saved configuration remains available. Repeated failures use a cooldown rather than a container restart loop.
 
+## Run without privileged mode
+
+The example runs Privateerr with all Linux capabilities dropped and `no-new-privileges` enabled. UID 0 remains necessary because the unmodified upstream PIA scripts explicitly require it. Gluetun owns the VPN interface and retains its separate `NET_ADMIN` capability; Privateerr only generates configuration and calls the control API.
+
+`PRIVATEERR_IPV6_DISABLED=1` makes Docker disable IPv6 in Privateerr's network namespace before startup. It does not change host or Gluetun settings. Keep the default alongside `PIA_DISABLE_IPV6=yes`: the wrapper checks both namespace settings and skips redundant upstream writes when Docker has already applied them. No warning output is filtered. If IPv6 is still enabled, the original upstream behavior remains available to existing privileged deployments.
+
+An image-only update, including Watchtower, retains the existing container options. It does not remove old privileges, add these sysctls, or enable recovery when `PRIVATEERR_AUTO_RECOVER` was absent. Adopt the new Compose settings and recreate Privateerr to obtain the hardening. Copy the new environment setting from `example.env` before recreation and keep configuration directories writable by the container's UID 0. These settings support configuration generation with `PIA_CONNECT=false`; Privateerr does not run the tunnel.
+
+The supplied VPN services carry labels disabling unattended Watchtower updates. If an operator enables automatic updates in a custom deployment, image replacement still interrupts that container briefly. Use a release containing the updated wrapper before applying the hardened Compose configuration; an older image can still attempt the redundant sysctl writes and log errors.
+
 ## Disable recovery
 
 Set `PRIVATEERR_AUTO_RECOVER=false` in `.env` and recreate both containers with `make up`. Gluetun resumes its configured health-restart policy. Privateerr returns to ordinary startup behavior and generates a fresh configuration pair.

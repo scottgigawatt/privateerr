@@ -143,7 +143,7 @@ To test a real tunnel, put your PIA credentials in `.env` and run:
 make test-recovery-live
 ```
 
-Run `scripts/compose/test.sh smoke` to validate real PIA generation and forwarding with recovery disabled, using the original Buccaneerr validator in an isolated stack.
+Run `scripts/compose/test.sh smoke` to validate an image-only upgrade using the legacy privileged container options, `PIA_DISABLE_IPV6=yes`, and no `PRIVATEERR_AUTO_RECOVER` variable. The new image must retain recovery-disabled behavior and produce clean IPv6 and permission diagnostics while Buccaneerr verifies real PIA forwarding. `make test-recovery-live` exercises the hardened configuration with all capabilities dropped, Docker-applied IPv6 settings, and `no-new-privileges`, including clean logs after recovery.
 
 Override `PRIVATEERR_TEST_IMAGE` to select another locally built production image, or `PRIVATEERR_TEST_ENV_FILE` to use another credential file. The live test checks endpoint failure, automatic recovery, saved configuration, port forwarding, dependent-client connectivity, and traffic blocking outside the VPN.
 

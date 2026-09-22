@@ -14,7 +14,7 @@ Privateerr packages the official, unmodified [PIA manual connection scripts](htt
 
 Privateerr is not a VPN client. Gluetun owns the tunnel and port lease; the optional Python supervisor renews stale PIA registrations through Gluetun's authenticated API without restarting containers. Privateerr generates `config/gluetun/wireguard/wg0.conf` and `config/gluetun/wireguard/privateerr.env` so Gluetun or another WireGuard-capable VPN client can use them.
 
-Keep lint, formatting, unit tests, and runtime test drivers in the test-only Buccaneerr image. Production Python uses only the standard library; do not add test packages to Privateerr. `ruff.toml` defines shared Python rules.
+Keep lint, formatting, unit tests, and runtime test drivers in the test-only Buccaneerr image. Production Python uses only the standard library; do not add test packages to Privateerr. Keep Privateerr deployments unprivileged with all Linux capabilities dropped and `no-new-privileges`; UID 0 remains necessary for the unmodified upstream scripts. Docker owns initial namespace IPv6 settings, and the adapter skips only redundant writes while retaining legacy image-only behavior. `ruff.toml` defines shared Python rules.
 
 The companion Buccaneerr image is test-only. The default Compose example includes Privateerr, Gluetun, qBittorrent, and Buccaneerr without application profiles. Buccaneerr verifies PIA forwarding, application settings, and automatic recovery through a temporary firewall fault inside the shared VPN namespace. Keep the Web UI port and API endpoints driven by environment settings.
 

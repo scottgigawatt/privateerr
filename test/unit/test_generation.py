@@ -31,6 +31,9 @@ class GenerationTests(unittest.TestCase):
         setup.write_text("""#!/bin/sh
 set -eu
 [ "$PREFERRED_REGION" = ca ]
+if [ -n "${TEST_IPV6_RESULT:-}" ]; then
+    printf '%s' "${DISABLE_IPV6-unset}" > "$TEST_IPV6_RESULT"
+fi
 if [ "${TEST_FAIL:-false}" = true ]; then
     printf broken > "$PIA_CONF_PATH"
     exit 1
@@ -135,3 +138,40 @@ printf 'WG_HOSTNAME=example-one\\nPIA_TOKEN=test-token-redact\\n'  # pragma: all
                         if process.poll() is None:
                             process.kill()
                             process.wait()
+
+    def test_existing_ipv6_settings_preserve_legacy_and_operator_choices(self):
+        """Skip redundant writes only when both namespace settings satisfy an explicit request."""
+        binary = self.root / "bin"
+        binary.mkdir()
+        sysctl = binary / "sysctl"
+        sysctl.write_text("""#!/bin/sh
+set -eu
+[ "$1" = -n ]
+case "$2" in
+    net.ipv6.conf.all.disable_ipv6) printf '%s' "$TEST_IPV6_ALL" ;;
+    net.ipv6.conf.default.disable_ipv6) printf '%s' "$TEST_IPV6_DEFAULT" ;;
+    *) exit 1 ;;
+esac
+""")
+        sysctl.chmod(0o700)
+        result_path = self.root / "ipv6-request"
+        cases = (
+            ("yes", "1", "1", "no"),
+            ("yes", "0", "0", "yes"),
+            ("yes", "1", "0", "yes"),
+            ("yes", "0", "1", "yes"),
+            ("no", "1", "1", "no"),
+            ("", "1", "1", ""),
+        )
+
+        for request, current, default, expected in cases:
+            with self.subTest(request=request, current=current, default=default):
+                result = self.run_supervisor(
+                    DISABLE_IPV6=request,
+                    PATH=str(binary) + os.pathsep + os.environ["PATH"],
+                    TEST_IPV6_ALL=current,
+                    TEST_IPV6_DEFAULT=default,
+                    TEST_IPV6_RESULT=str(result_path),
+                )
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertEqual(result_path.read_text(), expected)

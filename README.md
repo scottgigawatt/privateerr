@@ -162,7 +162,7 @@ PIA_PREFERRED_REGION=ca
 
 Privateerr can optionally monitor Gluetun and refresh stale PIA WireGuard settings through Gluetun's authenticated control API. It keeps Gluetun's container running and needs no extra service or Docker socket. The supplied environment example enables recovery by default. Set a private shared API key before starting; image-only deployments that omit the setting retain their existing behavior.
 
-See [automatic Gluetun recovery](docs/automatic-recovery.md) for setup, API authentication, timing, and limitations. Gluetun remains responsible for the VPN tunnel and port forwarding.
+See [automatic Gluetun recovery](docs/automatic-recovery.md) for setup, API authentication, timing, and limitations. Gluetun remains responsible for the VPN tunnel and port forwarding. The example runs Privateerr without privileged mode or Linux capabilities; see [container hardening and image-only upgrades](docs/automatic-recovery.md#run-without-privileged-mode).
 
 ## Enable PIA port forwarding 🚪
 

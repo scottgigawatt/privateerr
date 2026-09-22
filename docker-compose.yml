@@ -50,7 +50,17 @@ services:
     container_name: ${COMPOSE_PROJECT_NAME}-privateerr-${PRIVATEERR_TAG}  # Container name including the tag
     restart: no                                                           # Container will not restart automatically
     hostname: privateerr                                                  # Set hostname inside the container
-    privileged: true                                                      # Required for upstream IPv6 sysctl behavior
+
+    # Generate configuration without container privileges or capability escalation
+    cap_drop:
+      - ALL  # Upstream requires UID 0 but does not need Linux capabilities
+    security_opt:
+      - no-new-privileges:true  # Prevent subprocesses from acquiring additional privileges
+
+    # Let Docker disable IPv6 in this container before the PIA scripts start
+    sysctls:
+      net.ipv6.conf.all.disable_ipv6: ${PRIVATEERR_IPV6_DISABLED}      # Apply to existing interfaces in this namespace
+      net.ipv6.conf.default.disable_ipv6: ${PRIVATEERR_IPV6_DISABLED}  # Apply to new interfaces in this namespace
 
     # Apply Docker labels to the container
     labels: *disable-watchtower-updates  # VPN bootstrap component; update intentionally

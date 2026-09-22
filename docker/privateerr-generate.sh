@@ -11,6 +11,7 @@
 #
 # The script:
 #   - Runs the PIA setup script from the configured PIA script directory.
+#   - Leaves IPv6 unchanged when the container runtime has already disabled it.
 #   - Expects PIA_CONNECT=false so PIA writes a WireGuard config instead of starting a tunnel.
 #   - Prefixes log lines so upstream PIA output is clearly separated from Privateerr output.
 #   - Extracts the generated WireGuard endpoint from wg0.conf.
@@ -93,6 +94,18 @@ mkdir -p \
 #
 : > "${privateerr_run_log_path}"
 touch "${PRIVATEERR_LOG_PATH}"
+
+#
+# Avoid redundant upstream writes when Docker has already disabled IPv6 in this namespace.
+# Keep the original request when IPv6 remains enabled so existing privileged deployments still work.
+#
+if [[ -n "${DISABLE_IPV6:-}" && "${DISABLE_IPV6}" != [nN]* ]] \
+    && [[ -r /proc/sys/net/ipv6/conf/all/disable_ipv6 && -r /proc/sys/net/ipv6/conf/default/disable_ipv6 ]] \
+    && [[ "$(sysctl -n net.ipv6.conf.all.disable_ipv6)" == 1 ]] \
+    && [[ "$(sysctl -n net.ipv6.conf.default.disable_ipv6)" == 1 ]]; then
+    log_privateerr "IPv6 is already disabled in this container; upstream will leave it unchanged."
+    export DISABLE_IPV6=no
+fi
 
 #
 # Run upstream scripts from their own directory so their relative paths remain valid.

@@ -16,6 +16,7 @@ import argparse
 import base64
 import json
 import os
+import re
 import secrets
 import shutil
 import socket
@@ -119,10 +120,28 @@ def main(env_file=None, smoke=False):
 
             # Start real PIA generation only when the caller supplied a credential file.
             if env_file is not None:
+                # Smoke mode models an image-only upgrade with the legacy container options.
+                isolation = (
+                    ["--privileged"]
+                    if smoke
+                    else [
+                        "--cap-drop",
+                        "ALL",
+                        "--security-opt",
+                        "no-new-privileges:true",
+                        "--sysctl",
+                        "net.ipv6.conf.all.disable_ipv6=1",
+                        "--sysctl",
+                        "net.ipv6.conf.default.disable_ipv6=1",
+                    ]
+                )
+                recovery_environment = [] if smoke else ["--env", "PRIVATEERR_AUTO_RECOVER=true"]
                 privateerr = docker(
                     "create",
                     "--name",
                     f"{RUN_ID}-privateerr",
+                    *isolation,
+                    *recovery_environment,
                     "--label",
                     f"{LABEL}={RUN_ID}",
                     "--network",
@@ -136,8 +155,6 @@ def main(env_file=None, smoke=False):
                     "--env",
                     "PRIVATEERR_GLUETUN_API_KEY",
                     "--env",
-                    f"PRIVATEERR_AUTO_RECOVER={str(not smoke).lower()}",
-                    "--env",
                     "PRIVATEERR_KEEPALIVE=true",
                     "--env",
                     "VPN_PROTOCOL=wireguard",
@@ -150,7 +167,7 @@ def main(env_file=None, smoke=False):
                     "--env",
                     "DIP_TOKEN=no",
                     "--env",
-                    "DISABLE_IPV6=no",
+                    "DISABLE_IPV6=yes",
                     "--env",
                     "AUTOCONNECT=false",
                     "--env",
@@ -288,6 +305,7 @@ def main(env_file=None, smoke=False):
                     print(docker("logs", validator).stdout)
                     raise RuntimeError("Buccaneerr rejected the recovery-disabled stack")
                 wait_application_port(qbittorrent, config)
+                validate_privateerr_isolation(privateerr, legacy=True)
                 print(
                     "PASS: recovery-disabled generation, Gluetun startup, and Buccaneerr forwarding validation.",
                     flush=True,
@@ -378,6 +396,7 @@ def main(env_file=None, smoke=False):
             # Exercise real endpoint failure and recovery when credentials were supplied.
             if env_file is not None:
                 live_recovery(gluetun, probe, privateerr, qbittorrent, config, request)
+                validate_privateerr_isolation(privateerr)
                 return
 
             # Exercise actual application preferences without needing a PIA account in CI.
@@ -468,6 +487,46 @@ def main(env_file=None, smoke=False):
                     and json.loads(result.stdout)[0]["Labels"].get(LABEL) == RUN_ID
                 ):
                     docker("network", "rm", network)
+
+
+def validate_privateerr_isolation(container: str, *, legacy: bool = False) -> None:
+    """Check runtime privileges and clean upstream logs after real generation or recovery."""
+    info = json.loads(docker("inspect", container).stdout)[0]
+    host = info["HostConfig"]
+    status = dict(
+        line.split(":", 1)
+        for line in docker("exec", container, "cat", "/proc/1/status").stdout.splitlines()
+        if ":" in line
+    )
+
+    if legacy:
+        assert host["Privileged"] is True
+        assert not any(
+            value.startswith("PRIVATEERR_AUTO_RECOVER=") for value in info["Config"]["Env"]
+        )
+    else:
+        assert host["Privileged"] is False
+        assert host["CapDrop"] == ["ALL"]
+        assert int(status["CapEff"].strip(), 16) == 0
+        assert status["NoNewPrivs"].strip() == "1"
+
+    ipv6 = docker(
+        "exec",
+        container,
+        "sysctl",
+        "-n",
+        "net.ipv6.conf.all.disable_ipv6",
+        "net.ipv6.conf.default.disable_ipv6",
+    )
+    assert ipv6.stdout.split() == ["1", "1"]
+    logs = docker("logs", container)
+    assert not re.search(
+        r"sysctl:|You should consider disabling IPv6|needs to be run as root|Read-only file system|Permission denied",
+        logs.stdout + logs.stderr,
+        re.IGNORECASE,
+    ), "Privateerr emitted an IPv6 or permission diagnostic"
+    mode = "legacy image-only upgrade" if legacy else "unprivileged recovery with zero capabilities"
+    print(f"PASS: {mode}; no IPv6 or permission warnings.", flush=True)
 
 
 def qbittorrent_preferences(container):

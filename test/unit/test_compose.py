@@ -57,6 +57,17 @@ class ComposeTests(unittest.TestCase):
         services = self.model()
         self.assertEqual(set(services), {"privateerr", "gluetun", "qbittorrent", "buccaneerr"})
         self.assertNotIn("profiles", services["qbittorrent"])
+        privateerr = services["privateerr"]
+        self.assertFalse(privateerr.get("privileged", False))
+        self.assertEqual(privateerr["cap_drop"], ["ALL"])
+        self.assertIn("no-new-privileges:true", privateerr["security_opt"])
+        self.assertEqual(
+            privateerr["sysctls"],
+            {
+                "net.ipv6.conf.all.disable_ipv6": "1",
+                "net.ipv6.conf.default.disable_ipv6": "1",
+            },
+        )
         self.assertIn("qbittorrent", services["buccaneerr"]["depends_on"])
         self.assertEqual(services["buccaneerr"]["environment"]["BUCCANEERR_TEST_RECOVERY"], "true")
         self.assertEqual(services["privateerr"]["environment"]["PRIVATEERR_AUTO_RECOVER"], "true")
@@ -96,5 +107,6 @@ class ComposeTests(unittest.TestCase):
         application = services["qbittorrent"]
         self.assertEqual(application["network_mode"], "service:gluetun")
         self.assertNotIn("ports", application)
+        self.assertTrue(application["depends_on"]["gluetun"]["restart"])
         self.assertEqual(len(application["volumes"]), 2)
         self.assertEqual(application["depends_on"]["gluetun"]["condition"], "service_healthy")
