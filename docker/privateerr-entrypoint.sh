@@ -5,279 +5,177 @@
 #
 # Licensed under the Apache License, Version 2.0.
 #
-# privateerr-entrypoint.sh: This script launches the unmodified PIA manual connection
-#                           scripts, then writes a dotenv metadata file for Gluetun.
+# privateerr-entrypoint.sh: Generate PIA configuration and optionally recover Gluetun.
 #
 # Usage: docker/privateerr-entrypoint.sh
 #
-# The script:
-#   - Runs the PIA setup script from the configured PIA script directory.
-#   - Expects PIA_CONNECT=false so PIA writes a WireGuard config instead of starting a tunnel.
-#   - Prefixes log lines so upstream PIA output is clearly separated from Privateerr output.
-#   - Extracts the generated WireGuard endpoint from wg0.conf.
-#   - Extracts the PIA WireGuard TLS server name from the PIA script output.
-#   - Looks up matching region metadata from the PIA server list when available.
-#   - Writes Privateerr metadata used by Gluetun port forwarding.
-#   - Creates a healthcheck marker after successful generation.
-#   - Optionally stays alive for Synology Container Manager compatibility.
-#
 
-#
-# Fail on any error, unset variable, or failed pipe command.
-#
 set -euo pipefail
+umask 077
 
-#
-# Default file locations.
-#
 : "${PIA_BIN_HOME:=/pia}"
+: "${PRIVATEERR_BIN_HOME:=$(cd "$(dirname "$0")" && pwd)}"
 : "${PIA_CONF_PATH:=/gluetun/wireguard/wg0.conf}"
+: "${PREFERRED_REGION:=ca}"
 : "${PRIVATEERR_METADATA_PATH:=/gluetun/wireguard/privateerr.env}"
 : "${PRIVATEERR_HEALTHCHECK_MARKER:=/healthcheck/privateerr.ready}"
 : "${PRIVATEERR_KEEPALIVE:=true}"
 : "${PRIVATEERR_LOG_PATH:=/privateerr-config/logs/privateerr.log}"
-: "${PRIVATEERR_SERVERLIST_URL:=https://serverlist.piaservers.net/vpninfo/servers/v6}"
+: "${PRIVATEERR_AUTO_RECOVER:=false}"
+: "${PRIVATEERR_GENERATION_TIMEOUT:=180}"
+export PIA_BIN_HOME PREFERRED_REGION PRIVATEERR_LOG_PATH
+
+privateerr_child_pid=""
+privateerr_stage=""
+privateerr_runtime="$(mktemp -d /tmp/privateerr.XXXXXX)"
 
 #
-# Script state used for consistent log output and graceful shutdown.
+# log_privateerr: Write a timestamped diagnostic without configuration or credentials.
 #
-privateerr_script_name="privateerr-entrypoint.sh"
-privateerr_keepalive_sleep_seconds=86400
-privateerr_run_log_path="/tmp/privateerr-run.log"
-keepalive_child_pid=""
-
-#
-# write_log_line: Write one line to stdout and the configured log file.
-#
-# Parameters: $1 - Complete log message.
+# Parameters: $* - Public diagnostic message.
 #
 # Returns: tee's exit status.
-#
-write_log_line() {
-    printf '%s\n' "$1" | tee -a "${PRIVATEERR_LOG_PATH}"
-}
-
-#
-# log_privateerr: Prefix log lines emitted by this script.
-#
-# Parameters: $* - Message fragments to write as one log line.
-#
-# Returns: write_log_line's exit status.
 #
 log_privateerr() {
-    write_log_line "[${privateerr_script_name}] $*"
+    printf '[privateerr-entrypoint.sh] %s %s\n' "$(date -u +%FT%TZ)" "$*" | tee -a "${PRIVATEERR_LOG_PATH}"
 }
 
 #
-# log_pia: Prefix log lines emitted by an upstream PIA script.
-#
-# Parameters: $1 - Upstream script name.
-#             $2 - Complete upstream log line.
-#
-# Returns: tee's exit status.
-#
-log_pia() {
-    pia_script_name="$1"
-    pia_log_line="$2"
-
-    printf '[%s] %s\n' "${pia_script_name}" "${pia_log_line}" \
-        | tee -a "${privateerr_run_log_path}" "${PRIVATEERR_LOG_PATH}"
-}
-
-#
-# shutdown_privateerr: Stop the keepalive loop when Docker requests shutdown.
+# cleanup_privateerr: Stop the active child group and remove temporary secret files.
 #
 # Parameters: None.
 #
-# Returns: Exits the entrypoint with status 0.
+# Returns: 0.
 #
-shutdown_privateerr() {
-    log_privateerr "Privateerr received stop signal and will leave port cleanly. ⚓"
-
-    if [[ -n "${keepalive_child_pid}" ]]; then
-        kill "${keepalive_child_pid}" >/dev/null 2>&1 || true
+cleanup_privateerr() {
+    if [[ -n "${privateerr_child_pid}" ]]; then
+        kill -TERM -- "-${privateerr_child_pid}" 2>/dev/null || kill "${privateerr_child_pid}" 2>/dev/null || true
+        wait "${privateerr_child_pid}" 2>/dev/null || true
     fi
+    [[ -z "${privateerr_stage}" ]] || rm -rf -- "${privateerr_stage}"
+    rm -rf -- "${privateerr_runtime}"
+}
+trap cleanup_privateerr EXIT
+trap 'exit 0' TERM INT
 
-    exit 0
+#
+# wait_privateerr: Sleep in an interruptible child so PID 1 handles Docker stop promptly.
+#
+# Parameters: $1 - Number of seconds to wait.
+#
+# Returns: 0 after the wait.
+#
+wait_privateerr() {
+    sleep "$1" &
+    privateerr_child_pid=$!
+    wait "${privateerr_child_pid}" || true
+    privateerr_child_pid=""
 }
 
 #
-# Handle Docker stop and Ctrl+C from docker compose without reporting failure.
+# generate_privateerr: Run upstream generation into fresh files with a wall-clock deadline.
 #
-trap shutdown_privateerr TERM INT
-
+# Parameters: None. Candidate endpoint variables optionally select an upstream registration.
 #
-# Ensure output directories exist before running the upstream scripts.
+# Returns: 0 for a validated pair; nonzero without modifying the active configuration.
 #
-mkdir -p \
-    "$(dirname "${PIA_CONF_PATH}")" \
-    "$(dirname "${PRIVATEERR_METADATA_PATH}")" \
-    "$(dirname "${PRIVATEERR_HEALTHCHECK_MARKER}")" \
-    "$(dirname "${PRIVATEERR_LOG_PATH}")"
-
-#
-# Clear any existing logs or config to ensure a clean run.
-#
-: > "${privateerr_run_log_path}"
-: > "${PRIVATEERR_LOG_PATH}"
-
-#
-# Run the upstream PIA setup exactly as shipped in the submodule.
-# Some PIA output mentions connecting to WireGuard because the upstream script
-# uses shared messaging. With PIA_CONNECT=false, Privateerr only writes config.
-#
-cd "${PIA_BIN_HOME}"
-./run_setup.sh 2>&1 | sed -E \
-    -e 's/(PIA_TOKEN=)[^[:space:]\\]+/\1[redacted]/g' \
-    -e 's/(PIA_USER=)[^[:space:]\\]+/\1[redacted]/g' \
-    -e 's/(Using existing token )[[:alnum:]]+/\1[redacted]/g' \
-    | while IFS= read -r pia_log_line; do
-        log_pia "run_setup.sh" "${pia_log_line}"
-    done
-
-#
-# The generated WireGuard config is the source of truth for the endpoint that Gluetun will use.
-#
-if [[ ! -f "${PIA_CONF_PATH}" ]]; then
-    log_privateerr "Privateerr could not find the generated WireGuard config at ${PIA_CONF_PATH}."
-    exit 1
-fi
-
-#
-# Extract the WireGuard endpoint from the generated config. The endpoint is in the form of "host:port".
-#
-endpoint_line="$(awk -F '=' '/^[[:space:]]*Endpoint[[:space:]]*=/ { gsub(/[[:space:]]/, "", $2); print $2; exit }' "${PIA_CONF_PATH}")"
-
-#
-# Validate that the endpoint was found and is in the expected format.
-#
-if [[ -z "${endpoint_line}" || "${endpoint_line}" != *:* ]]; then
-    log_privateerr "Privateerr could not read a WireGuard Endpoint from ${PIA_CONF_PATH}."
-    exit 1
-fi
-
-#
-# Split the endpoint into IP and port for metadata.
-#
-endpoint_ip="${endpoint_line%:*}"
-endpoint_port="${endpoint_line##*:}"
-wg_server_name="$(grep -Eo 'WG_HOSTNAME=[^[:space:]]+' "${privateerr_run_log_path}" | tail -n 1 | cut -d '=' -f 2- || true)"
-
-#
-# Start with useful fallbacks from the run itself. The server-list lookup below
-# will enrich these values when it can, but the same-run hostname is the most
-# trustworthy clue because it came from the script that generated wg0.conf.
-#
-region_id="unknown"
-region_name="unknown"
-port_forwarding_supported="${PIA_PF:-unknown}"
-geolocated_region="unknown"
-
-#
-# Fetch PIA's server list and match the generated endpoint IP back to its TLS
-# server name. Gluetun needs that name as SERVER_NAMES when using PIA port
-# forwarding with a custom WireGuard provider.
-#
-server_data="$(curl -fsSL "${PRIVATEERR_SERVERLIST_URL}" | head -n 1 || true)"
-
-#
-# Parse the server metadata from the fetched data.
-#
-server_metadata="$(printf '%s' "${server_data}" | jq -r --arg ENDPOINT_IP "${endpoint_ip}" --arg WG_SERVER_NAME "${wg_server_name}" '
-    .regions[]
-    | select(any(.servers.wg[]?; .ip == $ENDPOINT_IP or .cn == $WG_SERVER_NAME))
-    |   {
-            id,
-            name,
-            port_forward,
-            geo,
-            wg: (.servers.wg[] | select(.ip == $ENDPOINT_IP or .cn == $WG_SERVER_NAME))
-        }
-    |   [
-            .id,
-            .name,
-            (.port_forward | tostring),
-            (.geo | tostring),
-            .wg.cn
-        ]
-    | @tsv
-' 2>/dev/null | head -n 1 || true)"
-
-#
-# If the server metadata was found, extract the values into variables.
-#
-if [[ -n "${server_metadata}" ]]; then
-    IFS=$'\t' read -r region_id region_name port_forwarding_supported geolocated_region matched_wg_server_name <<< "${server_metadata}"
-
-    # If the matched WireGuard server name is not empty or "null", use it as the authoritative value.
-    if [[ -n "${matched_wg_server_name}" && "${matched_wg_server_name}" != "null" ]]; then
-        wg_server_name="${matched_wg_server_name}"
-    fi
-fi
-
-#
-# Validate that the WireGuard TLS server name was found. This is critical for Gluetun port forwarding.
-#
-if [[ -z "${wg_server_name}" || "${wg_server_name}" == "null" ]]; then
-    log_privateerr "Privateerr found ${endpoint_ip}, but could not find the WireGuard TLS server name."
-    exit 1
-fi
-
-#
-# dotenv_escape: Escape one value for a double-quoted dotenv assignment.
-#
-# Parameters: $1 - Raw dotenv value.
-#
-# Returns: Prints the escaped value.
-#
-dotenv_escape() {
-    printf '%s' "$1" | sed 's/\\/\\\\/g; s/"/\\"/g'
+generate_privateerr() {
+    [[ -z "${privateerr_stage}" ]] || rm -rf -- "${privateerr_stage}"
+    privateerr_stage="$(mktemp -d "$(dirname "${PIA_CONF_PATH}")/.privateerr-stage.XXXXXX")" || return 1
+    PIA_CONF_PATH="${privateerr_stage}/wg0.conf" PRIVATEERR_METADATA_PATH="${privateerr_stage}/privateerr.env" \
+        setsid timeout -s TERM -k 5 "${PRIVATEERR_GENERATION_TIMEOUT}" \
+        bash "${PRIVATEERR_BIN_HOME}/privateerr-generate.sh" </dev/null &
+    privateerr_child_pid=$!
+    local result=0
+    wait "${privateerr_child_pid}" || result=$?
+    privateerr_child_pid=""
+    [[ "${result}" == 0 ]] || return 1
+    jq -en --rawfile config "${privateerr_stage}/wg0.conf" \
+        --rawfile metadata "${privateerr_stage}/privateerr.env" \
+        -f "${PRIVATEERR_BIN_HOME}/privateerr-vpn-settings.jq" > "${privateerr_stage}/settings.json"
 }
 
 #
-# Write an env file that downstream projects can source or pass to Compose.
+# publish_privateerr: Replace complete files, with a replayable journal for interrupted publication.
 #
-cat > "${PRIVATEERR_METADATA_PATH}" <<EOF
+# Parameters: $1 - Directory containing validated wg0.conf and privateerr.env.
 #
-# Copyright 2025-2026 Scott Gigawatt
+# Returns: 0 when both files have been replaced.
 #
-# Licensed under the Apache License, Version 2.0.
-#
-# Generated by Privateerr. Do not edit manually.
-#
-PIA_WG_SERVER_NAME=${wg_server_name}
-PIA_WG_ENDPOINT_IP=${endpoint_ip}
-PIA_WG_ENDPOINT_PORT=${endpoint_port}
-PIA_REGION_ID=${region_id}
-PIA_REGION_NAME="$(dotenv_escape "${region_name}")"
-PIA_PORT_FORWARDING_SUPPORTED=${port_forwarding_supported}
-PIA_GEOLOCATED_REGION=${geolocated_region}
-EOF
+publish_privateerr() {
+    local source_dir="$1" journal
+    journal="$(dirname "${PIA_CONF_PATH}")/.privateerr-commit"
+    if [[ "${source_dir}" != "${journal}" ]]; then
+        mkdir -p "${journal}" || return 1
+        cp "${source_dir}/wg0.conf" "${journal}/wg0.conf" || return 1
+        cp "${source_dir}/privateerr.env" "${journal}/privateerr.env" || return 1
+        touch "${journal}/ready" || return 1
+    fi
+    cp "${journal}/wg0.conf" "${PIA_CONF_PATH}.new" || return 1
+    mv -f "${PIA_CONF_PATH}.new" "${PIA_CONF_PATH}" || return 1
+    cp "${journal}/privateerr.env" "${PRIVATEERR_METADATA_PATH}.new" || return 1
+    mv -f "${PRIVATEERR_METADATA_PATH}.new" "${PRIVATEERR_METADATA_PATH}" || return 1
+    rm -rf -- "${journal}"
+}
 
-log_privateerr "Privateerr wrote WireGuard config: ${PIA_CONF_PATH}"
-log_privateerr "Privateerr wrote Gluetun metadata: ${PRIVATEERR_METADATA_PATH}"
-log_privateerr "PIA_WG_SERVER_NAME=${wg_server_name}"
-
-#
-# Create a healthcheck marker so other containers can know when Privateerr has finished its work.
-#
-touch "${PRIVATEERR_HEALTHCHECK_MARKER}"
+# shellcheck source=docker/privateerr-recovery.sh
+source "${PRIVATEERR_BIN_HOME}/privateerr-recovery.sh"
 
 #
-# Keep the container alive for Synology Container Manager compatibility if requested.
+# main: Bootstrap configuration before starting optional monitoring or keepalive.
 #
-if [[ "${PRIVATEERR_KEEPALIVE}" == "true" ]]; then
-    log_privateerr "Privateerr charted the course and will keep watch for Synology. 🏴‍☠️"
+# Parameters: None.
+#
+# Returns: 0 for one-shot success; otherwise runs until shutdown.
+#
+main() {
+    mkdir -p "$(dirname "${PIA_CONF_PATH}")" "$(dirname "${PRIVATEERR_METADATA_PATH}")" \
+        "$(dirname "${PRIVATEERR_HEALTHCHECK_MARKER}")" "$(dirname "${PRIVATEERR_LOG_PATH}")"
+    rm -f "${PRIVATEERR_HEALTHCHECK_MARKER}"
+    touch "${PRIVATEERR_LOG_PATH}"
 
-    #
-    # Keep the container alive with a repeatable sleep instead of a single
-    # infinite command. The default sleep value is 86400 seconds, which is 24
-    # hours. The background child process can be killed by the signal trap
-    # above, which lets Docker stop the container cleanly with exit code 0.
-    #
-    while true; do
-        sleep "${privateerr_keepalive_sleep_seconds}" &
-        keepalive_child_pid="$!"
-        wait "${keepalive_child_pid}" || true
-    done
+    if [[ ! "${PRIVATEERR_GENERATION_TIMEOUT}" =~ ^[1-9][0-9]{0,3}$ ]]; then
+        log_privateerr "PRIVATEERR_GENERATION_TIMEOUT must be between 1 and 9999 seconds."
+        exit 1
+    fi
+    if [[ "${PRIVATEERR_AUTO_RECOVER}" != true && "${PRIVATEERR_AUTO_RECOVER}" != false ]]; then
+        log_privateerr "PRIVATEERR_AUTO_RECOVER must be true or false."
+        exit 1
+    fi
+
+    if [[ "${PRIVATEERR_AUTO_RECOVER}" == true ]]; then
+        configure_recovery
+    fi
+
+    # Finish a previously verified publication before allowing Gluetun to start.
+    privateerr_journal="$(dirname "${PIA_CONF_PATH}")/.privateerr-commit"
+    if [[ -f "${privateerr_journal}/ready" ]]; then
+        publish_privateerr "${privateerr_journal}"
+    else
+        rm -rf -- "${privateerr_journal}"
+    fi
+
+    # Recovery restarts reuse valid persisted files; normal one-shot runs still regenerate.
+    if [[ "${PRIVATEERR_AUTO_RECOVER}" == true ]] && \
+        jq -en --rawfile config "${PIA_CONF_PATH}" --rawfile metadata "${PRIVATEERR_METADATA_PATH}" \
+            -f "${PRIVATEERR_BIN_HOME}/privateerr-vpn-settings.jq" > "${privateerr_runtime}/persisted.json" 2>/dev/null; then
+        log_privateerr "Reusing validated configuration; Gluetun health will determine whether refresh is needed."
+    else
+        generate_privateerr
+        publish_privateerr "${privateerr_stage}"
+    fi
+    touch "${PRIVATEERR_HEALTHCHECK_MARKER}"
+    log_privateerr "Configuration is ready for Gluetun."
+
+    if [[ "${PRIVATEERR_AUTO_RECOVER}" == true ]]; then
+        monitor_gluetun
+    elif [[ "${PRIVATEERR_KEEPALIVE}" == true ]]; then
+        while true; do
+            wait_privateerr 86400
+        done
+    fi
+}
+
+if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
+    main
 fi

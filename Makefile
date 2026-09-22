@@ -28,6 +28,7 @@ BUILD_PLATFORMS=build-platforms
 TEST=test
 TEST_MAKE_HELPERS=test-make-helpers
 TEST_WORKFLOWS=test-workflows
+TEST_RECOVERY=test-recovery
 TEST_E2E=test-e2e
 BACKUP=backup
 RESTORE_TEST_CONFIG=restore-test-config
@@ -64,6 +65,7 @@ COMMON_TARGETS= \
 	$(TEST) \
 	$(TEST_MAKE_HELPERS) \
 	$(TEST_WORKFLOWS) \
+	$(TEST_RECOVERY) \
 	$(TEST_E2E) \
 	$(BACKUP) \
 	$(RESTORE_TEST_CONFIG) \
@@ -167,6 +169,7 @@ MAKE_HELPERS_TEST_CMD     ?= test/helpers/test-make-helpers.sh
 COMPOSE_NUKE_TEST_CMD     ?= test/helpers/test-compose-nuke.sh
 BASE_IMAGES_TEST_CMD      ?= test/helpers/test-dockerfile-base-images.sh
 WORKFLOW_HELPERS_TEST_CMD ?= test/helpers/test-workflow-helpers.sh
+RECOVERY_TEST_CMD         ?= test/helpers/test-recovery.sh
 POLICY_HELPERS_TEST_CMD   ?= test/helpers/test-policy-checks.sh
 BUILD_PIN_POLICY_TEST_CMD ?= test/policy/check-build-pin-policy.sh
 IMAGE_TAG_POLICY_TEST_CMD ?= test/policy/check-image-tag-policy.sh
@@ -536,10 +539,11 @@ $(BUILD_PLATFORMS): $(BUILD_DEPENDS) $(ENSURE_BUILDX_BUILDER)
 # Dependencies:
 #   $(TEST_MAKE_HELPERS) - Test reusable Make and Compose helpers.
 #   $(TEST_WORKFLOWS) - Test workflow payload and registry helpers.
+#   $(TEST_RECOVERY) - Test the optional Gluetun recovery state machine.
 #
-$(TEST): $(TEST_MAKE_HELPERS) $(TEST_WORKFLOWS)
+$(TEST): $(TEST_MAKE_HELPERS) $(TEST_WORKFLOWS) $(TEST_RECOVERY)
+	bash -n docker/privateerr-entrypoint.sh docker/privateerr-generate.sh docker/privateerr-recovery.sh
 	sh -n docker/privateerr-date.sh \
-		docker/privateerr-entrypoint.sh \
 		docker/privateerr-healthcheck.sh \
 		config/gluetun/scripts/gluetun-entrypoint-wrapper.sh \
 		test/buccaneerr-entrypoint.sh
@@ -566,6 +570,14 @@ $(TEST_WORKFLOWS):
 	$(BUILD_PIN_POLICY_TEST_CMD)
 	$(IMAGE_TAG_POLICY_TEST_CMD)
 	$(POLICY_HELPERS_TEST_CMD)
+
+#
+# $(TEST_RECOVERY): Tests recovery decisions without Docker or PIA credentials.
+#
+# Dependencies: bash and jq.
+#
+$(TEST_RECOVERY):
+	$(RECOVERY_TEST_CMD)
 
 #
 # $(TEST_E2E): Starts the full stack once and runs the Buccaneerr.
@@ -667,6 +679,7 @@ $(HELP):
 	$(call help_line,$(BUILD),Build the Privateerr image.)
 	$(call help_line,$(BUILD_PLATFORMS),Check every published image architecture.)
 	$(call help_line,$(TEST),Run policy and automation-helper tests.)
+	$(call help_line,$(TEST_RECOVERY),Test automatic recovery without PIA credentials.)
 	$(call help_line,$(TEST_MAKE_HELPERS),Test reusable Make and Compose helpers.)
 	$(call help_line,$(TEST_WORKFLOWS),Test workflow helpers and shared publishing policies.)
 	$(call help_line,$(TEST_E2E),Run the live Privateerr and Gluetun test.)

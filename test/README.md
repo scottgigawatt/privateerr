@@ -112,3 +112,28 @@ make nuke
 `clean-test` uses the volume-preserving `down` path and restores the examples. `nuke` additionally removes project containers, networks, volumes, images, and the `privateerr-local` Buildx cache, but it leaves `.env`, `backups/`, and the persistent config directory intact. Shared or in-use base images are retained.
 
 Run cleanup before committing after any real end-to-end voyage. Future ye will thank past ye for not smuggling secrets into the cargo hold. 🏴‍☠️
+
+## Test automatic recovery
+
+`make test-recovery` runs deterministic recovery tests with Bash and jq, without Docker or PIA credentials. It is also part of `make test`.
+
+Build a local image and exercise generation failures and shutdown inside its actual runtime:
+
+```sh
+docker build -t privateerr:recovery-review docker
+docker run --rm --network none -v "$PWD:/src:ro" --entrypoint bash privateerr:recovery-review /src/test/runtime/test-generation.sh
+```
+
+Verify authenticated settings replacement against Gluetun v3.41.3:
+
+```sh
+python3 test/runtime/test-recovery-api.py
+```
+
+The API test creates uniquely named, labeled containers and a network, verifies their labels before cleanup, and uses temporary generated keys. It checks changed keys, addresses, endpoint and server name, preservation of unrelated settings, rejected invalid updates, and unchanged container/network identity. Without credentials, it does not establish a real PIA tunnel. To exercise generation, sustained endpoint failure, automatic endpoint rotation, saved configuration, port forwarding, shared-network client connectivity, and traffic blocking outside the VPN, provide the path to an environment file containing real PIA credentials:
+
+```sh
+python3 test/runtime/test-recovery-api.py --env-file .env
+```
+
+The live test reads only the required credentials from Compose's resolved environment, keeps generated state in a temporary directory, blocks the current endpoint only inside the test Gluetun container, and cleans up its labeled resources on exit. It does not modify existing deployments or the supplied environment file. The ordinary deployment smoke test remains `make test-e2e`; run `make clean-test` afterward.

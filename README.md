@@ -134,6 +134,23 @@ PIA_GEOLOCATED_REGION=false
 </details>
 <!-- markdownlint-enable MD033 -->
 
+## Select a PIA region 🧭
+
+Automatic selection remains enabled by default. To use a selected region, set these values in `.env`, then recreate the stack with `make up`:
+
+```dotenv
+PIA_AUTOCONNECT=false
+PIA_PREFERRED_REGION=ca
+```
+
+`PIA_PREFERRED_REGION` defaults to `ca`, matching Plundarr. Replace it with another PIA region ID when needed. `PIA_AUTOCONNECT=true` overrides the preferred region.
+
+## Recover stale VPN connections ⚓
+
+Privateerr can optionally monitor Gluetun and refresh stale PIA WireGuard settings through Gluetun's authenticated control API. It keeps Gluetun's container running and needs no extra service or Docker socket. Recovery is disabled by default, preserving existing deployments.
+
+See [automatic Gluetun recovery](docs/automatic-recovery.md) for setup, API authentication, timing, and limitations. Gluetun remains responsible for the VPN tunnel and port forwarding.
+
 ## Enable PIA port forwarding 🚪
 
 Set `PIA_PF=true` in `.env`, then regenerate the files:

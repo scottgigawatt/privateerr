@@ -49,7 +49,6 @@ services:
         IMAGE_VERSION: ${PRIVATEERR_TAG}                       # OCI image version
     container_name: privateerr-${PRIVATEERR_TAG}               # Container name including the tag
     restart: no                                                # Container will not restart automatically
-    network_mode: bridge                                       # Use Docker's default bridge network
     hostname: privateerr                                       # Set hostname inside the container
     privileged: true                                           # Required for upstream IPv6 sysctl behavior
 
@@ -63,6 +62,7 @@ services:
       DISABLE_IPV6: ${PIA_DISABLE_IPV6}          # Disable IPv6: yes or no
       DIP_TOKEN: ${PIA_DIP_TOKEN}                # Optional PIA dedicated IP token
       AUTOCONNECT: ${PIA_AUTOCONNECT}            # Auto-select the server with lowest latency
+      PREFERRED_REGION: ${PIA_PREFERRED_REGION}  # Region used when AUTOCONNECT is false
       PIA_CONF_PATH: ${PIA_CONF_PATH}            # Path where WireGuard config will be generated
       PIA_CONNECT: ${PIA_CONNECT}                # Generate config without connecting to VPN
       PIA_PF: ${PIA_PF}                          # Select a port-forwarding-capable region
@@ -72,10 +72,18 @@ services:
       PIA_PASS: ${PIA_PASS}                      # PIA account password
 
       # Privateerr environment variables
-      PRIVATEERR_METADATA_PATH: ${PRIVATEERR_METADATA_PATH}            # Path where metadata will be generated
-      PRIVATEERR_HEALTHCHECK_MARKER: ${PRIVATEERR_HEALTHCHECK_MARKER}  # File written after successful generation
-      PRIVATEERR_KEEPALIVE: ${PRIVATEERR_KEEPALIVE}                    # Keep the container alive after successful generation
-      PRIVATEERR_LOG_PATH: ${PRIVATEERR_LOG_PATH}                      # Privateerr log file path
+      PRIVATEERR_METADATA_PATH: ${PRIVATEERR_METADATA_PATH}                        # Path where metadata will be generated
+      PRIVATEERR_HEALTHCHECK_MARKER: ${PRIVATEERR_HEALTHCHECK_MARKER}              # File written after successful generation
+      PRIVATEERR_KEEPALIVE: ${PRIVATEERR_KEEPALIVE}                                # Keep the container alive after successful generation
+      PRIVATEERR_LOG_PATH: ${PRIVATEERR_LOG_PATH}                                  # Privateerr log file path
+      PRIVATEERR_AUTO_RECOVER: ${PRIVATEERR_AUTO_RECOVER}                          # Opt in to API-based tunnel recovery
+      PRIVATEERR_GLUETUN_API_KEY: ${PRIVATEERR_GLUETUN_API_KEY}                    # Shared Gluetun control API key
+      PRIVATEERR_GLUETUN_URL: ${PRIVATEERR_GLUETUN_URL}                            # Internal control API address
+      PRIVATEERR_GLUETUN_HEALTH_URL: ${PRIVATEERR_GLUETUN_HEALTH_URL}              # Internal health endpoint
+      PRIVATEERR_RECOVERY_INTERVAL: ${PRIVATEERR_RECOVERY_INTERVAL}                # Seconds between probes
+      PRIVATEERR_RECOVERY_FAILURE_SECONDS: ${PRIVATEERR_RECOVERY_FAILURE_SECONDS}  # Grace period before refreshing
+      PRIVATEERR_RECOVERY_COOLDOWN: ${PRIVATEERR_RECOVERY_COOLDOWN}                # Initial recovery retry delay
+      PRIVATEERR_GENERATION_TIMEOUT: ${PRIVATEERR_GENERATION_TIMEOUT}              # Bound each PIA generation
 
     # Report healthy after the wrapper finishes successfully
     healthcheck:
@@ -124,12 +132,14 @@ services:
       HEALTH_TARGET_ADDRESSES: ${GLUETUN_HEALTH_TARGET_ADDRESSES}            # TCP/TLS targets Gluetun checks for VPN health
       HEALTH_ICMP_TARGET_IPS: ${GLUETUN_HEALTH_ICMP_TARGET_IPS}              # ICMP targets Gluetun checks for VPN health
       HEALTH_SERVER_ADDRESS: 127.0.0.1:9999                                  # Internal Gluetun health server address
-      HEALTH_RESTART_VPN: ${GLUETUN_HEALTH_RESTART_VPN}                      # Let Gluetun restart VPN when health checks fail
+      HEALTH_RESTART_VPN: ${GLUETUN_HEALTH_RESTART_VPN}                      # Gluetun restart policy when Privateerr recovery is disabled
       GLUETUN_DEFAULT_ENTRYPOINT: ${GLUETUN_DEFAULT_ENTRYPOINT}              # Original Gluetun entrypoint
 
       # Define Privateerr metadata environment variables for Gluetun
       PRIVATEERR_METADATA_PATH: ${PRIVATEERR_METADATA_PATH}
       PRIVATEERR_GLUETUN_METADATA_WAIT_SECONDS: ${PRIVATEERR_GLUETUN_METADATA_WAIT_SECONDS}
+      PRIVATEERR_AUTO_RECOVER: ${PRIVATEERR_AUTO_RECOVER}        # Enable the internal health listener and API role
+      PRIVATEERR_GLUETUN_API_KEY: ${PRIVATEERR_GLUETUN_API_KEY}  # Same key used by Privateerr
 
     # Mount host directories into the container
     volumes:
