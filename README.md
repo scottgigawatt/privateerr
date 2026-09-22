@@ -62,16 +62,29 @@ Privateerr runs before the VPN client and writes two files. Gluetun—a separate
 
 ```mermaid
 flowchart TB
-    PIA["PIA manual-connection scripts"]
-    Privateerr["Privateerr generates PIA WireGuard configuration"]
-    Files["wg0.conf + privateerr.env"]
-    Gluetun["Gluetun starts the VPN tunnel"]
-    Services["Compose services use Gluetun networking"]
+  accTitle: Privateerr configuration handoff
+  accDescr: Privateerr runs the unmodified PIA scripts and writes a WireGuard configuration plus server metadata. Gluetun uses those files to start the VPN tunnel, and other Compose services share Gluetun's protected network connection.
 
-    PIA -->|unmodified scripts| Privateerr
-    Privateerr -->|writes| Files
-    Files -->|WireGuard config and server metadata| Gluetun
-    Gluetun -->|protected network namespace| Services
+  PIA["📜 PIA manual-connection scripts"]
+  Privateerr["🏴‍☠️ Privateerr generates<br/>PIA WireGuard configuration"]
+  Files["📦 wg0.conf + privateerr.env"]
+  Gluetun["🛡️ Gluetun starts<br/>the VPN tunnel"]
+  Services["🚢 Compose services use<br/>Gluetun networking"]
+
+  PIA -->|"Unmodified scripts"| Privateerr
+  Privateerr -->|"Writes configuration and metadata"| Files
+  Files -->|"VPN configuration and PIA server name"| Gluetun
+  Gluetun -->|"Protected network namespace"| Services
+
+  classDef upstream fill:#fef3c7,stroke:#d97706,color:#451a03,stroke-width:2px
+  classDef generation fill:#dbeafe,stroke:#2563eb,color:#172554,stroke-width:2px
+  classDef handoff fill:#ede9fe,stroke:#7c3aed,color:#2e1065,stroke-width:2px
+  classDef connected fill:#dcfce7,stroke:#16a34a,color:#14532d,stroke-width:2px
+
+  class PIA upstream
+  class Privateerr generation
+  class Files handoff
+  class Gluetun,Services connected
 ```
 
 ## Generate a WireGuard configuration ⚡
