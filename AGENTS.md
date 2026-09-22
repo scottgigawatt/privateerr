@@ -179,6 +179,14 @@ Compose conventions:
 
 Privateerr and Gluetun both mount `./config/gluetun` because Privateerr writes files that Gluetun consumes.
 
+## Environment and Compose comments
+
+Keep `.env`, `example.env`, named environment examples, and service `environment.env` fragments focused on values. Reserve their end-of-line comments for settings operators must review or commonly customize: credentials, host paths, user/group IDs, time zones, and host-port conflicts. Use short action-oriented prompts such as `Edit before launch:`, `Edit for your host:`, or `Change only for a host-port conflict`. A generated secret that needs no manual action does not need an inline environment comment.
+
+Put behavior explanations, accepted values, units, limits, dependencies between settings, and implementation details in aligned end-of-line comments beside the corresponding Compose entries. Explain numeric and boolean meanings where they are not obvious; for example, `1 disables IPv6; 0 enables IPv6`. Keep useful environment section headings, but do not move routine per-variable explanations into standalone environment comments to bypass this rule. Defaults belong in environment files, never Compose interpolation fallbacks.
+
+Align inline comments within each logical group with at least two spaces before `#`. When updating a local environment file, preserve every assignment value exactly, including credentials and operator overrides. Never print or commit real environment values.
+
 ## Generated Files And Secrets
 
 Live runs overwrite:

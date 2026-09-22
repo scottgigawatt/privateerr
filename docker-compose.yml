@@ -59,8 +59,8 @@ services:
 
     # Let Docker disable IPv6 in this container before the PIA scripts start
     sysctls:
-      net.ipv6.conf.all.disable_ipv6: ${PRIVATEERR_IPV6_DISABLED}      # Apply to existing interfaces in this namespace
-      net.ipv6.conf.default.disable_ipv6: ${PRIVATEERR_IPV6_DISABLED}  # Apply to new interfaces in this namespace
+      net.ipv6.conf.all.disable_ipv6: ${PRIVATEERR_IPV6_DISABLED}      # Existing interfaces: 1 disables IPv6; 0 enables IPv6
+      net.ipv6.conf.default.disable_ipv6: ${PRIVATEERR_IPV6_DISABLED}  # New interfaces: 1 disables IPv6; 0 enables IPv6
 
     # Apply Docker labels to the container
     labels: *disable-watchtower-updates  # VPN bootstrap component; update intentionally
@@ -69,14 +69,14 @@ services:
     environment:
       # PIA manual connection environment variables
       VPN_PROTOCOL: ${PIA_VPN_PROTOCOL}          # VPN type: wireguard NOT openvpn
-      DISABLE_IPV6: ${PIA_DISABLE_IPV6}          # Disable IPv6: yes or no
+      DISABLE_IPV6: ${PIA_DISABLE_IPV6}          # yes requests upstream IPv6 disabling; no skips it
       DIP_TOKEN: ${PIA_DIP_TOKEN}                # Optional PIA dedicated IP token
-      AUTOCONNECT: ${PIA_AUTOCONNECT}            # Auto-select the server with lowest latency
-      PREFERRED_REGION: ${PIA_PREFERRED_REGION}  # Region used when AUTOCONNECT is false
+      AUTOCONNECT: ${PIA_AUTOCONNECT}            # true selects the lowest-latency server; false uses PREFERRED_REGION
+      PREFERRED_REGION: ${PIA_PREFERRED_REGION}  # PIA region ID used when AUTOCONNECT=false
       PIA_CONF_PATH: ${PIA_CONF_PATH}            # Path where WireGuard config will be generated
-      PIA_CONNECT: ${PIA_CONNECT}                # Generate config without connecting to VPN
-      PIA_PF: ${PIA_PF}                          # Select a port-forwarding-capable region
-      PIA_DNS: ${PIA_DNS}                        # Configure DNS settings inside wg0.conf
+      PIA_CONNECT: ${PIA_CONNECT}                # false generates files only; required for Gluetun recovery
+      PIA_PF: ${PIA_PF}                          # true selects a port-forwarding-capable region
+      PIA_DNS: ${PIA_DNS}                        # true includes PIA DNS settings in wg0.conf
       PIA_WG_SERVER_NAME: ${PIA_WG_SERVER_NAME}  # Optional generated WireGuard server name fallback
       PIA_USER: ${PIA_USER}                      # PIA account username
       PIA_PASS: ${PIA_PASS}                      # PIA account password
@@ -84,16 +84,16 @@ services:
       # Privateerr environment variables
       PRIVATEERR_METADATA_PATH: ${PRIVATEERR_METADATA_PATH}                            # Path where metadata will be generated
       PRIVATEERR_HEALTHCHECK_MARKER: ${PRIVATEERR_HEALTHCHECK_MARKER}                  # File written after successful generation
-      PRIVATEERR_KEEPALIVE: ${PRIVATEERR_KEEPALIVE}                                    # Keep the container alive after successful generation
+      PRIVATEERR_KEEPALIVE: ${PRIVATEERR_KEEPALIVE}                                    # true keeps Privateerr running after generation; required for recovery
       PRIVATEERR_LOG_PATH: ${PRIVATEERR_LOG_PATH}                                      # Privateerr log file path
-      PRIVATEERR_AUTO_RECOVER: ${PRIVATEERR_AUTO_RECOVER}                              # Enable API-based tunnel recovery
-      PRIVATEERR_GLUETUN_API_KEY: ${PRIVATEERR_GLUETUN_API_KEY}                        # Shared Gluetun control API key
-      PRIVATEERR_GLUETUN_URL: ${PRIVATEERR_GLUETUN_URL}                                # Internal control API address
-      PRIVATEERR_GLUETUN_HEALTH_URL: ${PRIVATEERR_GLUETUN_HEALTH_URL}                  # Internal health endpoint
-      PRIVATEERR_RECOVERY_INTERVAL_SECONDS: ${PRIVATEERR_RECOVERY_INTERVAL_SECONDS}    # Seconds between probes
-      PRIVATEERR_RECOVERY_FAILURE_SECONDS: ${PRIVATEERR_RECOVERY_FAILURE_SECONDS}      # Startup grace and failure threshold in seconds
-      PRIVATEERR_RECOVERY_COOLDOWN_SECONDS: ${PRIVATEERR_RECOVERY_COOLDOWN_SECONDS}    # Initial recovery retry delay in seconds
-      PRIVATEERR_GENERATION_TIMEOUT_SECONDS: ${PRIVATEERR_GENERATION_TIMEOUT_SECONDS}  # Maximum seconds for each PIA generation
+      PRIVATEERR_AUTO_RECOVER: ${PRIVATEERR_AUTO_RECOVER}                              # true enables API-based recovery; requires a shared API key
+      PRIVATEERR_GLUETUN_API_KEY: ${PRIVATEERR_GLUETUN_API_KEY}                        # Shared control API key: 20-128 alphanumeric characters; keep private
+      PRIVATEERR_GLUETUN_URL: ${PRIVATEERR_GLUETUN_URL}                                # Internal authenticated Gluetun control API
+      PRIVATEERR_GLUETUN_HEALTH_URL: ${PRIVATEERR_GLUETUN_HEALTH_URL}                  # Internal Gluetun tunnel health endpoint
+      PRIVATEERR_RECOVERY_INTERVAL_SECONDS: ${PRIVATEERR_RECOVERY_INTERVAL_SECONDS}    # Seconds between health probes
+      PRIVATEERR_RECOVERY_FAILURE_SECONDS: ${PRIVATEERR_RECOVERY_FAILURE_SECONDS}      # Startup grace and continuous failure threshold in seconds
+      PRIVATEERR_RECOVERY_COOLDOWN_SECONDS: ${PRIVATEERR_RECOVERY_COOLDOWN_SECONDS}    # Initial retry delay in seconds; doubles up to one hour
+      PRIVATEERR_GENERATION_TIMEOUT_SECONDS: ${PRIVATEERR_GENERATION_TIMEOUT_SECONDS}  # Maximum seconds for one PIA generation
 
     # Report healthy after the wrapper finishes successfully
     healthcheck:
@@ -260,7 +260,7 @@ services:
       QBITTORRENT_API_URL: ${QBITTORRENT_API_URL}                                  # Application API inside the shared VPN namespace
       BUCCANEERR_GLUETUN_URL: ${BUCCANEERR_GLUETUN_URL}                            # Local Gluetun control API
       PRIVATEERR_GLUETUN_API_KEY: ${PRIVATEERR_GLUETUN_API_KEY}                    # Shared key for read-only recovery verification
-      BUCCANEERR_TEST_RECOVERY: ${BUCCANEERR_TEST_RECOVERY}                        # Inject a stale endpoint and require automatic recovery
+      BUCCANEERR_TEST_RECOVERY: ${BUCCANEERR_TEST_RECOVERY}                        # true briefly interrupts the demo VPN and verifies automatic recovery
       BUCCANEERR_RECOVERY_WAIT_SECONDS: ${BUCCANEERR_RECOVERY_WAIT_SECONDS}        # Maximum seconds for automatic recovery
       BUCCANEERR_APPLICATION_WAIT_SECONDS: ${BUCCANEERR_APPLICATION_WAIT_SECONDS}  # Maximum seconds for application port synchronization
       BUCCANEERR_VPN_INTERFACE: ${BUCCANEERR_VPN_INTERFACE}                        # Expected application VPN interface
