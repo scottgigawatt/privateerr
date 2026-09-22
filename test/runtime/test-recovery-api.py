@@ -97,7 +97,7 @@ def main(env_file=None, smoke=False):
             # Mount the production forwarding hook and an isolated application configuration.
             scripts = config / "scripts"
             scripts.mkdir()
-            shutil.copyfile(
+            shutil.copy(
                 ROOT / "config/gluetun/scripts/qbittorrent-port-forwarding.sh",
                 scripts / "qbittorrent-port-forwarding.sh",
             )
@@ -382,13 +382,13 @@ def main(env_file=None, smoke=False):
 
             # Exercise actual application preferences without needing a PIA account in CI.
             hook = "/gluetun/scripts/qbittorrent-port-forwarding.sh"
-            docker("exec", gluetun, "sh", hook, "up", "45678", "tun0")
+            docker("exec", gluetun, hook, "up", "45678", "tun0")
             preferences = qbittorrent_preferences(qbittorrent)
             assert preferences["listen_port"] == 45678
             assert preferences["current_network_interface"] == "tun0"
             assert preferences["upnp"] is False
             assert preferences["random_port"] is False
-            docker("exec", gluetun, "sh", hook, "down")
+            docker("exec", gluetun, hook, "down")
             assert qbittorrent_preferences(qbittorrent)["current_network_interface"] == "lo"
             print(
                 "PASS: real qBittorrent accepts forwarded-port updates and safe down-hook binding."
