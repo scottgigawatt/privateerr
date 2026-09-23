@@ -24,6 +24,9 @@ on:
       - "Makefile"
       - "docker/Dockerfile"
       - "test/Dockerfile"
+      - "test/package.json"
+      - "test/package-lock.json"
+      - "docs/SECURITY.md"
       - "example.env"
   schedule:
     - cron: "29 8 * * 1"

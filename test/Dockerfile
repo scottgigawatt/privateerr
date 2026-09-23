@@ -12,13 +12,25 @@
 ARG ALPINE_TAG=3.24@sha256:294b683cb724975bec92580e1e685676bd4b50bda910ddb8c51d4cabeaec77e6
 
 #
-# Stage 1 of 4: Obtain the same static ShellCheck binary for every supported CPU.
+# Stage 1 of 6: Obtain the same static ShellCheck binary for every supported CPU.
 # The official image includes ARMv6, which also runs on ARMv7 where Alpine lacks the package.
 #
 FROM koalaman/shellcheck:v0.11.0@sha256:61862eba1fcf09a484ebcc6feea46f1782532571a34ed51fedf90dd25f925a8d AS shellcheck
 
 #
-# Stage 2 of 4: Keep all validation tools in the test-only Buccaneerr image.
+# Stage 2 of 6: Obtain the current Docker client without a daemon or extra plugins.
+# Alpine's packaged client lags behind upstream security releases.
+#
+FROM docker:29.8.1-cli@sha256:018edbc908e08fcc9dbf029c812c34251e9b4719e6f71ca0e5eae2a987d014ca AS docker-cli
+
+#
+# Stage 3 of 6: Obtain the same reviewed Compose client used by Maraudarr.
+# Copying the standalone binary avoids Alpine's older embedded Go dependencies.
+#
+FROM docker/compose-bin:v5.5.1@sha256:14162382692aae43977f79effa64a499d61de19d4645461881daaf88773f7e74 AS compose
+
+#
+# Stage 4 of 6: Keep all validation tools in the test-only Buccaneerr image.
 #
 FROM alpine:${ALPINE_TAG} AS tools
 
@@ -31,6 +43,9 @@ ARG ALPINE_TAG=3.24@sha256:294b683cb724975bec92580e1e685676bd4b50bda910ddb8c51d4
 # Default install locations and image metadata that can be overridden using build args.
 #
 ARG BUCCANEERR_BIN_HOME=/buccaneerr
+ARG EDGE_APK_REPOSITORY=https://dl-cdn.alpinelinux.org/alpine/edge/main
+ARG NGHTTP2_APK_MIN_VERSION=1.70.0-r0
+ARG SETUPTOOLS_APK_MIN_VERSION=83.0.0-r0
 ARG IMAGE_CREATED=unknown
 ARG IMAGE_REVISION=unknown
 ARG IMAGE_VERSION=latest
@@ -61,19 +76,17 @@ LABEL org.opencontainers.image.title="Buccaneerr" \
 #
 # Upgrade the base OpenSSL runtime libraries to Alpine's current fixed release,
 # then install validation tools. These stay out of the production image.
+# Use fixed nghttp2 and setuptools from edge until stable includes their security updates.
+# BusyBox supplies the portable AWK and core utilities used by the tests.
 #
 RUN apk upgrade --no-cache libcrypto3 libssl3 && \
     apk add --no-cache \
         bash \
         ca-certificates \
         curl \
-        docker-cli \
-        docker-cli-compose \
         git \
         make \
-        gawk \
         grep \
-        coreutils \
         jq \
         iptables \
         python3 \
@@ -81,12 +94,32 @@ RUN apk upgrade --no-cache libcrypto3 libssl3 && \
         actionlint \
         pre-commit \
         nodejs \
-        npm
+        npm && \
+    apk add --no-cache \
+        --repository="${EDGE_APK_REPOSITORY}" \
+        "nghttp2-libs>=${NGHTTP2_APK_MIN_VERSION}" \
+        "py3-setuptools>=${SETUPTOOLS_APK_MIN_VERSION}"
 
 COPY --from=shellcheck /bin/shellcheck /usr/local/bin/shellcheck
+COPY --from=docker-cli /usr/local/bin/docker /usr/local/bin/docker
+COPY --from=compose /docker-compose /usr/local/lib/docker/cli-plugins/docker-compose
 
-# Keep spelling and strict typing tools in the test image with fixed releases.
-RUN npm install --global cspell@9.2.2 pyright@1.1.414 && npm cache clean --force
+#
+# Copy the integrity-checked dependency manifests for the test tools.
+#
+COPY test/package.json test/package-lock.json /opt/tools/
+
+#
+# Install locked tools, then remove Alpine's bootstrap npm and cached packages.
+#
+RUN npm ci --prefix /opt/tools --omit=dev --ignore-scripts && \
+    apk del npm && \
+    rm -rf /root/.npm
+
+#
+# Use the locked spelling, typing, and npm commands throughout the test image.
+#
+ENV PATH="/opt/tools/node_modules/.bin:${PATH}"
 
 #
 # Copy over the project license and Buccaneerr script, then make the script executable.
@@ -112,7 +145,7 @@ RUN chmod +x "${BUCCANEERR_BIN_HOME}/buccaneerr-entrypoint.sh"
 CMD [ "bash", "-lc", "${BUCCANEERR_BIN_HOME}/buccaneerr-entrypoint.sh" ]
 
 #
-# Stage 3 of 4: Extend Buccaneerr with the locked developer documentation toolchain.
+# Stage 5 of 6: Extend Buccaneerr with the locked developer documentation toolchain.
 # This optional target keeps documentation packages out of ordinary test and production images.
 #
 FROM tools AS docs
@@ -126,7 +159,7 @@ RUN /opt/docs/bin/python -m pip install --no-cache-dir --disable-pip-version-che
 ENV PATH="/opt/docs/bin:${PATH}"
 
 #
-# Stage 4 of 4: Publish the ordinary Buccaneerr tools without optional documentation dependencies.
+# Stage 6 of 6: Publish the ordinary Buccaneerr tools without optional documentation dependencies.
 # Keeping this stage last preserves the default image built by Compose and release workflows.
 #
 FROM tools AS buccaneerr

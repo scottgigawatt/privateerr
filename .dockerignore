@@ -18,6 +18,7 @@
 # Test logs, bytecode, and workstation metadata remain local.
 #
 test/logs/
+**/node_modules/
 **/__pycache__/
 **/*.py[cod]
 **/.DS_Store

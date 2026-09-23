@@ -1,0 +1,12 @@
+{
+    "name": "@privateerr/buccaneerr-tools",
+    "version": "1.0.0",
+    "private": true,
+    "description": "Hash-locked spelling, strict typing, and Node environment tools for Buccaneerr.",
+    "license": "Apache-2.0",
+    "dependencies": {
+        "cspell": "9.2.2",
+        "npm": "11.19.1",
+        "pyright": "1.1.414"
+    }
+}
