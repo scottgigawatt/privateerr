@@ -25,7 +25,9 @@ class ForwardingTests(unittest.TestCase):
         self, *args: str, post_fails: bool = False, unavailable: bool = False, enabled: bool = True
     ) -> subprocess.CompletedProcess[str]:
         """Return the real shell helper's status and logs with a deterministic API stub."""
+
         with tempfile.TemporaryDirectory() as temporary:
+            # Simulate API unavailability separately from a rejected preferences update.
             wget = Path(temporary) / "wget"
             wget.write_text(
                 "#!/bin/sh\n"
@@ -43,6 +45,7 @@ class ForwardingTests(unittest.TestCase):
                     "PATH": temporary + ":" + os.environ["PATH"],
                     "POST_FAILS": str(post_fails).lower(),
                     "UNAVAILABLE": str(unavailable).lower(),
+                    # Attempt readiness once so failure tests do not spend time retrying.
                     "QBITTORRENT_API_WAIT_SECONDS": "0",
                     "QBITTORRENT_PORT_SYNC": str(enabled).lower(),
                 },
@@ -53,6 +56,8 @@ class ForwardingTests(unittest.TestCase):
             )
 
     def test_failed_update_is_not_logged_as_success(self):
+        """Report rejected up and down updates as failures rather than successful changes."""
+
         for args in (("up", "45678", "tun0"), ("down",)):
             with self.subTest(args=args):
                 result = self.run_hook(*args, post_fails=True)
@@ -61,6 +66,8 @@ class ForwardingTests(unittest.TestCase):
                 self.assertNotIn("Reset qBittorrent", result.stdout)
 
     def test_invalid_input_never_reaches_success(self):
+        """Reject invalid ports and unsafe or unsupported interface names."""
+
         for port, interface in (
             ("0", "tun0"),
             ("65536", "tun0"),
@@ -72,18 +79,25 @@ class ForwardingTests(unittest.TestCase):
                 self.assertNotEqual(self.run_hook("up", port, interface).returncode, 0)
 
     def test_readiness_timeout_is_reported(self):
+        """Explain when the application API cannot become ready within its deadline."""
+
         result = self.run_hook("up", "45678", "tun0", unavailable=True)
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("did not become ready", result.stdout)
 
     def test_successful_update_is_reported(self):
+        """Acknowledge an update only after the application accepts it."""
+
         result = self.run_hook("up", "45678", "tun0")
         self.assertEqual(result.returncode, 0)
         self.assertIn("Set qBittorrent", result.stdout)
 
     def test_disabled_application_does_not_wait_for_api(self):
+        """Exit quietly when port synchronization is disabled."""
+
         for args in (("up", "45678", "tun0"), ("down",)):
             with self.subTest(args=args):
+                # An unavailable API must not turn an explicit opt-out into an error or log message.
                 result = self.run_hook(*args, enabled=False, unavailable=True)
                 self.assertEqual(result.returncode, 0)
                 self.assertEqual(result.stdout, "")

@@ -116,6 +116,6 @@ Run `make test-types` to check application code and tests with the pinned Pyrigh
 
 ## Build the developer documentation
 
-Run `make docs` after changing guides, Python signatures, or docstrings. Buccaneerr installs the same exact, hash-verified MkDocs toolchain used by the Plundarr developer site and builds Privateerr's generated Python reference in strict mode. Use `make docs-serve` to preview the graphite and electric lime theme locally.
+Run `make docs` after changing guides, Python signatures, or docstrings. Buccaneerr installs the same exact, hash-verified MkDocs toolchain used by the Plundarr developer site and builds Privateerr's generated Python reference in strict mode. Use `make docs-serve` to preview the midnight navy and sapphire blue with icy blue accents theme locally.
 
 Follow the [Python documentation conventions](development/privateerr/documentation.md) and [testing guide](development/privateerr/testing.md). The Pages workflow publishes merged documentation from `main`; pull requests build the site without deployment permissions.

@@ -20,13 +20,19 @@ ROOT = Path(__file__).resolve().parents[2]
 
 
 class GenerationTests(unittest.TestCase):
+    """Exercise process lifecycle and file publication with deterministic upstream output."""
+
     def setUp(self):
+        """Build a disposable PIA fixture and isolate all supervisor output paths."""
+
         self.temporary = tempfile.TemporaryDirectory()
         self.addCleanup(self.temporary.cleanup)
         self.root = Path(self.temporary.name)
         self.pia = self.root / "pia"
         self.pia.mkdir()
         (self.root / "catalog").write_text('{"regions":[]}\n')
+
+        # Replace only upstream PIA setup; run the real entrypoint, supervisor, and shell adapter.
         setup = self.pia / "run_setup.sh"
         setup.write_text("""#!/bin/sh
 set -eu
@@ -55,6 +61,8 @@ CONFIG
 printf 'WG_HOSTNAME=example-one\\nPIA_TOKEN=test-token-redact\\n'  # pragma: allowlist secret
 """)
         setup.chmod(0o700)
+
+        # Keep output and catalog access inside the temporary tree without contacting PIA.
         self.env = {
             **os.environ,
             "PIA_BIN_HOME": str(self.pia),
@@ -71,21 +79,29 @@ printf 'WG_HOSTNAME=example-one\\nPIA_TOKEN=test-token-redact\\n'  # pragma: all
         self.command = ["sh", str(ROOT / "docker/privateerr-entrypoint.sh")]
 
     def run_supervisor(self, **overrides: str) -> subprocess.CompletedProcess[bytes]:
+        """Run one bounded supervisor process with optional scenario overrides."""
+
         return subprocess.run(
             self.command, env=self.env | overrides, capture_output=True, timeout=12
         )
 
     def saved(self):
+        """Snapshot both published files for byte-for-byte preservation checks."""
+
         return tuple(
             Path(self.env[name]).read_bytes()
             for name in ("PIA_CONF_PATH", "PRIVATEERR_METADATA_PATH")
         )
 
     def test_success_redaction_and_failure_preservation(self):
+        """Keep secrets out of logs and retain the last valid pair after generation fails."""
+
         self.assertEqual(self.run_supervisor().returncode, 0)
         saved = self.saved()
         self.assertTrue((self.root / "ready").exists())
         self.assertNotIn("test-token-redact", (self.root / "privateerr.log").read_text())
+
+        # A failed replacement must preserve both published files and clear readiness.
         self.assertNotEqual(self.run_supervisor(TEST_FAIL="true").returncode, 0)
         self.assertEqual(self.saved(), saved)
         self.assertFalse((self.root / "ready").exists())
@@ -93,9 +109,13 @@ printf 'WG_HOSTNAME=example-one\\nPIA_TOKEN=test-token-redact\\n'  # pragma: all
         self.assertEqual(Path(self.env["PIA_CONF_PATH"]).stat().st_mode & 0o777, 0o600)
 
     def test_timeout_stops_generation_and_preserves_configuration(self):
+        """Cancel a hung generation without replacing the saved configuration."""
+
         self.assertEqual(self.run_supervisor().returncode, 0)
         saved = self.saved()
         started = time.monotonic()
+
+        # The fixture spawns a child process so timeout handling must stop the whole group.
         result = self.run_supervisor(TEST_HANG="true", PRIVATEERR_GENERATION_TIMEOUT_SECONDS="1")
         self.assertNotEqual(result.returncode, 0)
         self.assertLess(time.monotonic() - started, 8)
@@ -103,15 +123,22 @@ printf 'WG_HOSTNAME=example-one\\nPIA_TOKEN=test-token-redact\\n'  # pragma: all
         self.assert_child_stopped()
 
     def assert_child_stopped(self):
+        """Accept a reaped or terminated child, but never one that is still running."""
+
         pid = (self.root / "child.pid").read_text()
         status = Path(f"/proc/{pid}/stat")
+
         # A terminated orphan can briefly remain as a zombie until the container init reaps it.
         self.assertTrue(not status.exists() or status.read_text().split()[2] == "Z")
 
     def test_shutdown_interrupts_keepalive_and_active_generation(self):
+        """Honor termination while idle and while supervising an upstream child."""
+
         for active in (False, True):
             with self.subTest(active_generation=active):
                 (self.root / "ready").unlink(missing_ok=True)
+
+                # Capture output in a file so pipe backpressure cannot affect shutdown timing.
                 with tempfile.TemporaryFile() as output:
                     process = subprocess.Popen(
                         self.command,
@@ -120,20 +147,27 @@ printf 'WG_HOSTNAME=example-one\\nPIA_TOKEN=test-token-redact\\n'  # pragma: all
                         stdout=output,
                         stderr=output,
                     )
+
                     try:
+                        # Wait for the intended state before sending SIGTERM to avoid a startup race.
                         ready = self.root / ("child.pid" if active else "ready")
                         until = time.monotonic() + 8
+
                         while (
                             not ready.exists()
                             and process.poll() is None
                             and time.monotonic() < until
                         ):
                             time.sleep(0.05)
+
                         self.assertTrue(ready.exists())
                         process.send_signal(signal.SIGTERM)
                         self.assertEqual(process.wait(timeout=7), 0)
+
                         if active:
                             self.assert_child_stopped()
+
+                    # Reap the process even if an assertion fails before normal shutdown completes.
                     finally:
                         if process.poll() is None:
                             process.kill()
@@ -141,8 +175,11 @@ printf 'WG_HOSTNAME=example-one\\nPIA_TOKEN=test-token-redact\\n'  # pragma: all
 
     def test_existing_ipv6_settings_preserve_legacy_and_operator_choices(self):
         """Skip redundant writes only when both namespace settings satisfy an explicit request."""
+
         binary = self.root / "bin"
         binary.mkdir()
+
+        # Stub namespace reads so the test never changes kernel IPv6 settings.
         sysctl = binary / "sysctl"
         sysctl.write_text("""#!/bin/sh
 set -eu
@@ -155,6 +192,8 @@ esac
 """)
         sysctl.chmod(0o700)
         result_path = self.root / "ipv6-request"
+
+        # Only a fully disabled namespace may suppress a requested upstream sysctl write.
         cases = (
             ("yes", "1", "1", "no"),
             ("yes", "0", "0", "yes"),

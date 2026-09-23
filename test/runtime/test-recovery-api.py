@@ -44,6 +44,7 @@ def docker(
     *args: str, stdin: str | None = None, check: bool = True
 ) -> subprocess.CompletedProcess[str]:
     """Run Docker without printing output that could contain test credentials."""
+
     return subprocess.run(
         ["docker", *args],
         input=stdin,
@@ -61,8 +62,10 @@ def main(env_file: Path | None = None, smoke: bool = False) -> None:
     containers: list[str] = []
     privateerr: str | None = None
     network = None
+
     with tempfile.TemporaryDirectory(prefix=RUN_ID) as temporary:
         directory = Path(temporary)
+
         try:
             docker("pull", GLUETUN)
             network = docker(
@@ -92,12 +95,14 @@ def main(env_file: Path | None = None, smoke: bool = False) -> None:
                     "--environment",
                 ).stdout
                 values = dict(line.split("=", 1) for line in resolved.splitlines() if "=" in line)
+
                 if values.get("PIA_USER", "") in ("", "p1234567") or values.get("PIA_PASS", "") in (
                     "",
                     "abc123",
                     "shiverMeTimbers123",
                 ):
                     raise RuntimeError("Live test requires non-example PIA credentials")
+
                 os.environ["PIA_USER"] = values["PIA_USER"]
                 os.environ["PIA_PASS"] = values["PIA_PASS"]
                 os.environ["VPN_PORT_FORWARDING_USERNAME"] = values["PIA_USER"]
@@ -196,9 +201,11 @@ def main(env_file: Path | None = None, smoke: bool = False) -> None:
                         == 0
                     ):
                         break
+
                     time.sleep(2)
                 else:
                     raise RuntimeError("Privateerr did not generate an initial PIA configuration")
+
                 print(
                     "PASS: Privateerr generated a real PIA registration using the default ca region.",
                     flush=True,
@@ -283,13 +290,16 @@ def main(env_file: Path | None = None, smoke: bool = False) -> None:
             if smoke:
                 for _ in range(120):
                     state = json.loads(docker("inspect", gluetun).stdout)[0]["State"]
+
                     if state.get("Health", {}).get("Status") == "healthy":
                         break
+
                     time.sleep(2)
                 else:
                     raise RuntimeError(
                         "Gluetun did not become healthy during the compatibility test"
                     )
+
                 validator = docker(
                     "create",
                     "--name",
@@ -309,9 +319,11 @@ def main(env_file: Path | None = None, smoke: bool = False) -> None:
                 containers.append(validator)
                 docker("start", validator)
                 result = docker("wait", validator)
+
                 if result.stdout.strip() != "0":
                     print(docker("logs", validator).stdout)
                     raise RuntimeError("Buccaneerr rejected the recovery-disabled stack")
+
                 wait_application_port(qbittorrent, config)
                 assert privateerr is not None
                 validate_privateerr_isolation(privateerr, legacy=True)
@@ -345,6 +357,7 @@ def main(env_file: Path | None = None, smoke: bool = False) -> None:
                 authenticate: bool = True,
             ) -> tuple[str, str]:
                 """Return status and body without logging private API settings."""
+
                 args = [
                     "exec",
                     "-i",
@@ -360,16 +373,20 @@ def main(env_file: Path | None = None, smoke: bool = False) -> None:
                     "--request",
                     method,
                 ]
+
                 # Send authentication and optional JSON through stdin, never a key file or argv.
                 configuration: list[str] = []
+
                 if authenticate:
                     configuration.append(
                         "header = "
                         + json.dumps("X-API-Key: " + os.environ["PRIVATEERR_GLUETUN_API_KEY"])
                     )
+
                 if body is not None:
                     configuration.append('header = "Content-Type: application/json"')
                     configuration.append("data-binary = " + json.dumps(json.dumps(body)))
+
                 args.extend(["--config", "-", f"http://gluetun:8000{route}"])
                 response = docker(*args, stdin="\n".join(configuration) + "\n", check=False)
                 content, _, status = response.stdout.rpartition("\n")
@@ -391,8 +408,10 @@ def main(env_file: Path | None = None, smoke: bool = False) -> None:
                     "http://gluetun:8080/api/v2/app/preferences",
                     check=False,
                 )
+
                 if response.stdout == "403":
                     break
+
                 time.sleep(1)
             else:
                 raise RuntimeError("qBittorrent API did not require authentication off loopback")
@@ -400,11 +419,14 @@ def main(env_file: Path | None = None, smoke: bool = False) -> None:
             # Wait for authenticated API access before testing replacement settings.
             for _ in range(40):
                 status, _ = request("GET", "/v1/vpn/status")
+
                 if status == "200":
                     break
+
                 time.sleep(1)
             else:
                 raise RuntimeError("Gluetun control API did not become ready")
+
             assert request("GET", "/v1/vpn/settings", authenticate=False)[0] == "401"
 
             # Exercise real endpoint failure and recovery when credentials were supplied.
@@ -446,12 +468,15 @@ def main(env_file: Path | None = None, smoke: bool = False) -> None:
                 },
             }
             code, response = request("PUT", "/v1/vpn/settings", update)
+
             if code != "200":
                 response = response.replace(new_key, "[redacted]").replace(new_public, "[redacted]")
                 logs = docker("logs", gluetun).stdout + docker("logs", gluetun).stderr
+
                 for line in logs.splitlines():
                     if any(word in line.lower() for word in ("control", "role", "auth", "routes")):
                         print(line.replace(os.environ["PRIVATEERR_GLUETUN_API_KEY"], "[redacted]"))
+
                 print("Authenticated GET settings status:", request("GET", "/v1/vpn/settings")[0])
                 raise RuntimeError(f"Settings update returned HTTP {code}: {response[:500]}")
 
@@ -467,6 +492,8 @@ def main(env_file: Path | None = None, smoke: bool = False) -> None:
             }
             assert active["provider"]["name"] == "custom"
             assert active["provider"]["port_forwarding"]["enabled"] is False
+
+            # Settings replacement must preserve the container and the application's network namespace.
             after = json.loads(docker("inspect", gluetun).stdout)[0]
             assert before["State"]["StartedAt"] == after["State"]["StartedAt"]
             assert before["NetworkSettings"]["SandboxID"] == after["NetworkSettings"]["SandboxID"]
@@ -491,12 +518,16 @@ def main(env_file: Path | None = None, smoke: bool = False) -> None:
             # Delete only resources recorded by this run and still carrying its ownership label.
             for container in reversed(containers):
                 result = docker("inspect", container, check=False)
+
                 if result.returncode == 0:
                     labels = json.loads(result.stdout)[0]["Config"]["Labels"]
+
                     if labels.get(LABEL) == RUN_ID:
                         docker("rm", "--force", container)
+
             if network:
                 result = docker("network", "inspect", network, check=False)
+
                 if (
                     result.returncode == 0
                     and json.loads(result.stdout)[0]["Labels"].get(LABEL) == RUN_ID
@@ -506,6 +537,7 @@ def main(env_file: Path | None = None, smoke: bool = False) -> None:
 
 def validate_privateerr_isolation(container: str, *, legacy: bool = False) -> None:
     """Check runtime privileges and clean upstream logs after real generation or recovery."""
+
     info = json.loads(docker("inspect", container).stdout)[0]
     host = info["HostConfig"]
     status = dict(
@@ -514,6 +546,7 @@ def validate_privateerr_isolation(container: str, *, legacy: bool = False) -> No
         if ":" in line
     )
 
+    # Exercise image-only upgrades separately from the hardened deployment configuration.
     if legacy:
         assert host["Privileged"] is True
         assert not any(
@@ -525,6 +558,7 @@ def validate_privateerr_isolation(container: str, *, legacy: bool = False) -> No
         assert int(status["CapEff"].strip(), 16) == 0
         assert status["NoNewPrivs"].strip() == "1"
 
+    # Check effective namespace policy and logs, not merely the requested Compose settings.
     ipv6 = docker(
         "exec",
         container,
@@ -546,6 +580,7 @@ def validate_privateerr_isolation(container: str, *, legacy: bool = False) -> No
 
 def qbittorrent_preferences(container: str) -> dict[str, object]:
     """Read application preferences only over loopback within the shared VPN namespace."""
+
     result = docker(
         "exec",
         container,
@@ -556,8 +591,10 @@ def qbittorrent_preferences(container: str) -> dict[str, object]:
         "http://127.0.0.1:8080/api/v2/app/preferences",
         check=False,
     )
+
     if result.returncode:
         return {}
+
     try:
         return object_fields(json.loads(result.stdout))
     except ValueError:
@@ -566,19 +603,24 @@ def qbittorrent_preferences(container: str) -> dict[str, object]:
 
 def wait_qbittorrent(container: str) -> None:
     """Allow application initialization without exposing its temporary Web UI password."""
+
     for _ in range(90):
         if qbittorrent_preferences(container):
             return
+
         time.sleep(2)
+
     raise RuntimeError("qBittorrent Web API did not become ready")
 
 
 def wait_application_port(container: str, config: Path) -> None:
     """Require the application to adopt the live lease, interface, and mapping restrictions."""
+
     for _ in range(90):
         preferences = qbittorrent_preferences(container)
         lease = config / "forwarded_port"
         port = lease.read_text().strip() if lease.exists() else ""
+
         if (
             port.isdigit()
             and int(port) > 0
@@ -588,7 +630,9 @@ def wait_application_port(container: str, config: Path) -> None:
             and preferences.get("random_port") is False
         ):
             return
+
         time.sleep(2)
+
     raise RuntimeError("qBittorrent did not adopt Gluetun's forwarded port and VPN interface")
 
 
@@ -611,6 +655,7 @@ def live_recovery(
 
     def healthy():
         """Read tunnel health independently of Gluetun process status."""
+
         result = docker(
             "exec", probe, "curl", "-fsS", "--max-time", "5", "http://gluetun:9999", check=False
         )
@@ -618,19 +663,26 @@ def live_recovery(
 
     def wait_healthy():
         """Allow up to four minutes for a successful tunnel health probe."""
+
         for _ in range(120):
             if healthy():
                 return
+
             time.sleep(2)
+
         raise RuntimeError("Gluetun did not regain tunnel health")
 
     def wait_forwarding():
         """Wait for an assigned port without treating it as a tunnel health signal."""
+
         for _ in range(90):
             code, body = request("GET", "/v1/portforward")
+
             if code == "200" and json.loads(body).get("port", 0) > 0:
                 return
+
             time.sleep(2)
+
         raise RuntimeError("Gluetun did not restore PIA port forwarding")
 
     # Establish a working baseline before injecting a failure into the active endpoint.
@@ -651,8 +703,10 @@ def live_recovery(
         "exec", dependent, "curl", "-fsS", "--max-time", "20", "https://api.ipify.org"
     )
     direct = docker("exec", probe, "curl", "-fsS", "--max-time", "20", "https://api.ipify.org")
+
     if internet.stdout.strip() == direct.stdout.strip():
         raise RuntimeError("Dependent traffic is not using a distinct VPN exit")
+
     print(
         "PASS: initial PIA tunnel, forwarding, and shared-network client connectivity.", flush=True
     )
@@ -664,6 +718,7 @@ def live_recovery(
     for _ in range(180):
         if not healthy():
             break
+
         time.sleep(2)
     else:
         raise RuntimeError("Fault injection did not make the tunnel unhealthy")
@@ -681,8 +736,10 @@ def live_recovery(
         "https://1.1.1.1/cdn-cgi/trace",
         check=False,
     )
+
     if leak.returncode == 0:
         raise RuntimeError("Traffic escaped through eth0 during the VPN outage")
+
     print(
         "PASS: blocked endpoint caused an outage; direct non-VPN traffic remained blocked.",
         flush=True,
@@ -691,18 +748,24 @@ def live_recovery(
     # Require both a newly registered key and restored health before declaring recovery.
     for _ in range(150):
         code, body = request("GET", "/v1/vpn/settings")
+
         if code == "200":
             candidate = json.loads(body)
+
             if candidate["wireguard"]["private_key"] != old_key and healthy():
                 break
+
         time.sleep(2)
     else:
         # Keep failure diagnostics public and limited to controller status transitions.
         logs = docker("logs", privateerr, check=False)
+
         for line in (logs.stdout + logs.stderr).splitlines():
             if line.startswith("[privateerr-entrypoint.sh]"):
                 print(line)
+
         raise RuntimeError("Privateerr did not recover the blocked PIA endpoint")
+
     wait_forwarding()
     wait_application_port(qbittorrent, config)
 
@@ -710,6 +773,7 @@ def live_recovery(
     for _ in range(30):
         if not (config / "wireguard/.privateerr-pending").exists():
             break
+
         time.sleep(2)
     else:
         raise RuntimeError("Verified configuration was not persisted")
@@ -720,6 +784,7 @@ def live_recovery(
     assert candidate["wireguard"]["private_key"] in saved
     assert candidate["provider"]["server_selection"]["names"][0] in metadata
     assert candidate["provider"]["server_selection"]["wireguard"]["endpoint_ip"] != old_ip
+
     # Report only the public region identifier when pinned-region validation fails.
     saved_region = next(
         (
@@ -739,8 +804,11 @@ def live_recovery(
     public_ip = docker(
         "exec", dependent, "curl", "-fsS", "--max-time", "20", "https://api.ipify.org"
     ).stdout.strip()
+
+    # Verify incoming TCP through the assigned public port, beyond API preference readback.
     port = qbittorrent_preferences(qbittorrent)["listen_port"]
     assert isinstance(port, int)
+
     # Application sockets may reopen shortly after the preference update returns.
     for _ in range(15):
         try:
@@ -757,6 +825,7 @@ def live_recovery(
         )
         print(f"Forwarded TCP port has a local listening socket: {listening}", flush=True)
         raise RuntimeError("The assigned PIA port was not reachable from outside the VPN")
+
     print("PASS: incoming TCP reaches qBittorrent through the PIA forwarded port.", flush=True)
     print(
         "PASS: new PIA endpoint and keys, matching saved metadata, restored forwarding and dependent connectivity.",
@@ -781,6 +850,8 @@ if __name__ == "__main__":
         "--smoke", action="store_true", help="Validate a live stack with recovery disabled"
     )
     arguments = parser.parse_args()
+
     if arguments.smoke and arguments.env_file is None:
         parser.error("--smoke requires --env-file")
+
     main(arguments.env_file, arguments.smoke)

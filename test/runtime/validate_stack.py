@@ -60,6 +60,7 @@ class VPNState(TypedDict):
 
 def fields(value: object) -> Mapping[str, object]:
     """Require an object before reading fields from JSON, whose keys are always strings."""
+
     if not isinstance(value, dict):
         raise ValueError("Unexpected JSON response shape.")
 
@@ -75,6 +76,8 @@ class StackCheck:
         self.health = environment.get("BUCCANEERR_HEALTH_URL", "http://127.0.0.1:9999")
         self.key = environment.get("PRIVATEERR_GLUETUN_API_KEY", "")
         self.interface = environment.get("BUCCANEERR_VPN_INTERFACE", "tun0")
+
+        # Read saved connection files and Gluetun's lease from the shared read-only mounts.
         self.config = Path(environment.get("BUCCANEERR_CONFIG_PATH", "/config"))
         self.lease = Path(environment.get("BUCCANEERR_GLUETUN_PATH", "/gluetun")) / "forwarded_port"
         self.require_forwarding = (
@@ -83,10 +86,13 @@ class StackCheck:
         self.recovery = environment.get("BUCCANEERR_TEST_RECOVERY", "false") == "true"
         self.application_wait = int(environment.get("BUCCANEERR_APPLICATION_WAIT_SECONDS", "300"))
         self.recovery_wait = int(environment.get("BUCCANEERR_RECOVERY_WAIT_SECONDS", "600"))
+
+        # Keep local API probes independent of inherited HTTP proxy settings.
         self.opener = build_opener(ProxyHandler({}))
 
     def read(self, url: str, *, authenticate: bool = False) -> bytes:
         """Bound response size and socket waits; keep authentication on control API calls."""
+
         headers = {"X-API-Key": self.key} if authenticate else {}
 
         with self.opener.open(Request(url, headers=headers), timeout=5) as response:
@@ -94,6 +100,7 @@ class StackCheck:
 
     def settings(self) -> VPNState:
         """Validate the connection fields used by recovery assertions before inspecting them."""
+
         active = fields(json.loads(self.read(self.api + "/v1/vpn/settings", authenticate=True)))
         key = fields(active["wireguard"])["private_key"]
         selection = fields(fields(active["provider"])["server_selection"])
@@ -121,6 +128,7 @@ class StackCheck:
 
     def healthy(self) -> bool:
         """Treat a failed Gluetun health request as an unavailable tunnel."""
+
         try:
             self.read(self.health)
             return True
@@ -129,6 +137,7 @@ class StackCheck:
 
     def application_ready(self) -> bool:
         """Require the real Web API and, when enabled, the exact live VPN port lease."""
+
         try:
             preferences = fields(
                 json.loads(self.read(self.application + "/api/v2/app/preferences"))
@@ -137,6 +146,7 @@ class StackCheck:
             if not self.require_forwarding:
                 return "listen_port" in preferences
 
+            # Require the application to use the lease itself with automatic port changes disabled.
             port = int(self.lease.read_text().strip())
             return (
                 1 <= port <= 65535
@@ -150,10 +160,13 @@ class StackCheck:
 
     def recovered(self, old_key: str) -> bool:
         """Wait for a healthy replacement, synchronized application, and completed publication."""
+
         try:
             active = self.settings()
             key = active["wireguard"]["private_key"]
             name = active["provider"]["server_selection"]["names"][0]
+
+            # Do not declare recovery while a candidate or interrupted publication remains unresolved.
             pending = any(
                 (self.config / entry).exists()
                 for entry in (".privateerr-pending", ".privateerr-commit")
@@ -172,6 +185,7 @@ class StackCheck:
 
 def wait_for(predicate: Callable[[], bool], seconds: float, failure: str) -> None:
     """Poll within a monotonic deadline and report a useful failure without private state."""
+
     deadline = time.monotonic() + seconds
 
     while time.monotonic() < deadline:
@@ -186,7 +200,10 @@ def wait_for(predicate: Callable[[], bool], seconds: float, failure: str) -> Non
 @contextmanager
 def blocked_endpoint(address: str) -> Generator[None]:
     """Remove only this test's labeled firewall rule, including when validation fails."""
+
     address = str(ipaddress.IPv4Address(address))
+
+    # Tag this temporary rule so cleanup cannot remove another check's endpoint block.
     rule = [
         "-d",
         address,
@@ -200,6 +217,7 @@ def blocked_endpoint(address: str) -> Generator[None]:
     subprocess.run(
         ["iptables", "-I", "OUTPUT", "1", *rule], check=True, capture_output=True, timeout=10
     )
+
     try:
         yield
     finally:
@@ -211,11 +229,13 @@ def blocked_endpoint(address: str) -> Generator[None]:
 
 def stop(signum: int, frame: FrameType | None) -> None:
     """Unwind the active fault test so normal container shutdown restores its firewall rule."""
+
     raise SystemExit(128 + signum)
 
 
 def main() -> None:
     """Validate the complete demo and optionally prove recovery with a controlled outage."""
+
     # Preserve entrypoint logging while handling shutdown in the process that owns the fault.
     logging.basicConfig(
         level=logging.INFO,
@@ -229,6 +249,8 @@ def main() -> None:
     )
     signal.signal(signal.SIGTERM, stop)
     signal.signal(signal.SIGINT, stop)
+
+    # Establish application readiness before deliberately interrupting the tunnel.
     check = StackCheck(os.environ)
     wait_for(
         check.application_ready,
@@ -247,6 +269,7 @@ def main() -> None:
         logging.info("Testing automatic recovery by temporarily blocking the active VPN endpoint.")
 
         with blocked_endpoint(endpoint):
+            # Share one deadline across observing the outage and proving recovery.
             deadline = time.monotonic() + check.recovery_wait
             wait_for(
                 lambda: not check.healthy(),

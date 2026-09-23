@@ -8,51 +8,51 @@
 
 /* Shared brand tokens and privacy-friendly system font stacks. */
 :root {
-  --privateerr-graphite: #17181b;
-  --privateerr-slate: #26282d;
-  --privateerr-moss: #507000;
-  --privateerr-lime: #c3f73a;
-  --privateerr-accent: #a3e635;
-  --privateerr-paper: #f5f6f1;
+  --privateerr-ink: #102039;
+  --privateerr-navy: #17365b;
+  --privateerr-sapphire: #315d94;
+  --privateerr-ice: #b1d4f4;
+  --privateerr-accent: #a6d8ff;
+  --privateerr-paper: #f6f9ff;
   --md-text-font: "Avenir Next", Avenir, "Segoe UI", system-ui, sans-serif;
   --md-code-font: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
 }
 
-/* Pale neutral surfaces with graphite navigation and dark lime links. */
+/* Cool white surfaces with deep navy navigation and sapphire blue links. */
 [data-md-color-scheme="default"] {
-  --md-primary-fg-color: #25272b;
-  --md-primary-fg-color--light: #41454b;
-  --md-primary-fg-color--dark: #16171a;
-  --md-accent-fg-color: #4d6800;
-  --md-accent-fg-color--transparent: rgb(77 104 0 / 12%);
-  --md-default-bg-color: #fafbf7;
-  --md-default-fg-color: #26292d;
-  --md-typeset-a-color: #466300;
-  --md-code-bg-color: #eef0e9;
-  --md-code-fg-color: #292d24;
-  --privateerr-border: rgb(80 112 0 / 22%);
-  --privateerr-shadow: rgb(23 24 27 / 10%);
+  --md-primary-fg-color: #193f70;
+  --md-primary-fg-color--light: #35669c;
+  --md-primary-fg-color--dark: #17365b;
+  --md-accent-fg-color: #225da0;
+  --md-accent-fg-color--transparent: rgb(34 93 160 / 12%);
+  --md-default-bg-color: #f6f9ff;
+  --md-default-fg-color: #20334e;
+  --md-typeset-a-color: #225da0;
+  --md-code-bg-color: #eaf0f8;
+  --md-code-fg-color: #20334e;
+  --privateerr-border: rgb(49 93 148 / 22%);
+  --privateerr-shadow: rgb(16 32 57 / 10%);
   --privateerr-surface: rgb(255 255 255 / 72%);
 }
 
-/* Graphite surfaces with electric lime links and restrained lime details. */
+/* Midnight navy surfaces with cool white text and icy blue links. */
 [data-md-color-scheme="slate"] {
   color-scheme: dark;
-  --md-hue: 220;
-  --md-primary-fg-color: #17181b;
-  --md-primary-fg-color--light: #383c42;
-  --md-primary-fg-color--dark: #101113;
-  --md-accent-fg-color: #d1fa77;
-  --md-accent-fg-color--transparent: rgb(209 250 119 / 12%);
-  --md-default-bg-color: #1b1d21;
-  --md-default-fg-color: #e6e9df;
-  --md-typeset-a-color: #bef264;
-  --md-code-bg-color: #131518;
-  --md-code-fg-color: #e3e9d8;
-  --md-footer-bg-color: #131518;
-  --privateerr-border: rgb(195 247 58 / 20%);
+  --md-hue: 215;
+  --md-primary-fg-color: #102039;
+  --md-primary-fg-color--light: #294d78;
+  --md-primary-fg-color--dark: #0c1729;
+  --md-accent-fg-color: #badfff;
+  --md-accent-fg-color--transparent: rgb(186 223 255 / 12%);
+  --md-default-bg-color: #122138;
+  --md-default-fg-color: #f6f9ff;
+  --md-typeset-a-color: #9dccfa;
+  --md-code-bg-color: #0c1729;
+  --md-code-fg-color: #dbe8f7;
+  --md-footer-bg-color: #0c1729;
+  --privateerr-border: rgb(177 212 244 / 20%);
   --privateerr-shadow: rgb(0 0 0 / 28%);
-  --privateerr-surface: rgb(35 38 33 / 76%);
+  --privateerr-surface: rgb(27 48 77 / 76%);
 }
 
 /*
@@ -65,8 +65,8 @@ body {
 
 body::before {
   background-image:
-    radial-gradient(circle at 10% 5%, rgb(195 247 58 / 8%), transparent 25rem),
-    radial-gradient(circle at 92% 12%, rgb(163 230 53 / 8%), transparent 22rem);
+    radial-gradient(circle at 10% 5%, rgb(177 212 244 / 8%), transparent 25rem),
+    radial-gradient(circle at 92% 12%, rgb(166 216 255 / 8%), transparent 22rem);
   background-position: center;
   background-repeat: no-repeat;
   background-size: cover;
@@ -78,18 +78,18 @@ body::before {
 }
 
 ::selection {
-  background: rgb(195 247 58 / 28%);
+  background: rgb(177 212 244 / 28%);
 }
 
 /* Give the global chrome a crisp chart-room identity. */
 .md-header,
 .md-tabs {
-  background-image: linear-gradient(115deg, #151619 0%, #292c30 62%, #3a4033 100%);
+  background-image: linear-gradient(115deg, #10213d 0%, #173b69 62%, #24598d 100%);
 }
 
 .md-header {
-  border-bottom: 1px solid rgb(163 230 53 / 34%);
-  box-shadow: 0 0.35rem 1.4rem rgb(16 17 19 / 20%);
+  border-bottom: 1px solid rgb(166 216 255 / 34%);
+  box-shadow: 0 0.35rem 1.4rem rgb(12 23 41 / 20%);
 }
 
 .md-header__button.md-logo {
@@ -103,7 +103,7 @@ body::before {
 }
 
 .md-tabs {
-  border-bottom: 1px solid rgb(195 247 58 / 12%);
+  border-bottom: 1px solid rgb(177 212 244 / 12%);
 }
 
 .md-tabs__link {
@@ -150,7 +150,7 @@ body::before {
 }
 
 .md-typeset h1::after {
-  background: linear-gradient(90deg, var(--privateerr-accent), var(--privateerr-lime), transparent);
+  background: linear-gradient(90deg, var(--privateerr-accent), var(--privateerr-ice), transparent);
   border-radius: 999px;
   content: "";
   display: block;
@@ -233,12 +233,12 @@ body::before {
 }
 
 .md-typeset table:not([class]) th {
-  background: linear-gradient(110deg, rgb(80 112 0 / 14%), rgb(195 247 58 / 8%));
+  background: linear-gradient(110deg, rgb(49 93 148 / 14%), rgb(177 212 244 / 8%));
   color: var(--md-default-fg-color);
 }
 
 .md-typeset table:not([class]) tr:hover td {
-  background: rgb(195 247 58 / 6%);
+  background: rgb(177 212 244 / 6%);
 }
 
 .md-typeset .highlight {
@@ -264,9 +264,9 @@ body::before {
 
 /* Keep labels readable on the guides' pale diagram nodes in both page themes. */
 .mermaid {
-  --md-mermaid-node-bg-color: #e4f4b9;
-  --md-mermaid-node-fg-color: #507000;
-  --md-mermaid-label-fg-color: #26292d;
+  --md-mermaid-node-bg-color: #dbe9fa;
+  --md-mermaid-node-fg-color: #315d94;
+  --md-mermaid-label-fg-color: #20334e;
 }
 
 /* Make generated API entries easier to scan as independent contracts. */
@@ -304,8 +304,8 @@ body::before {
 }
 
 .md-footer {
-  background-image: linear-gradient(115deg, #131518, #272b24);
-  border-top: 1px solid rgb(163 230 53 / 20%);
+  background-image: linear-gradient(115deg, #0c1729, #17365b);
+  border-top: 1px solid rgb(166 216 255 / 20%);
 }
 
 :focus-visible {

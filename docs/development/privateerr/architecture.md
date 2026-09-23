@@ -8,17 +8,17 @@ Privateerr separates configuration generation from tunnel ownership. Its single-
 flowchart TD
   accTitle: Privateerr supervisor boundaries
   accDescr: Environment settings configure the Python supervisor. A bounded shell adapter invokes PIA and writes a staged candidate. The supervisor applies connection settings through Gluetun's API and publishes matching files after confirmation. Gluetun owns the VPN and updates qBittorrent through its port-forwarding hook.
-  env["Environment"] -->|"Validate"| supervisor["Python supervisor"]
+  env["Environment"] -->|"Validate"| supervisor["🧭 Python supervisor"]
   supervisor -->|"Bounded generation"| adapter["PIA shell adapter"]
-  adapter -->|"Matching candidate files"| store["Configuration store"]
+  adapter -->|"Matching candidate files"| store["📁 Configuration store"]
   store -->|"Validated connection fields"| supervisor
-  supervisor -->|"Authenticated settings update"| gluetun["Gluetun"]
+  supervisor -->|"Authenticated settings update"| gluetun["🛡️ Gluetun"]
   gluetun -->|"Settings readback and health"| supervisor
   supervisor -->|"Confirm, then publish"| store
   gluetun -->|"VPN namespace and forwarded port"| app["qBittorrent"]
 
-  classDef control fill:#e4f4b9,stroke:#507000,color:#26292d,stroke-width:2px
-  classDef boundary fill:#f0f4e8,stroke:#507000,color:#26292d,stroke-width:2px
+  classDef control fill:#dbe9fa,stroke:#315d94,color:#20334e,stroke-width:2px
+  classDef boundary fill:#edf3fc,stroke:#315d94,color:#20334e,stroke-width:2px
   class supervisor,store control
   class env,adapter,gluetun,app boundary
 ```

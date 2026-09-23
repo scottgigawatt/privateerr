@@ -86,4 +86,4 @@ Before publishing documentation:
 - [GitHub's README guidance](https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-readmes)
 - [GitHub's contributor-guideline guidance](https://docs.github.com/en/communities/setting-up-your-project-for-healthy-contributions/setting-guidelines-for-repository-contributors)
 
-The developer site shares Plundarr's Material layout, navigation, system fonts, API rendering, and GitHub-alert support. Keep those conventions aligned; Privateerr uses graphite and electric lime for its distinct palette. Public Python contracts use the [shared docstring conventions](development/privateerr/documentation.md).
+The developer site shares Plundarr's Material layout, navigation, system fonts, API rendering, and GitHub-alert support. Keep those conventions aligned; Privateerr uses midnight navy and sapphire blue with icy blue accents for its distinct palette. Public Python contracts use the [shared docstring conventions](development/privateerr/documentation.md).
