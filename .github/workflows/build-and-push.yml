@@ -190,6 +190,7 @@ jobs:
         run: |
           make test
           make config >/dev/null
+          make test-precommit
 
       #
       # Build both local image shapes before runtime tests and vulnerability scans.

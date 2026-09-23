@@ -75,7 +75,7 @@ Recovery tries another advertised endpoint in the selected region. A pinned regi
 
 A small Python supervisor runs in the existing Privateerr container. It uses the standard library to manage recovery state, validate connection settings, and call Gluetun. A shell adapter invokes the unmodified upstream PIA scripts; Gluetun's startup wrapper remains shell. There is no additional container, web server, or production Docker socket.
 
-The supervisor uses a monotonic clock for outage and retry timing and bounds both HTTP requests and PIA generation. Container shutdown interrupts waits and stops the active generation process group. Existing environment variables, output paths, one-shot generation, and keepalive behavior remain available. Python test and lint tools stay in Buccaneerr.
+The supervisor measures elapsed time independently of the system date and time, so host clock corrections do not change outage thresholds or retry delays. It also bounds HTTP requests and PIA generation. See [recovery timing and resource limits](development/privateerr/architecture.md#bound-work-and-protect-credentials) for the implementation details. Container shutdown interrupts waits and stops the active generation process group. Existing environment variables, output paths, one-shot generation, and keepalive behavior remain available. Python test and lint tools stay in Buccaneerr.
 
 The example uses `restart: unless-stopped` for Privateerr, Gluetun, and qBittorrent so Docker restarts exited services and brings them back after a host reboot unless you explicitly stopped them. This container policy is separate from tunnel recovery and does not restart a container merely because its healthcheck fails. Buccaneerr keeps `restart: "no"` so its test result remains final.
 
@@ -130,7 +130,7 @@ Privateerr reports port-forwarding status separately. Gluetun continues obtainin
 
 ## Configure timing
 
-Defaults work without adding the new timing variables to an existing `.env`.
+The table lists defaults from `example.env`. When upgrading the repository Compose deployment, add missing variables to your existing `.env`; Compose deliberately supplies no fallback values. Custom deployments that omit these settings use the image defaults, with recovery disabled unless explicitly enabled.
 
 | Variable | Default | Purpose |
 | --- | --- | --- |

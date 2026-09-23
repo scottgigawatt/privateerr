@@ -11,14 +11,14 @@ Privateerr includes an end-to-end Compose test path:
 3. Generate `privateerr.env`.
 4. Start Gluetun after Privateerr reports healthy.
 5. Enable PIA port forwarding through Gluetun when configured.
-6. Run Buccaneerr inside Gluetun's network namespace.
+6. Start qBittorrent inside Gluetun's network namespace.
+7. Run Buccaneerr in the same namespace to check the application and exercise automatic recovery.
 
 ```sh
 make test-e2e
 ```
 
 > [!IMPORTANT]
->
 > The e2e test uses **real PIA credentials** from `.env`. Fake credentials should fail, and live generated VPN files should not be committed.
 
 Before Privateerr starts, Make asks Docker Compose for the resolved environment and checks only `PIA_USER` and `PIA_PASS`. The preflight never sources `.env` or prints either value, and it rejects the documented examples before a live run.
@@ -85,16 +85,15 @@ platforms: linux/amd64,linux/arm64,linux/arm/v7
 push: true
 ```
 
-Then it mirrors each generated Privateerr tag to Docker Hub with:
+The workflow mirrors each generated Privateerr tag to Docker Hub. For an equivalent manual command, replace `YOUR-GITHUB-OWNER`, `YOUR-DOCKER-HUB-OWNER`, and `YOUR-VERSION` with the registry owners and image version:
 
 ```sh
 skopeo copy --all --preserve-digests \
-  docker://ghcr.io/${{ github.repository_owner }}/privateerr:TAG \
-  docker://docker.io/${{ github.repository_owner }}/privateerr:TAG
+  docker://ghcr.io/YOUR-GITHUB-OWNER/privateerr:YOUR-VERSION \
+  docker://docker.io/YOUR-DOCKER-HUB-OWNER/privateerr:YOUR-VERSION
 ```
 
 > [!NOTE]
->
 > `--all` copies the full multi-architecture image instead of only the runner architecture. `--preserve-digests` keeps the source content intact, and the workflow then inspects every published tag in both registries. A digest mismatch fails the publication instead of becoming a notification-only warning.
 
 Configure these GitHub Actions values before enabling Docker Hub publishing:
@@ -116,12 +115,26 @@ Renovate keeps those pins from going stale. It tracks:
 - Docker image tags and digests.
 - Compose image references.
 - Git submodules.
+- Pre-commit hook releases.
+- Exact, hash-verified Python documentation dependencies.
+- Pinned npm tools in Buccaneerr, including Pyright and CSpell.
 
 When Renovate opens a dependency pull request, the validation workflow checks that every digest-pinned build dependency matches across Dockerfiles, workflow build arguments, and the example environment file. If one build argument drifts away from the fleet, [`check-build-pin-policy.sh`](https://github.com/scottgigawatt/privateerr/blob/main/test/policy/check-build-pin-policy.sh) fails before the pull request can merge.
 
-> [!NOTE]
->
-> 🧭 `latest` remains the recommended stable image tag for users, while `edge` follows successful `main` builds. Neither tag is used as the Alpine base. The base image is intentionally pinned and moved by reviewed Renovate PRs.
+`latest` remains the recommended stable image tag for users, while `edge` follows successful `main` builds. Neither tag is used as the Alpine base. The base image is intentionally pinned and moved by reviewed Renovate PRs.
+
+Pull requests also run CodeQL and container vulnerability checks. Published images include software bills of materials and provenance attestations; OpenSSF Scorecard checks repository security practices.
+
+## Inspect configuration and environment values 🔎
+
+Use `make print-config` to inspect the Compose source without comments, or `make config` to resolve its variables. `make env` prints all resolved environment values; filter it when investigating one integration:
+
+```sh
+make env | grep '^PIA'
+make env | grep '^GLUETUN'
+```
+
+Resolved configuration and environment output can include credentials. Inspect it locally and redact private values before sharing diagnostics. `example.env` supplies defaults and operator editing prompts; aligned Compose comments explain behavior, accepted values, and units.
 
 ## Use maintenance commands 🛠️
 
@@ -133,7 +146,7 @@ When Renovate opens a dependency pull request, the validation workflow checks th
 | `make print-env`        | Print uncommented Compose environment values.                          |
 | `make ps`               | Show a compact Compose status table.                                   |
 | `make backup`           | Archive the complete config directory without replacing older cargo.  |
-| `make test`             | Run policy checks plus Make and workflow helper tests.                 |
+| `make test`             | Run Python tests, strict types, lint, policy, and helper checks.                 |
 | `make test-workflows`   | Test release, Discord, and registry helpers without external writes.   |
 | `make build`            | Build only the Privateerr image.                                       |
 | `make build-buccaneerr` | Build only the Buccaneerr validation image.                            |
@@ -144,7 +157,7 @@ When Renovate opens a dependency pull request, the validation workflow checks th
 | `make clean-test`       | Stop the live test stack and restore checked-in examples.              |
 | `make nuke`             | Remove project Docker resources/cache and reset transient test state.  |
 
-`make nuke` preserves `.env`, `backups/`, and persistent bind-mounted config. Base-image removal is best effort when another container or project still uses the same image.
+`make nuke` removes this project's containers, networks, volumes, eligible images, and scoped build cache. It preserves `.env`, `backups/`, and persistent bind-mounted config, then restores the checked-in WireGuard examples. Base-image removal is best effort when another container or project still uses the same image.
 
 ## Restore generated files 📄
 
@@ -160,3 +173,37 @@ Run this to restore checked-in examples:
 ```sh
 make restore-test-config
 ```
+
+## Inspect example output 📦
+
+<!-- markdownlint-disable MD033 -->
+<details>
+<summary>View abbreviated example output</summary>
+
+The checked-in examples use fake data. A real run overwrites them.
+
+```text
+[Interface]
+Address = 10.10.10.10
+PrivateKey = EXAMPLE-PRIVATE-KEY
+DNS = 10.10.10.10
+
+[Peer]
+PersistentKeepalive = 25
+PublicKey = EXAMPLE-PUBLIC-KEY
+AllowedIPs = 0.0.0.0/0
+Endpoint = 10.10.10.10:1234
+```
+
+```text
+PIA_WG_SERVER_NAME=jolly-roger-401
+PIA_WG_ENDPOINT_IP=10.10.10.10
+PIA_WG_ENDPOINT_PORT=1234
+PIA_REGION_ID=skull-island
+PIA_REGION_NAME="Skull Island"
+PIA_PORT_FORWARDING_SUPPORTED=true
+PIA_GEOLOCATED_REGION=false
+```
+
+</details>
+<!-- markdownlint-enable MD033 -->

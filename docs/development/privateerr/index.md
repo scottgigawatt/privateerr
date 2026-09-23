@@ -1,3 +1,7 @@
+---
+icon: material/compass-outline
+---
+
 # Supervisor developer overview 🧭
 
 Privateerr's standard-library Python program coordinates PIA configuration generation and sustained-outage recovery. It runs in the existing Privateerr container, outside Gluetun's network namespace, so it can still reach PIA when the tunnel fails.

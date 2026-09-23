@@ -55,7 +55,6 @@ make test-precommit
 `make down` preserves volumes and images. `make clean` never touches Docker, `.env`, generated WireGuard state, config, or backups. Use `make nuke` only for an intentionally destructive reset of this repository's Docker resources and scoped Buildx cache; it still preserves `.env`, `backups/`, and persistent config before restoring the checked-in examples.
 
 > [!IMPORTANT]
->
 > 🧪 `make test-e2e` uses real PIA credentials from `.env`. That voyage should happen locally, not with secrets flung into random public waters.
 
 ## Follow the project style 📜
@@ -79,6 +78,16 @@ make test-precommit
 
 Workspace format-on-save is deliberately disabled. Prettier is available only for explicit formatting of supported JSON and Markdown files through the checked-in `.prettierrc.json5`. It does not parse jq, and the repository excludes jq, YAML, TOML, and aligned workspace JSONC from Prettier so specialized tools cannot undo project-owned spacing. Keep two spaces before pinned-action comments in workflow YAML.
 
+## Strict Python checks
+
+Run `make test-types` to check application code and tests with the pinned Pyright version in a disposable test container. Docker is the only host prerequisite. The root `pyrightconfig.json` is shared with VS Code/Pylance; select an interpreter with the project's dependencies installed for accurate editor import resolution. `make test` and pre-commit enforce the same check during pull requests and main/release validation. Ruff continues to own lint and formatting.
+
+## Build the developer documentation
+
+Run `make docs` after changing guides, Python signatures, or docstrings. Buccaneerr installs the same exact, hash-verified MkDocs toolchain used by the Plundarr developer site and builds Privateerr's generated Python reference in strict mode. Use `make docs-serve` to preview the deep blue theme locally.
+
+Follow the [Python documentation conventions](development/privateerr/documentation.md) and [testing guide](development/privateerr/testing.md). The Pages workflow publishes merged documentation from `main`; pull requests build the site without deployment permissions.
+
 ## Create release tags 🏷️
 
 - Create annotated release tags from commits already on `main`.
@@ -98,7 +107,7 @@ Before opening a pull request:
 - Run `make test-workflows` for workflow, release, build-pin, or image-tag changes.
 - Run `make test-precommit`.
 - Let Renovate handle routine dependency bumps when possible.
-- Restore example config with `make clean-test` or `make nuke`.
+- After a live test, restore checked-in VPN examples with `make restore-test-config`; do not use a destructive cleanup command just to prepare a commit.
 - Confirm no secrets, live VPN configs, or logs slipped into the hold.
 - Explain what changed and why.
 
@@ -109,13 +118,3 @@ Tiny pull requests be easier to review than a kraken-sized rewrite with six unre
 Do not report security problems in public issues, pull requests, or Discord. Use the [security policy](SECURITY.md) and GitHub private vulnerability reporting. Use the [support guide](SUPPORT.md) for non-sensitive questions.
 
 Fair winds, clean diffs, and may yer YAML indent on the first try. ☠️
-
-## Strict Python checks
-
-Run `make test-types` to check application code and tests with the pinned Pyright version in a disposable test container. Docker is the only host prerequisite. The root `pyrightconfig.json` is shared with VS Code/Pylance; select an interpreter with the project's dependencies installed for accurate editor import resolution. `make test` and pre-commit enforce the same check during pull requests and main/release validation. Ruff continues to own lint and formatting.
-
-## Build the developer documentation
-
-Run `make docs` after changing guides, Python signatures, or docstrings. Buccaneerr installs the same exact, hash-verified MkDocs toolchain used by the Plundarr developer site and builds Privateerr's generated Python reference in strict mode. Use `make docs-serve` to preview the midnight navy and sapphire blue with icy blue accents theme locally.
-
-Follow the [Python documentation conventions](development/privateerr/documentation.md) and [testing guide](development/privateerr/testing.md). The Pages workflow publishes merged documentation from `main`; pull requests build the site without deployment permissions.

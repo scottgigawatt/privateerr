@@ -79,11 +79,13 @@ Before publishing documentation:
 4. Run `make docs` and `make test-precommit`, then inspect `git diff --check`.
 5. Confirm no credentials, generated WireGuard state, private logs, or deployment-specific values entered the change.
 
+## Keep the developer site consistent
+
+The developer site shares Plundarr's Material layout, navigation, system fonts, API rendering, and GitHub-alert support. Keep those conventions aligned; Privateerr uses midnight navy and sapphire blue with icy blue accents for its distinct palette. Public Python contracts use the [shared docstring conventions](development/privateerr/documentation.md).
+
 ## Read the source guidance
 
 - [GitHub's basic writing and formatting syntax](https://docs.github.com/en/get-started/writing-on-github/getting-started-with-writing-and-formatting-on-github/basic-writing-and-formatting-syntax)
 - [GitHub's advanced formatting guide](https://docs.github.com/en/get-started/writing-on-github/working-with-advanced-formatting)
 - [GitHub's README guidance](https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-readmes)
 - [GitHub's contributor-guideline guidance](https://docs.github.com/en/communities/setting-up-your-project-for-healthy-contributions/setting-guidelines-for-repository-contributors)
-
-The developer site shares Plundarr's Material layout, navigation, system fonts, API rendering, and GitHub-alert support. Keep those conventions aligned; Privateerr uses midnight navy and sapphire blue with icy blue accents for its distinct palette. Public Python contracts use the [shared docstring conventions](development/privateerr/documentation.md).
