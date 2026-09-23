@@ -41,6 +41,14 @@
     "reviewers": ["scottgigawatt"],
 
     //
+    // Generate lock files with the same compatible npm major as Buccaneerr.
+    // npm 12 also rejects Renovate's bundled npm tarball fetch by default.
+    //
+    "constraints": {
+        "npm": "^11.0.0"
+    },
+
+    //
     // Renovate owns every supported dependency surface in this repository.
     //
     "enabledManagers": [
