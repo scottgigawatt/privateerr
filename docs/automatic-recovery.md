@@ -67,7 +67,17 @@ PIA_AUTOCONNECT=false
 PIA_PREFERRED_REGION=ca
 ```
 
-`PIA_PREFERRED_REGION` defaults to `ca`, matching Plundarr. Choose another PIA region ID to use that region instead. `PIA_AUTOCONNECT=true` takes precedence and ignores the preferred region. A container restart alone does not reload Compose environment changes; recreate with `make up`.
+`PIA_PREFERRED_REGION` defaults to `ca`, matching Plundarr. Choose another PIA region ID to use that region instead. `PIA_AUTOCONNECT=true` takes precedence and ignores the preferred region.
+
+Recovery-enabled startup reuses a valid saved pair, so changing the environment and recreating containers alone does not immediately replace a healthy connection. To apply an intentional region or forwarding-selection change, stop the example services, generate a fresh pair, then recreate the stack:
+
+```sh
+docker compose stop privateerr gluetun qbittorrent
+make run-privateerr
+make up
+```
+
+The one-shot command disables recovery and keepalive only for that run. Stopping the existing supervisor prevents two writers from replacing the same files. `make up` also starts the example's Buccaneerr fault-injection test; for a lasting application deployment, use `docker compose up --detach --force-recreate privateerr gluetun qbittorrent` instead. A plain restart does not reload environment changes.
 
 Recovery tries another advertised endpoint in the selected region. A pinned region never falls back to another region. Automatic selection prefers other endpoints in the current region, then other eligible regions in the server catalog; recovery does not rerun a full latency benchmark. With `PIA_PF=true`, only regions advertising port forwarding are eligible. If no unused endpoint remains, Privateerr attempts fresh registration against the current permitted endpoint. Dedicated IPs retain their dedicated endpoint through upstream setup.
 
