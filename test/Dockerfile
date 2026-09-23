@@ -104,13 +104,21 @@ COPY --from=shellcheck /bin/shellcheck /usr/local/bin/shellcheck
 COPY --from=docker-cli /usr/local/bin/docker /usr/local/bin/docker
 COPY --from=compose /docker-compose /usr/local/lib/docker/cli-plugins/docker-compose
 
-# Install the complete tool dependency graph from its integrity-checked lockfile.
-# npm 11 retains the install options used by pre-commit's Node environments.
-# Remove the bootstrap APK and its bundled dependencies in the same layer.
+#
+# Copy the integrity-checked dependency manifests for the test tools.
+#
 COPY test/package.json test/package-lock.json /opt/tools/
+
+#
+# Install locked tools, then remove Alpine's bootstrap npm and cached packages.
+#
 RUN npm ci --prefix /opt/tools --omit=dev --ignore-scripts && \
     apk del npm && \
     rm -rf /root/.npm
+
+#
+# Use the locked spelling, typing, and npm commands throughout the test image.
+#
 ENV PATH="/opt/tools/node_modules/.bin:${PATH}"
 
 #
