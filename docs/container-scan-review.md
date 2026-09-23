@@ -4,7 +4,7 @@ Reviewed on September 23, 2026. Scanner databases change; these findings apply t
 
 ## Dependency fixes
 
-Buccaneerr uses Docker CLI 29.8.1 and Compose 5.5.1 from digest-pinned official images. It replaces Alpine's bootstrap npm with npm 11.19.1, including its patched bundled dependencies. The committed npm lockfile records integrity hashes for the complete tool dependency graph; `npm ci` checks them during builds. npm 11 retains installation flags required by pre-commit. BusyBox supplies AWK and core utilities, avoiding unnecessary GNU packages.
+Buccaneerr uses Docker CLI 29.8.1 and Compose 5.5.1 from digest-pinned official images. It replaces Alpine's bootstrap npm with npm 11.20.0, including its patched bundled dependencies. The committed npm lockfile records integrity hashes for the complete tool dependency graph; `npm ci` checks them during builds. npm 11 retains installation flags required by pre-commit. BusyBox supplies AWK and core utilities, avoiding unnecessary GNU packages.
 
 The image installs fixed nghttp2 1.70.0 or newer and setuptools 83.0.0 or newer from Alpine's edge repository until those fixes reach stable. These are narrow package exceptions; the base and remaining tools stay on stable Alpine. Privateerr already uses the same nghttp2 fix, and its scanned runtime had no reported findings.
 
