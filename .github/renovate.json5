@@ -41,6 +41,14 @@
     "reviewers": ["scottgigawatt"],
 
     //
+    // Generate lock files with the same compatible npm major as Buccaneerr.
+    // npm 12 also rejects Renovate's bundled npm tarball fetch by default.
+    //
+    "constraints": {
+        "npm": "^11.0.0"
+    },
+
+    //
     // Renovate owns every supported dependency surface in this repository.
     //
     "enabledManagers": [
@@ -72,10 +80,11 @@
                 "/^test/runtime/test-recovery-api\\.py$/"
             ],
             "matchStrings": [
-                "\"GLUETUN_TEST_IMAGE\", \"(?<depName>qmcgaw/gluetun):(?<currentValue>[^\"@]+)(?:@(?<currentDigest>sha256:[a-f0-9]+))?\""
+                "\"(?<depName>qmcgaw/gluetun):(?<currentValue>[^\"@]+)(?:@(?<currentDigest>sha256:[a-f0-9]+))?\""
             ],
             "datasourceTemplate": "docker",
-            "versioningTemplate": "docker"
+            "versioningTemplate": "docker",
+            "autoReplaceStringTemplate": "\"{{{depName}}}:{{{newValue}}}{{#if newDigest}}@{{{newDigest}}}{{/if}}\""
         },
 
         {
@@ -121,6 +130,16 @@
     // Keep related update types grouped and image pins deterministic.
     //
     "packageRules": [
+        //
+        // pre-commit still invokes --ignore-prepublish, which npm 12 rejects.
+        // Keep npm 11 updates enabled until upstream supports the new CLI.
+        //
+        {
+            "description": "Keep npm compatible with pre-commit Node hook installation",
+            "matchManagers": ["npm"],
+            "matchPackageNames": ["npm"],
+            "allowedVersions": "<12"
+        },
         {
             "description": "Keep documentation dependencies exact and hash-verified",
             "matchManagers": ["pip_requirements"],
