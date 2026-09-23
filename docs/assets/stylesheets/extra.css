@@ -262,6 +262,13 @@ body::before {
   height: 1px;
 }
 
+/* Keep labels readable on the guides' pale diagram nodes in both page themes. */
+.mermaid {
+  --md-mermaid-node-bg-color: #e4f4b9;
+  --md-mermaid-node-fg-color: #507000;
+  --md-mermaid-label-fg-color: #26292d;
+}
+
 /* Make generated API entries easier to scan as independent contracts. */
 .md-typeset .doc-object {
   border-left: 0.15rem solid var(--privateerr-border);
