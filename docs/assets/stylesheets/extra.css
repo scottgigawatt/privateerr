@@ -1,0 +1,337 @@
+/*
+ * Copyright 2025-2026 Scott Gigawatt
+ *
+ * Licensed under the Apache License, Version 2.0.
+ *
+ * extra.css: Developer chart-room palette and Material component refinements.
+ */
+
+/* Shared brand tokens and privacy-friendly system font stacks. */
+:root {
+  --privateerr-ink: #102039;
+  --privateerr-navy: #17365b;
+  --privateerr-sapphire: #315d94;
+  --privateerr-ice: #b1d4f4;
+  --privateerr-accent: #a6d8ff;
+  --privateerr-paper: #f6f9ff;
+  --md-text-font: "Avenir Next", Avenir, "Segoe UI", system-ui, sans-serif;
+  --md-code-font: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+}
+
+/* Cool white surfaces with deep navy navigation and sapphire blue links. */
+[data-md-color-scheme="default"] {
+  --md-primary-fg-color: #193f70;
+  --md-primary-fg-color--light: #35669c;
+  --md-primary-fg-color--dark: #17365b;
+  --md-accent-fg-color: #225da0;
+  --md-accent-fg-color--transparent: rgb(34 93 160 / 12%);
+  --md-default-bg-color: #f6f9ff;
+  --md-default-fg-color: #20334e;
+  --md-typeset-a-color: #225da0;
+  --md-code-bg-color: #eaf0f8;
+  --md-code-fg-color: #20334e;
+  --privateerr-border: rgb(49 93 148 / 22%);
+  --privateerr-shadow: rgb(16 32 57 / 10%);
+  --privateerr-surface: rgb(255 255 255 / 72%);
+}
+
+/* Midnight navy surfaces with cool white text and icy blue links. */
+[data-md-color-scheme="slate"] {
+  color-scheme: dark;
+  --md-hue: 215;
+  --md-primary-fg-color: #102039;
+  --md-primary-fg-color--light: #294d78;
+  --md-primary-fg-color--dark: #0c1729;
+  --md-accent-fg-color: #badfff;
+  --md-accent-fg-color--transparent: rgb(186 223 255 / 12%);
+  --md-default-bg-color: #122138;
+  --md-default-fg-color: #f6f9ff;
+  --md-typeset-a-color: #9dccfa;
+  --md-code-bg-color: #0c1729;
+  --md-code-fg-color: #dbe8f7;
+  --md-footer-bg-color: #0c1729;
+  --privateerr-border: rgb(177 212 244 / 20%);
+  --privateerr-shadow: rgb(0 0 0 / 28%);
+  --privateerr-surface: rgb(27 48 77 / 76%);
+}
+
+/*
+ * Pin the decorative chart-room glow to the viewport so long documentation
+ * pages scroll over one continuous, non-repeating background.
+ */
+body {
+  isolation: isolate;
+}
+
+body::before {
+  background-image:
+    radial-gradient(circle at 10% 5%, rgb(177 212 244 / 8%), transparent 25rem),
+    radial-gradient(circle at 92% 12%, rgb(166 216 255 / 8%), transparent 22rem);
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: cover;
+  content: "";
+  inset: 0;
+  pointer-events: none;
+  position: fixed;
+  z-index: -1;
+}
+
+::selection {
+  background: rgb(177 212 244 / 28%);
+}
+
+/* Give the global chrome a crisp chart-room identity. */
+.md-header,
+.md-tabs {
+  background-image: linear-gradient(115deg, #10213d 0%, #173b69 62%, #24598d 100%);
+}
+
+.md-header {
+  border-bottom: 1px solid rgb(166 216 255 / 34%);
+  box-shadow: 0 0.35rem 1.4rem rgb(12 23 41 / 20%);
+}
+
+.md-header__button.md-logo {
+  color: var(--privateerr-accent);
+  filter: drop-shadow(0 0.15rem 0.25rem rgb(0 0 0 / 28%));
+}
+
+.md-header__topic {
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+
+.md-tabs {
+  border-bottom: 1px solid rgb(177 212 244 / 12%);
+}
+
+.md-tabs__link {
+  opacity: 0.78;
+}
+
+.md-tabs__link:is(:focus, :hover),
+.md-tabs__link--active {
+  color: #fff;
+  opacity: 1;
+}
+
+.md-tabs__link--active {
+  box-shadow: inset 0 -0.15rem var(--privateerr-accent);
+}
+
+/* Refine long-form reading without narrowing code or reference pages. */
+.md-main__inner {
+  margin-top: 1.4rem;
+}
+
+.md-content__inner {
+  padding-bottom: 2.5rem;
+}
+
+.md-typeset {
+  font-size: 0.82rem;
+  line-height: 1.72;
+}
+
+.md-typeset h1,
+.md-typeset h2,
+.md-typeset h3 {
+  color: var(--md-default-fg-color);
+  font-weight: 750;
+  letter-spacing: -0.025em;
+  text-wrap: balance;
+}
+
+.md-typeset h1 {
+  font-size: clamp(2rem, 5vw, 3rem);
+  line-height: 1.08;
+  margin-bottom: 1.15rem;
+}
+
+.md-typeset h1::after {
+  background: linear-gradient(90deg, var(--privateerr-accent), var(--privateerr-ice), transparent);
+  border-radius: 999px;
+  content: "";
+  display: block;
+  height: 0.16rem;
+  margin-top: 0.7rem;
+  max-width: 11rem;
+}
+
+.md-typeset h2 {
+  border-bottom: 1px solid var(--privateerr-border);
+  padding-bottom: 0.35rem;
+}
+
+.md-typeset a:not(.md-button):not(.headerlink) {
+  text-decoration-color: transparent;
+  text-decoration-thickness: 0.08em;
+  text-underline-offset: 0.16em;
+  transition: color 140ms ease, text-decoration-color 140ms ease;
+}
+
+.md-typeset a:not(.md-button):not(.headerlink):is(:focus, :hover) {
+  text-decoration-color: currentcolor;
+}
+
+/* Elevate dense technical components without turning them into decoration. */
+.md-typeset .admonition,
+.md-typeset details,
+.md-typeset table:not([class]),
+.md-typeset .highlight > pre,
+.md-typeset pre > code {
+  border-radius: 0.65rem;
+}
+
+.md-typeset .admonition,
+.md-typeset details {
+  background: var(--privateerr-surface);
+  box-shadow: 0 0.45rem 1.35rem var(--privateerr-shadow);
+}
+
+/* Map GitHub-only alert types onto Material colors and bundled icons. */
+.md-typeset .admonition.important,
+.md-typeset details.important {
+  border-color: rgb(130 80 223);
+}
+
+.md-typeset .important > .admonition-title,
+.md-typeset .important > summary {
+  background-color: rgb(130 80 223 / 10%);
+}
+
+.md-typeset .important > .admonition-title::before,
+.md-typeset .important > summary::before {
+  background-color: rgb(130 80 223);
+  -webkit-mask-image: var(--md-admonition-icon--info);
+  mask-image: var(--md-admonition-icon--info);
+}
+
+.md-typeset .admonition.caution,
+.md-typeset details.caution {
+  border-color: rgb(207 34 46);
+}
+
+.md-typeset .caution > .admonition-title,
+.md-typeset .caution > summary {
+  background-color: rgb(207 34 46 / 10%);
+}
+
+.md-typeset .caution > .admonition-title::before,
+.md-typeset .caution > summary::before {
+  background-color: rgb(207 34 46);
+  -webkit-mask-image: var(--md-admonition-icon--danger);
+  mask-image: var(--md-admonition-icon--danger);
+}
+
+.md-typeset table:not([class]) {
+  background: var(--privateerr-surface);
+  border: 1px solid var(--privateerr-border);
+  box-shadow: 0 0.55rem 1.7rem var(--privateerr-shadow);
+  overflow: hidden;
+}
+
+.md-typeset table:not([class]) th {
+  background: linear-gradient(110deg, rgb(49 93 148 / 14%), rgb(177 212 244 / 8%));
+  color: var(--md-default-fg-color);
+}
+
+.md-typeset table:not([class]) tr:hover td {
+  background: rgb(177 212 244 / 6%);
+}
+
+.md-typeset .highlight {
+  filter: drop-shadow(0 0.45rem 1rem var(--privateerr-shadow));
+}
+
+.md-typeset .highlight > pre,
+.md-typeset pre > code {
+  border: 1px solid var(--privateerr-border);
+}
+
+.md-typeset code:not(pre code) {
+  border: 1px solid var(--privateerr-border);
+  border-radius: 0.3rem;
+  padding: 0.08em 0.32em;
+}
+
+.md-typeset hr {
+  background: linear-gradient(90deg, transparent, var(--privateerr-border), transparent);
+  border: 0;
+  height: 1px;
+}
+
+/* Keep labels readable on the guides' pale diagram nodes in both page themes. */
+.mermaid {
+  --md-mermaid-node-bg-color: #dbe9fa;
+  --md-mermaid-node-fg-color: #315d94;
+  --md-mermaid-label-fg-color: #20334e;
+}
+
+/* Make generated API entries easier to scan as independent contracts. */
+.md-typeset .doc-object {
+  border-left: 0.15rem solid var(--privateerr-border);
+  margin-bottom: 2rem;
+  padding-left: 0.9rem;
+}
+
+.md-typeset .doc-heading {
+  align-items: baseline;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.md-typeset .doc-label {
+  background: var(--md-accent-fg-color--transparent);
+  border-radius: 999px;
+  padding: 0.08rem 0.42rem;
+}
+
+/* Keep navigation state visible without competing with the article. */
+.md-nav__link--active {
+  font-weight: 700;
+}
+
+.md-nav__link:is(:focus, :hover) {
+  color: var(--md-accent-fg-color);
+}
+
+.md-search__form {
+  border: 1px solid rgb(255 255 255 / 10%);
+  border-radius: 0.5rem;
+}
+
+.md-footer {
+  background-image: linear-gradient(115deg, #0c1729, #17365b);
+  border-top: 1px solid rgb(166 216 255 / 20%);
+}
+
+:focus-visible {
+  outline: 0.15rem solid var(--md-accent-fg-color);
+  outline-offset: 0.15rem;
+}
+
+@media screen and (max-width: 44.984375em) {
+  .md-typeset {
+    font-size: 0.78rem;
+  }
+
+  .md-typeset h1 {
+    font-size: 2rem;
+  }
+
+  .md-content__button {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
+}

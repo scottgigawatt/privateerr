@@ -76,12 +76,14 @@ COPY LICENSE                        /LICENSE
 COPY pia-manual-connections/LICENSE /licenses/pia-manual-connections/LICENSE
 COPY pia-manual-connections         ${PIA_BIN_HOME}
 COPY privateerr-entrypoint.sh       ${PRIVATEERR_BIN_HOME}/privateerr-entrypoint.sh
+COPY privateerr-generate.sh         ${PRIVATEERR_BIN_HOME}/privateerr-generate.sh
+COPY privateerr                     ${PRIVATEERR_BIN_HOME}/privateerr
 COPY privateerr-healthcheck.sh      /usr/local/bin/privateerr-healthcheck
 COPY privateerr-date.sh             /usr/local/bin/date
 
 #
 # Upgrade the base OpenSSL runtime libraries to Alpine's current fixed release,
-# then install the small runtime needed to generate PIA WireGuard configs.
+# then install Python for the supervisor and the tools used by upstream PIA scripts.
 # Stable Alpine provides fixed jq; only nghttp2-libs needs the configured edge
 # repository until stable provides version 1.70.0 or newer.
 #
@@ -92,6 +94,7 @@ RUN apk upgrade --no-cache libcrypto3 libssl3 && \
         curl \
         jq \
         openresolv \
+        python3 \
         wireguard-tools && \
     apk add --no-cache \
         --repository="${EDGE_APK_REPOSITORY}" \

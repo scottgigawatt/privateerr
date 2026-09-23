@@ -52,7 +52,7 @@ Privateerr is a containerized configuration tool for [Private Internet Access (P
 Use Privateerr when you want `wg0.conf` for Gluetun, WireGuard, or another compatible VPN client—especially when a Docker Compose deployment needs to generate that configuration repeatably.
 
 > [!IMPORTANT]
-> Privateerr is not a virtual private network (VPN) client. It does not create or maintain a tunnel. It generates `wg0.conf` for a VPN client such as Gluetun or WireGuard.
+> Privateerr is not a virtual private network (VPN) client. It does not create or maintain a tunnel. It generates `wg0.conf` for a VPN client such as Gluetun or WireGuard. Its optional supervisor refreshes Gluetun's connection settings; Gluetun still owns the tunnel.
 
 The upstream PIA scripts remain visible as the `docker/pia-manual-connections` submodule. Privateerr adds repeatable container execution, safe defaults, health reporting, and a small metadata handoff without modifying those scripts.
 
@@ -62,16 +62,29 @@ Privateerr runs before the VPN client and writes two files. Gluetun—a separate
 
 ```mermaid
 flowchart TB
-    PIA["PIA manual-connection scripts"]
-    Privateerr["Privateerr generates PIA WireGuard configuration"]
-    Files["wg0.conf + privateerr.env"]
-    Gluetun["Gluetun starts the VPN tunnel"]
-    Services["Compose services use Gluetun networking"]
+  accTitle: Privateerr configuration handoff
+  accDescr: Privateerr runs the unmodified PIA scripts and writes a WireGuard configuration plus server metadata. Gluetun uses those files to start the VPN tunnel, and other Compose services share Gluetun's protected network connection.
 
-    PIA -->|unmodified scripts| Privateerr
-    Privateerr -->|writes| Files
-    Files -->|WireGuard config and server metadata| Gluetun
-    Gluetun -->|protected network namespace| Services
+  PIA["📜 PIA manual-connection scripts"]
+  Privateerr["🏴‍☠️ Privateerr generates<br/>PIA WireGuard configuration"]
+  Files["📦 wg0.conf + privateerr.env"]
+  Gluetun["🛡️ Gluetun starts<br/>the VPN tunnel"]
+  Services["🚢 Compose services use<br/>Gluetun networking"]
+
+  PIA -->|"Unmodified scripts"| Privateerr
+  Privateerr -->|"Writes configuration and metadata"| Files
+  Files -->|"VPN configuration and PIA server name"| Gluetun
+  Gluetun -->|"Protected network namespace"| Services
+
+  classDef upstream fill:#fef3c7,stroke:#d97706,color:#451a03,stroke-width:2px
+  classDef generation fill:#dbeafe,stroke:#2563eb,color:#172554,stroke-width:2px
+  classDef handoff fill:#ede9fe,stroke:#7c3aed,color:#2e1065,stroke-width:2px
+  classDef connected fill:#dcfce7,stroke:#16a34a,color:#14532d,stroke-width:2px
+
+  class PIA upstream
+  class Privateerr generation
+  class Files handoff
+  class Gluetun,Services connected
 ```
 
 ## Generate a WireGuard configuration ⚡
@@ -86,7 +99,7 @@ cp example.env .env
 
 The public PIA submodule needs no GitHub SSH key. If cloning reports a submodule error or building reports a missing `pia-manual-connections/LICENSE`, follow [Recover a missing PIA submodule](docs/SUPPORT.md#recover-a-missing-pia-submodule).
 
-Set `PIA_USER` and `PIA_PASS` in `.env`. Set `PIA_PF=true` if you need a PIA endpoint that supports port forwarding; otherwise leave it `false`. Keep the file private, then generate fresh configuration:
+Set `PIA_USER` and `PIA_PASS` in `.env`. Keep the file private. The example selects a port-forwarding-capable region with `PIA_PF=true`. For configuration generation alone, run the command below; it disables recovery and keepalive for that disposable container without changing `.env`. Stop any running supervisor before generating into its configuration directory.
 
 ```sh
 make run-privateerr
@@ -102,128 +115,41 @@ Privateerr writes:
 > [!WARNING]
 > Keep live `wg0.conf` and `privateerr.env` files private. They can contain VPN connection material and deployment-specific metadata. Run `make restore-test-config` before committing after a live voyage.
 
-<!-- markdownlint-disable MD033 -->
-<details>
-<summary>View abbreviated example output</summary>
+## Select a PIA region 🧭
 
-The checked-in examples use fake pirate-flavored data. A real run overwrites them.
+Automatic selection is enabled by default. To pin a region, set `PIA_AUTOCONNECT=false` and `PIA_PREFERRED_REGION=ca` in `.env`. Replace `ca` with another PIA region ID when needed. See [region selection](docs/automatic-recovery.md#choose-a-region) for recreation steps and recovery behavior.
 
-```text
-[Interface]
-Address = 10.10.10.10
-PrivateKey = EXAMPLE-PRIVATE-KEY
-DNS = 10.10.10.10
+## Recover stale VPN connections ⚓
 
-[Peer]
-PersistentKeepalive = 25
-PublicKey = EXAMPLE-PUBLIC-KEY
-AllowedIPs = 0.0.0.0/0
-Endpoint = 10.10.10.10:1234
-```
+Privateerr can optionally monitor Gluetun and refresh stale PIA WireGuard settings through Gluetun's authenticated control API. It keeps Gluetun's container running and needs no extra service or Docker socket. The supplied environment example enables recovery by default. Set a private shared API key before starting; image-only deployments that omit the setting retain their existing behavior.
 
-```text
-PIA_WG_SERVER_NAME=jolly-roger-401
-PIA_WG_ENDPOINT_IP=10.10.10.10
-PIA_WG_ENDPOINT_PORT=1234
-PIA_REGION_ID=skull-island
-PIA_REGION_NAME="Skull Island"
-PIA_PORT_FORWARDING_SUPPORTED=true
-PIA_GEOLOCATED_REGION=false
-```
-
-</details>
-<!-- markdownlint-enable MD033 -->
-
-## Enable PIA port forwarding 🚪
-
-Set `PIA_PF=true` in `.env`, then regenerate the files:
-
-```sh
-make run-privateerr
-```
-
-Privateerr asks PIA for a port-forwarding-capable WireGuard endpoint and writes the matching server name to `privateerr.env`. The included Gluetun wrapper exports that value as `SERVER_NAMES` before starting Gluetun, allowing Gluetun to request the forwarded port from the correct PIA server.
-
-If you only need a WireGuard file, take `wg0.conf` and use it with the compatible client of your choice. If you want the complete automated handoff, use the included Compose stack or the larger [Plundarr project](https://github.com/scottgigawatt/plundarr#readme).
+See [automatic Gluetun recovery](docs/automatic-recovery.md) for setup, API authentication, timing, and limitations. Gluetun remains responsible for the VPN tunnel and port forwarding. The example runs Privateerr without privileged mode or Linux capabilities; see [container hardening and image-only upgrades](docs/automatic-recovery.md#run-without-privileged-mode).
 
 ## Start Privateerr with Gluetun 🐳
 
-The repository includes one Synology-friendly `docker-compose.yml` that runs Privateerr before Gluetun:
+The repository includes a single `docker-compose.yml` for Privateerr, Gluetun, qBittorrent, and the Buccaneerr validator. qBittorrent shares Gluetun's VPN namespace and receives its forwarded port. Before starting:
+
+1. Generate a shared recovery API key with `openssl rand -hex 24` and set `PRIVATEERR_GLUETUN_API_KEY` in `.env`.
+2. Review qBittorrent's user/group IDs, storage paths, and Web UI port in `.env`.
+3. Follow the [complete qBittorrent example](docs/automatic-recovery.md#try-the-qbittorrent-example) for application access and validation.
+
+Buccaneerr deliberately interrupts the VPN briefly to verify automatic recovery. Start the full test example with:
 
 ```sh
 make up
 ```
 
-Inspect what Compose will run:
+Use `make ps` to inspect service status and `make logs` to read output. For a lasting application deployment without fault injection, start only the three application services as described in the recovery guide.
 
-```sh
-make print-config
-make config
-make ps
-```
+## Find commands and image channels ⚙️
 
-- `make print-config` prints the project Compose file without comments while leaving variables visible.
-- `make config` prints the fully resolved Compose model using `.env`.
-- `make ps` prints a compact status table for this Compose project.
+Run `make` or `make help` for the command menu. The [maintenance reference](docs/advanced-usage.md#use-maintenance-commands) covers inspection, backups, cleanup, and generated files. [Buccaneerr's testing guide](test/README.md) explains offline checks and live PIA validation.
 
-## Inspect environment values 🔎
-
-Print every resolved environment value:
-
-```sh
-make env
-```
-
-Filter the output when investigating one integration:
-
-```sh
-make env | grep '^PIA'
-make env | grep '^GLUETUN'
-```
-
-The `PIA_*` variables map Privateerr defaults to values understood by the upstream scripts. Other variables configure images, mounts, healthchecks, Gluetun handoff, logs, and testing. See `example.env` for the complete documented set.
-
-## Use common maintenance commands ⚙️
-
-| ⚙️ Command | 🧭 Use it when |
-| --- | --- |
-| ⚡ `make run-privateerr` | You need fresh `wg0.conf` and `privateerr.env` only |
-| 🚢 `make up` | You want the Privateerr and Gluetun Compose stack |
-| ⚓ `make down` | You want to stop the stack while preserving volumes and images |
-| 🔎 `make ps` | You need compact service status |
-| 📜 `make logs` | You need container output |
-| 💾 `make backup` | You want a recoverable archive of `config/` |
-| 🧪 `make test` | You want the offline policy and helper suite |
-| 🧹 `make clean-test` | You want to stop tests and restore checked-in examples |
-| ♻️ `make restore-test-config` | You want to restore only checked-in examples |
-| 🧽 `make clean` | You want to remove disposable repository artifacts only |
-| 💣 `make nuke` | You intend to remove project Docker resources and transient state |
-
-`make nuke` removes this project's containers, networks, volumes, service and local images, and repository-owned Buildx cache. It preserves `.env`, `backups/`, and persistent `config/`, then restores the checked-in WireGuard examples. Shared or in-use base images remain.
-
-## Choose an image channel 📦
-
-Images are published to [GitHub Container Registry](https://github.com/scottgigawatt/privateerr/pkgs/container/privateerr) and [Docker Hub](https://hub.docker.com/r/scottgigawatt/privateerr) for `linux/amd64`, `linux/arm64`, and `linux/arm/v7`.
-
-| 📦 Channel | 🧭 Choose it when |
-| --- | --- |
-| ✅ `latest` | You want the newest stable release; recommended for most users |
-| 🧪 `edge` | You want the newest successful `main` build and accept changes before release |
-| ⚓ Exact version | You want one immutable semantic-version release, such as `1.2.3` |
-| 🔬 `sha-...` | You need the image built from one exact source revision |
-
-Stable releases also publish minor and stable-major aliases. Major version zero omits the broad `0` alias, and prereleases never replace movable stable aliases.
-
-Read [advanced usage](docs/advanced-usage.md) for multi-architecture builds, end-to-end validation, release channels, registry mirroring, pinned inputs, and generated-file maintenance.
-
-## Understand supply-chain controls 🛡️
-
-Privateerr pins GitHub Actions to full commit hashes and Alpine build bases to image digests. Renovate proposes reviewed updates for actions, Docker images, and the upstream submodule. Pull request validation, CodeQL, OpenSSF Scorecard, Trivy, software bills of materials, and provenance attestations protect the build and publication path.
-
-Successful `main` builds publish `edge`; only a reviewed stable version advances `latest`. Rebuilding the same source commit does not silently select a newer Alpine base.
+Privateerr and Buccaneerr support `linux/amd64`, `linux/arm64`, and `linux/arm/v7`; individual applications can support fewer architectures. Use `latest` for stable releases, `edge` to preview successful `main` builds, or an exact version to select a release. See [registry publishing and image channels](docs/advanced-usage.md#understand-registry-publishing) for tags, registries, and supply-chain controls.
 
 ## Read more and get help 📚
 
+- [Developer documentation](https://scottgigawatt.github.io/privateerr/): Supervisor architecture, contributor guides, and generated Python reference.
 - [Advanced usage](docs/advanced-usage.md): Testing, builds, publishing, maintenance, and generated files.
 - [Configuration directories](config/README.md): Runtime state and Gluetun handoff paths.
 - [Host scripts](scripts/README.md): Backup, credential preflight, cleanup, and status helpers.

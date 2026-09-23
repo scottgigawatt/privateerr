@@ -1,0 +1,3 @@
+# Supervisor API
+
+::: privateerr.supervisor

@@ -14,6 +14,7 @@
 #   - Verifies Privateerr generated privateerr.env.
 #   - Checks Gluetun's unauthenticated health endpoint.
 #   - Checks Gluetun's forwarded_port file when port forwarding is required.
+#   - Verifies qBittorrent settings and optionally injects a recovery fault.
 #   - Writes validation output to stdout and the Buccaneerr log file.
 #
 
@@ -134,5 +135,8 @@ if [[ "${BUCCANEERR_REQUIRE_PORT_FORWARD}" == "true" ]]; then
     log "Forwarded port is ${forwarded_port}."
 fi
 
-# Log a success message if all checks passed.
-log "All checks passed. The WireGuard map floats, the tunnel breathes, and the port be plundered."
+#
+# Let Python receive container stop signals directly so it can remove an active test firewall rule.
+#
+export BUCCANEERR_LOG_PATH
+exec python3 "${BUCCANEERR_BIN_HOME:-/buccaneerr}/runtime/validate_stack.py"

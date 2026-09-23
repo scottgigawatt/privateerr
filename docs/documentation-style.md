@@ -76,8 +76,12 @@ Before publishing documentation:
 1. Check commands, paths, defaults, and examples against the current source.
 2. Read the page in rendered GitHub Markdown.
 3. Verify diagrams, tables, alerts, anchors, and narrow-screen readability.
-4. Run `pre-commit run --all-files` and inspect `git diff --check`.
+4. Run `make docs` and `make test-precommit`, then inspect `git diff --check`.
 5. Confirm no credentials, generated WireGuard state, private logs, or deployment-specific values entered the change.
+
+## Keep the developer site consistent
+
+The developer site shares Plundarr's Material layout, navigation, system fonts, API rendering, and GitHub-alert support. Keep those conventions aligned; Privateerr uses midnight navy and sapphire blue with icy blue accents for its distinct palette. Public Python contracts use the [shared docstring conventions](development/privateerr/documentation.md).
 
 ## Read the source guidance
 

@@ -49,7 +49,8 @@
         "dockerfile",
         "git-submodules",
         "github-actions",
-        "pre-commit"
+        "pre-commit",
+        "pip_requirements"
     ],
 
     //
@@ -60,10 +61,34 @@
     },
 
     //
-    // Track Alpine pins across Dockerfiles, workflows, and the example
-    // environment, plus the digest-pinned Hadolint image in pre-commit.
+    // Track image and npm pins that need explicit extraction patterns.
     //
     "customManagers": [
+        // Keep the real integration suite on a reviewed Gluetun release.
+        {
+            "customType": "regex",
+            "managerFilePatterns": [
+                "/^test/runtime/test-recovery-api\\.py$/"
+            ],
+            "matchStrings": [
+                "\"GLUETUN_TEST_IMAGE\", \"(?<depName>qmcgaw/gluetun):(?<currentValue>[^\"@]+)(?:@(?<currentDigest>sha256:[a-f0-9]+))?\""
+            ],
+            "datasourceTemplate": "docker",
+            "versioningTemplate": "docker"
+        },
+
+        // Track pinned npm tools installed inside the development image.
+        {
+            "customType": "regex",
+            "managerFilePatterns": [
+                "/^test/Dockerfile$/"
+            ],
+            "matchStrings": [
+                "(?<depName>cspell|pyright)@(?<currentValue>\\d+\\.\\d+\\.\\d+)"
+            ],
+            "datasourceTemplate": "npm",
+            "versioningTemplate": "npm"
+        },
         {
             "customType": "regex",
             "managerFilePatterns": [
@@ -108,7 +133,12 @@
     //
     "packageRules": [
         {
-            "matchManagers": ["docker-compose", "dockerfile", "custom.regex"],
+            "description": "Keep documentation dependencies exact and hash-verified",
+            "matchManagers": ["pip_requirements"],
+            "rangeStrategy": "pin"
+        },
+        {
+            "matchDatasources": ["docker"],
             "pinDigests": true
         },
         {
@@ -121,7 +151,7 @@
         },
         {
             "groupName": "Docker images",
-            "matchManagers": ["docker-compose", "dockerfile", "custom.regex"]
+            "matchDatasources": ["docker"]
         },
         {
             "groupName": "Submodules",

@@ -23,12 +23,18 @@ on:
       - ".github/scripts/**"
       - ".github/workflows/build-and-push.yml"
       - "Makefile"
+      - "ruff.toml"
+      - "pyrightconfig.json"
+      - ".pre-commit-config.yaml"
+      - "scripts/compose/test.sh"
       - "config/**"
       - "docker/**"
       - "docs/docker-hub-description.md"
       - "docker-compose.yml"
       - "example.env"
       - "test/**"
+      - ".dockerignore"
+      - "requirements-docs.txt"
   schedule:
     - cron: "17 7 * * 1"
   workflow_dispatch:
@@ -184,6 +190,7 @@ jobs:
         run: |
           make test
           make config >/dev/null
+          make test-precommit
 
       #
       # Build both local image shapes before runtime tests and vulnerability scans.
@@ -192,6 +199,7 @@ jobs:
         run: |
           make build
           make build-buccaneerr
+          PRIVATEERR_TEST_IMAGE="${PRIVATEERR_LOCAL_IMAGE_REF}:latest" make test-recovery-api
 
       #
       # Run the credential-backed e2e voyage when both optional PIA secrets exist.
@@ -206,7 +214,8 @@ jobs:
             exit 0
           fi
 
-          make test-e2e
+          # Exercise legacy generation independently of the example's recovery default.
+          PRIVATEERR_AUTO_RECOVER=false BUCCANEERR_TEST_RECOVERY=false make test-e2e
 
       #
       # Always stop test resources and restore checked-in example configuration.
@@ -355,7 +364,7 @@ jobs:
         id: publish-buccaneerr
         uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc  # v7
         with:
-          context: test
+          context: .
           file: test/Dockerfile
           platforms: ${{ env.IMAGE_PLATFORMS }}
           push: true

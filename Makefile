@@ -28,6 +28,7 @@ BUILD_PLATFORMS=build-platforms
 TEST=test
 TEST_MAKE_HELPERS=test-make-helpers
 TEST_WORKFLOWS=test-workflows
+TEST_RECOVERY=test-recovery
 TEST_E2E=test-e2e
 BACKUP=backup
 RESTORE_TEST_CONFIG=restore-test-config
@@ -41,6 +42,16 @@ HELP=help
 #
 RUN_PRIVATEERR=run-privateerr
 BUILD_BUCCANEERR=build-buccaneerr
+LINT=lint
+TEST_TYPES=test-types
+FORMAT=format
+TEST_RECOVERY_API=test-recovery-api
+TEST_RECOVERY_LIVE=test-recovery-live
+TEST_PRECOMMIT=test-precommit
+SPELLCHECK=spellcheck
+DOCS_INSTALL=docs-install
+DOCS=docs
+DOCS_SERVE=docs-serve
 
 #
 # Common targets.
@@ -64,6 +75,7 @@ COMMON_TARGETS= \
 	$(TEST) \
 	$(TEST_MAKE_HELPERS) \
 	$(TEST_WORKFLOWS) \
+	$(TEST_RECOVERY) \
 	$(TEST_E2E) \
 	$(BACKUP) \
 	$(RESTORE_TEST_CONFIG) \
@@ -77,7 +89,17 @@ COMMON_TARGETS= \
 #
 PROJECT_TARGETS= \
 	$(RUN_PRIVATEERR) \
-	$(BUILD_BUCCANEERR)
+	$(BUILD_BUCCANEERR) \
+	$(LINT) \
+	$(TEST_TYPES) \
+	$(FORMAT) \
+	$(TEST_RECOVERY_API) \
+	$(TEST_RECOVERY_LIVE) \
+	$(TEST_PRECOMMIT) \
+	$(SPELLCHECK) \
+	$(DOCS_INSTALL) \
+	$(DOCS) \
+	$(DOCS_SERVE)
 
 #
 # Internal targets.
@@ -126,7 +148,7 @@ RUNTIME_ARTIFACT_PATHS         := config/privateerr/logs \
 PRIVATEERR_DOCKERFILE    ?= docker/Dockerfile
 PRIVATEERR_BUILD_CONTEXT ?= docker
 BUCCANEERR_DOCKERFILE    ?= test/Dockerfile
-BUCCANEERR_BUILD_CONTEXT ?= test
+BUCCANEERR_BUILD_CONTEXT ?= .
 DOCKERFILES              ?= $(PRIVATEERR_DOCKERFILE) $(BUCCANEERR_DOCKERFILE)
 
 #
@@ -159,23 +181,25 @@ COMPOSE_LOGS_OPTIONS            ?= --follow
 #
 # Project-owned helpers used by Make and GitHub Actions.
 #
-PIA_CREDENTIAL_CHECK_CMD  ?= scripts/compose/check-pia-credentials.sh
-COMPOSE_STATUS_CMD        ?= scripts/compose/ps.sh
-COMPOSE_NUKE_CMD          ?= scripts/compose/nuke.sh
-CONFIG_BACKUP_CMD         ?= scripts/compose/backup.sh
-MAKE_HELPERS_TEST_CMD     ?= test/helpers/test-make-helpers.sh
-COMPOSE_NUKE_TEST_CMD     ?= test/helpers/test-compose-nuke.sh
-BASE_IMAGES_TEST_CMD      ?= test/helpers/test-dockerfile-base-images.sh
-WORKFLOW_HELPERS_TEST_CMD ?= test/helpers/test-workflow-helpers.sh
-POLICY_HELPERS_TEST_CMD   ?= test/helpers/test-policy-checks.sh
-BUILD_PIN_POLICY_TEST_CMD ?= test/policy/check-build-pin-policy.sh
-IMAGE_TAG_POLICY_TEST_CMD ?= test/policy/check-image-tag-policy.sh
+PIA_CREDENTIAL_CHECK_CMD ?= scripts/compose/check-pia-credentials.sh
+COMPOSE_STATUS_CMD       ?= scripts/compose/ps.sh
+COMPOSE_NUKE_CMD         ?= scripts/compose/nuke.sh
+CONFIG_BACKUP_CMD        ?= scripts/compose/backup.sh
+BUCCANEERR_CHECK_CMD     ?= scripts/compose/test.sh
+
+#
+# Documentation targets share Buccaneerr's optional, hash-verified docs build.
+#
+DOCS_CMD           ?= scripts/docs/build.sh
+DOCS_IMAGE         ?= privateerr-buccaneerr:docs
+DOCS_SITE_PATH     ?= site
+DOCS_SERVE_ADDRESS ?= 127.0.0.1:8000
 
 #
 # Disposable developer artifacts. Deployment state, generated credentials,
 # containers, volumes, and images must never enter this list.
 #
-CLEAN_ARTIFACT_PATHS      := .pytest_cache .ruff_cache test/logs
+CLEAN_ARTIFACT_PATHS      := .pytest_cache .ruff_cache test/logs site
 CLEAN_ARTIFACT_FIND_ROOT  := .
 CLEAN_ARTIFACT_FIND_PRUNE := -path './.git' -o -path './docker/pia-manual-connections'
 CLEAN_ARTIFACT_FIND_MATCH := -type d -name '__pycache__' -o -type f \( -name '*.pyc' -o -name '*.pyo' -o -name '.DS_Store' \)
@@ -191,14 +215,14 @@ COMPOSE_TEST_OPTIONS ?= \
 	--exit-code-from $(BUCCANEERR_SERVICE)
 
 #
-# Docker Compose options for running only Privateerr.
+# Docker Compose options for disposable generation without automatic restarts.
 #
 COMPOSE_PRIVATEERR_ONLY_OPTIONS ?= \
 	--build \
-	--force-recreate \
-	--remove-orphans \
-	--abort-on-container-exit \
-	--exit-code-from $(PRIVATEERR_SERVICE)
+	--rm \
+	--no-deps \
+	--env PRIVATEERR_AUTO_RECOVER=false \
+	--env PRIVATEERR_KEEPALIVE=false
 
 #
 # Docker Buildx options used to verify multi-architecture image builds.
@@ -359,10 +383,14 @@ ENV_FILE=.env
 EXAMPLE_ENV_FILE=example.env
 
 #
+# Show the command chart when no target is supplied.
+#
+.DEFAULT_GOAL := $(HELP)
+
+#
 # Targets that are not files (i.e. never up-to-date); these will run every
 # time the target is called or required.
 #
-.DEFAULT_GOAL := $(ALL)
 .PHONY: $(TARGETS)
 
 #
@@ -531,41 +559,37 @@ $(BUILD_PLATFORMS): $(BUILD_DEPENDS) $(ENSURE_BUILDX_BUILDER)
 	$(BUCCANEERR_PLATFORM_BUILD)
 
 #
-# $(TEST): Runs policy scripts and isolated automation-helper tests.
+# $(TEST): Runs lint, policy, helper, and Python tests in one offline Buccaneerr container.
 #
-# Dependencies:
-#   $(TEST_MAKE_HELPERS) - Test reusable Make and Compose helpers.
-#   $(TEST_WORKFLOWS) - Test workflow payload and registry helpers.
+# Dependencies: Docker builds the cached Buccaneerr test image.
 #
-$(TEST): $(TEST_MAKE_HELPERS) $(TEST_WORKFLOWS)
-	sh -n docker/privateerr-date.sh \
-		docker/privateerr-entrypoint.sh \
-		docker/privateerr-healthcheck.sh \
-		config/gluetun/scripts/gluetun-entrypoint-wrapper.sh \
-		test/buccaneerr-entrypoint.sh
-	$(call announce_success,Privateerr's local test voyage came back clean. ✅)
+$(TEST):
+	$(BUCCANEERR_CHECK_CMD) all
+	$(call announce_success,Privateerr's test voyage came back clean. ✅)
 
 #
-# $(TEST_MAKE_HELPERS): Tests reusable Make and Compose helpers locally.
+# $(TEST_MAKE_HELPERS): Tests reusable Make and Compose helpers inside Buccaneerr.
 #
-# Dependencies: None.
+# Dependencies: Docker builds the cached Buccaneerr test image.
 #
 $(TEST_MAKE_HELPERS):
-	$(MAKE_HELPERS_TEST_CMD)
-	$(BASE_IMAGES_TEST_CMD)
-	$(COMPOSE_NUKE_TEST_CMD)
+	$(BUCCANEERR_CHECK_CMD) helpers
 
 #
-# $(TEST_WORKFLOWS): Tests workflow helpers and shared publishing policies
-#                    locally.
+# $(TEST_WORKFLOWS): Tests workflow helpers and publishing policies inside Buccaneerr.
 #
-# Dependencies: None.
+# Dependencies: Docker builds the cached Buccaneerr test image.
 #
 $(TEST_WORKFLOWS):
-	$(WORKFLOW_HELPERS_TEST_CMD)
-	$(BUILD_PIN_POLICY_TEST_CMD)
-	$(IMAGE_TAG_POLICY_TEST_CMD)
-	$(POLICY_HELPERS_TEST_CMD)
+	$(BUCCANEERR_CHECK_CMD) workflows
+
+#
+# $(TEST_RECOVERY): Tests recovery and generation inside Buccaneerr without PIA credentials.
+#
+# Dependencies: Docker builds the cached Buccaneerr test image.
+#
+$(TEST_RECOVERY):
+	$(BUCCANEERR_CHECK_CMD) python
 
 #
 # $(TEST_E2E): Starts the full stack once and runs the Buccaneerr.
@@ -575,7 +599,7 @@ $(TEST_WORKFLOWS):
 #   $(CHECK_PIA) - Reject missing or example PIA credentials.
 #
 $(TEST_E2E): $(CHECK_PIA) $(ENSURE_BUILDX_BUILDER)
-	$(call announce,Starting Privateerr$(COMMA) Gluetun$(COMMA) and Buccaneerr for e2e validation. 🌊)
+	$(call announce,Starting Privateerr$(COMMA) Gluetun$(COMMA) qBittorrent$(COMMA) and Buccaneerr for e2e validation. 🌊)
 	$(PRIVATEERR_COMPOSE) up $(COMPOSE_TEST_OPTIONS)
 
 #
@@ -667,9 +691,21 @@ $(HELP):
 	$(call help_line,$(BUILD),Build the Privateerr image.)
 	$(call help_line,$(BUILD_PLATFORMS),Check every published image architecture.)
 	$(call help_line,$(TEST),Run policy and automation-helper tests.)
+	$(call help_line,$(TEST_RECOVERY),Test recovery and generation inside Buccaneerr.)
+	$(call help_line,$(TEST_TYPES),Check all Python with strict Pyright in Buccaneerr.)
+	$(call help_line,$(LINT),Check Python formatting and Python/shell lint.)
+	$(call help_line,$(FORMAT),Format Python and organize imports.)
+	$(call help_line,$(TEST_RECOVERY_API),Test the real Gluetun API without PIA credentials.)
+	$(call help_line,$(TEST_RECOVERY_LIVE),Test live PIA recovery in isolated containers.)
+	$(call help_line,$(TEST_PRECOMMIT),Run all pre-commit hooks inside Buccaneerr.)
+	$(call help_line,$(SPELLCHECK),Check project spelling inside Buccaneerr.)
 	$(call help_line,$(TEST_MAKE_HELPERS),Test reusable Make and Compose helpers.)
 	$(call help_line,$(TEST_WORKFLOWS),Test workflow helpers and shared publishing policies.)
-	$(call help_line,$(TEST_E2E),Run the live Privateerr and Gluetun test.)
+	$(call help_line,$(TEST_E2E),Validate the application stack and automatic VPN recovery.)
+	$(call help_heading,📚 Developer documentation)
+	$(call help_line,$(DOCS_INSTALL),Build the locked documentation tools in Buccaneerr.)
+	$(call help_line,$(DOCS),Build the strict developer site and Python reference.)
+	$(call help_line,$(DOCS_SERVE),Preview developer documentation at localhost:8000.)
 	$(call help_heading,🧹 Maintenance)
 	$(call help_line,$(BACKUP),Archive the complete config directory.)
 	$(call help_line,$(RESTORE_TEST_CONFIG),Restore checked-in example VPN config.)
@@ -690,7 +726,7 @@ $(HELP):
 #
 $(RUN_PRIVATEERR): $(CHECK_PIA) $(ENSURE_BUILDX_BUILDER)
 	$(call announce,Generating WireGuard config and Gluetun metadata. 📜)
-	PRIVATEERR_KEEPALIVE=false $(PRIVATEERR_COMPOSE) up \
+	$(PRIVATEERR_COMPOSE) run \
 		$(COMPOSE_PRIVATEERR_ONLY_OPTIONS) \
 		$(PRIVATEERR_SERVICE)
 
@@ -704,3 +740,85 @@ $(RUN_PRIVATEERR): $(CHECK_PIA) $(ENSURE_BUILDX_BUILDER)
 $(BUILD_BUCCANEERR): $(BUILD_DEPENDS) $(CHECK_ENV) $(ENSURE_BUILDX_BUILDER)
 	$(call announce,Building the Buccaneerr image. 🔎)
 	$(PRIVATEERR_COMPOSE) build $(COMPOSE_BUILD_OPTIONS) $(BUCCANEERR_SERVICE)
+
+#
+# $(LINT): Check Python formatting, imports, correctness, and shell scripts in Buccaneerr.
+#
+# Dependencies: Docker builds the cached Buccaneerr image.
+#
+$(LINT):
+	$(BUCCANEERR_CHECK_CMD) lint
+
+#
+# $(TEST_TYPES): Check all project-owned Python against the shared strict configuration.
+#
+# Dependencies: Docker builds and runs the test-only Buccaneerr image.
+#
+$(TEST_TYPES):
+	$(BUCCANEERR_CHECK_CMD) types
+
+#
+# $(FORMAT): Apply Python import fixes and formatting with Buccaneerr's Ruff version.
+#
+# Dependencies: Docker; intentionally writes formatted source files.
+#
+$(FORMAT):
+	$(BUCCANEERR_CHECK_CMD) format
+
+#
+# $(TEST_RECOVERY_API): Exercise the real Gluetun API without PIA credentials.
+#
+# Dependencies: Docker and a built PRIVATEERR_TEST_IMAGE.
+#
+$(TEST_RECOVERY_API):
+	$(BUCCANEERR_CHECK_CMD) runtime
+
+#
+# $(TEST_RECOVERY_LIVE): Exercise live PIA recovery using isolated Docker resources.
+#
+# Dependencies: Docker, PRIVATEERR_TEST_IMAGE, and PIA credentials in .env.
+#
+$(TEST_RECOVERY_LIVE):
+	$(BUCCANEERR_CHECK_CMD) live
+
+#
+# $(TEST_PRECOMMIT): Run repository hooks inside Buccaneerr with nested Docker access.
+#
+# Dependencies: Docker and network access to download pinned hook environments.
+#
+$(TEST_PRECOMMIT):
+	$(BUCCANEERR_CHECK_CMD) precommit
+
+#
+# $(SPELLCHECK): Check project vocabulary using Buccaneerr's CSpell installation.
+#
+# Dependencies: Docker builds the cached Buccaneerr image.
+#
+$(SPELLCHECK):
+	$(BUCCANEERR_CHECK_CMD) spellcheck
+
+#
+# $(DOCS_INSTALL): Build the optional documentation target in Buccaneerr.
+#
+# Dependencies: None; Docker reuses unchanged toolchain layers.
+#
+$(DOCS_INSTALL):
+	DOCS_IMAGE="$(DOCS_IMAGE)" $(DOCS_CMD) install
+
+#
+# $(DOCS): Build the complete developer site with documentation warnings treated as errors.
+#
+# Dependencies:
+#   $(DOCS_INSTALL) - Install exact, hash-verified documentation packages in Buccaneerr.
+#
+$(DOCS): $(DOCS_INSTALL)
+	DOCS_IMAGE="$(DOCS_IMAGE)" DOCS_SITE_PATH="$(DOCS_SITE_PATH)" $(DOCS_CMD) build
+
+#
+# $(DOCS_SERVE): Preview the developer site with automatic reloads for source edits.
+#
+# Dependencies:
+#   $(DOCS_INSTALL) - Install exact, hash-verified documentation packages in Buccaneerr.
+#
+$(DOCS_SERVE): $(DOCS_INSTALL)
+	DOCS_IMAGE="$(DOCS_IMAGE)" DOCS_SERVE_ADDRESS="$(DOCS_SERVE_ADDRESS)" $(DOCS_CMD) serve

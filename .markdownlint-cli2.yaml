@@ -14,6 +14,7 @@
 globs:
   - "**/*.md"
   - "#.git/**"
+  - "#site/**"
 
 #
 # Never lint the official PIA submodule because Privateerr keeps that upstream

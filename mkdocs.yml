@@ -1,0 +1,217 @@
+#
+# Copyright 2025-2026 Scott Gigawatt
+#
+# Licensed under the Apache License, Version 2.0.
+#
+# mkdocs.yml: Privateerr developer site, supervisor guides, and generated Python
+#             API reference configuration.
+#
+
+#
+# Use the Material schema for editor validation and completion.
+#
+# yaml-language-server: $schema=https://squidfunk.github.io/mkdocs-material/schema.json
+
+#
+# Public site identity and search metadata.
+#
+site_name: Privateerr Developer Documentation
+site_description: Architecture, contributor guides, and Python API reference for Privateerr and its recovery supervisor.
+site_url: https://scottgigawatt.github.io/privateerr/
+copyright: Copyright &copy; 2025-2026 Scott Gigawatt
+
+#
+# Connect page actions and the header repository link to the source tree.
+#
+repo_name: scottgigawatt/privateerr
+repo_url: https://github.com/scottgigawatt/privateerr
+edit_uri: edit/main/docs/
+
+#
+# Keep the hand-authored guides and source-generated reference in one stable,
+# explicit navigation hierarchy.
+#
+nav:
+  - Chart Room: index.md
+  - Supervisor:
+      - Developer overview: development/privateerr/index.md
+      - Architecture: development/privateerr/architecture.md
+      - Python documentation: development/privateerr/documentation.md
+      - Testing: development/privateerr/testing.md
+  - Python Reference:
+      - Reference map: development/privateerr/reference/index.md
+      - Configuration: development/privateerr/reference/config.md
+      - HTTP client: development/privateerr/reference/client.md
+      - JSON validation: development/privateerr/reference/data.md
+      - Connection settings: development/privateerr/reference/settings.md
+      - Supervisor: development/privateerr/reference/supervisor.md
+  - Project Guides:
+      - Guide map: project-guides/index.md
+      - Automatic recovery: automatic-recovery.md
+      - Advanced usage: advanced-usage.md
+      - Documentation style: documentation-style.md
+      - Contributing: CONTRIBUTING.md
+      - Security: SECURITY.md
+      - Support: SUPPORT.md
+      - Code of Conduct: CODE_OF_CONDUCT.md
+      - Docker Hub description: docker-hub-description.md
+
+#
+# Configure Material's visual identity and navigation behavior. Project-owned
+# CSS supplies the custom palette without replacing upstream templates.
+#
+theme:
+  name: material
+  language: en
+
+  #
+  # Keep typography local and privacy-friendly by using system font stacks.
+  #
+  font: false
+
+  #
+  # Use bundled icons so the header needs no additional image downloads.
+  #
+  icon:
+    logo: material/ship-wheel
+    repo: fontawesome/brands/github
+    edit: material/pencil
+    view: material/eye
+
+  #
+  # Follow the operating-system preference on first visit and retain the
+  # accessible manual toggle. Custom colors are defined in extra.css.
+  #
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: custom
+      accent: custom
+      toggle:
+        icon: material/weather-night
+        name: Dim the lanterns
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: custom
+      accent: custom
+      toggle:
+        icon: material/white-balance-sunny
+        name: Raise the sun
+
+  #
+  # Enable only features that improve source discovery and long-form reading.
+  #
+  features:
+    - content.action.edit
+    - content.action.view
+    - content.code.annotate
+    - content.code.copy
+    - content.code.select
+    - content.footnote.tooltips
+    - content.tabs.link
+    - content.tooltips
+    - navigation.footer
+    - navigation.indexes
+    - navigation.instant
+    - navigation.instant.prefetch
+    - navigation.instant.progress
+    - navigation.path
+    - navigation.sections
+    - navigation.tabs
+    - navigation.tabs.sticky
+    - navigation.top
+    - search.highlight
+    - search.share
+    - search.suggest
+    - toc.follow
+
+#
+# Build local search and generate the public Python reference directly from the
+# Privateerr source without exposing private helpers.
+#
+plugins:
+  - search:
+      lang: en
+  - mkdocstrings:
+      default_handler: python
+      handlers:
+        python:
+          paths:
+            - docker
+          options:
+            docstring_style: google
+            filters:
+              - "!^_"
+            heading_level: 2
+            inherited_members: false
+            members_order: source
+            merge_init_into_class: true
+            separate_signature: true
+            show_bases: true
+            show_if_no_docstring: false
+            show_root_full_path: false
+            show_root_heading: true
+            show_signature_annotations: true
+            show_source: true
+            show_symbol_type_heading: true
+            show_symbol_type_toc: true
+            signature_crossrefs: true
+
+#
+# List every supported Markdown construct explicitly so rendering behavior is
+# reviewable and stable across guide and API pages.
+#
+markdown_extensions:
+  - abbr
+  - admonition
+  - attr_list
+  - def_list
+  - footnotes
+  - md_in_html
+  - tables
+
+  #
+  # Add linked heading anchors with a project-specific table-of-contents label.
+  #
+  - toc:
+      permalink: true
+      title: On this chart
+  - pymdownx.details
+
+  #
+  # Preserve line anchors and language classes for readable source examples.
+  #
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+
+  #
+  # Interpret GitHub's native blockquote alerts as Material admonitions so one
+  # Markdown form renders correctly in both the repository and published site.
+  #
+  - pymdownx.quotes:
+      callouts: true
+  - pymdownx.snippets:
+      base_path:
+        - .
+      check_paths: true
+
+  #
+  # Render nested fences normally while routing Mermaid blocks to its renderer.
+  #
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.tabbed:
+      alternate_style: true
+
+#
+# Load the developer chart-room palette and component refinements after the
+# upstream Material styles.
+#
+extra_css:
+  - assets/stylesheets/extra.css

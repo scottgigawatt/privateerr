@@ -351,7 +351,7 @@ common_targets=$(awk '
         exit
     }
 ' Makefile)
-test "${common_targets}" = "BUILD_DEPENDS CHECK_ENV CHECK_PIA ENSURE_BUILDX_BUILDER ALL UP DOWN PS LOGS CONFIG ENV PRINT_CONFIG PRINT_ENV BUILD BUILD_PLATFORMS TEST TEST_MAKE_HELPERS TEST_WORKFLOWS TEST_E2E BACKUP RESTORE_TEST_CONFIG CLEAN_TEST CLEAN NUKE HELP"
+test "${common_targets}" = "BUILD_DEPENDS CHECK_ENV CHECK_PIA ENSURE_BUILDX_BUILDER ALL UP DOWN PS LOGS CONFIG ENV PRINT_CONFIG PRINT_ENV BUILD BUILD_PLATFORMS TEST TEST_MAKE_HELPERS TEST_WORKFLOWS TEST_RECOVERY TEST_E2E BACKUP RESTORE_TEST_CONFIG CLEAN_TEST CLEAN NUKE HELP"
 common_recipe_order=$(awk '
     /^\$\([A-Z0-9_]+\)(:| )/ {
         target = $0
@@ -361,7 +361,7 @@ common_recipe_order=$(awk '
             targets = targets " "
         }
         targets = targets target
-        if (++count == 25) {
+        if (++count == 26) {
             print targets
             exit
         }
@@ -397,7 +397,7 @@ project_recipe_order=$(awk -v project_targets=" ${project_targets} " '
     END { print targets }
 ' Makefile)
 test "${project_recipe_order}" = "${project_targets}"
-grep -F ".DEFAULT_GOAL := \$(ALL)" Makefile >/dev/null
+grep -F ".DEFAULT_GOAL := \$(HELP)" Makefile >/dev/null
 for target_group in COMMON_TARGETS PROJECT_TARGETS INTERNAL_TARGETS; do
     grep -F "${target_group}=" Makefile >/dev/null
 done

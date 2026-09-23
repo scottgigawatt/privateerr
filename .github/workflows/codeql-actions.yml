@@ -3,10 +3,10 @@
 #
 # Licensed under the Apache License, Version 2.0.
 #
-# codeql-actions.yml: Analyze Privateerr's GitHub Actions source.
+# codeql-actions.yml: Analyze Privateerr's GitHub Actions and Python source.
 #
 
-name: "Interrogate the Actions Rigging 🔎🏴‍☠️"
+name: "Interrogate the Code Rigging 🔎🏴‍☠️"
 
 #
 # Inspect every change entering main, every resulting main commit, and any
@@ -27,10 +27,13 @@ permissions:
 jobs:
   #
   # Run CodeQL with the permissions needed to read workflow metadata and
-  # publish GitHub Actions findings to code scanning.
+  # publish Actions and Python findings to code scanning.
   #
   codeql-actions:
-    name: "Sniff the Workflow Bilge 🔍"
+    name: ${{ matrix.language == 'actions' && 'Sniff the Workflow Bilge 🔍' || 'Sniff the Python Bilge 🐍' }}
+    strategy:
+      matrix:
+        language: [actions, python]
     runs-on: ubuntu-latest
     permissions:
       actions: read
@@ -40,7 +43,7 @@ jobs:
     steps:
       #
       # Check out without retaining credentials before CodeQL inspects the
-      # repository's workflow definitions.
+      # repository's workflows and Python source.
       #
       - name: "Grab the Treasure Map 🗺️"
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
@@ -48,18 +51,17 @@ jobs:
           persist-credentials: false
 
       #
-      # Initialize the dedicated CodeQL database for GitHub Actions source.
+      # Initialize a separate CodeQL database for each supported source language.
       #
       - name: "Wake the CodeQL Kraken 🐙"
         uses: github/codeql-action/init@1c5b675653bb5c22dbe9b12b556ec555138e09fd  # v4
         with:
-          languages: actions
+          languages: ${{ matrix.language }}
 
       #
-      # Analyze the initialized Actions database and keep its findings in
-      # a dedicated code-scanning category.
+      # Analyze each language and keep its findings in a dedicated category.
       #
       - name: "Read the Cursed Scrolls 📜"
         uses: github/codeql-action/analyze@1c5b675653bb5c22dbe9b12b556ec555138e09fd  # v4
         with:
-          category: "/language:actions"
+          category: "/language:${{ matrix.language }}"

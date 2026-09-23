@@ -7,6 +7,9 @@
 #                          policy, YAML, and Dockerfile validation hooks.
 #
 
+#
+# Define the pre-commit configuration for the repository
+#
 repos:
   #
   # Scan changed content for hardcoded secrets before it can be committed.
@@ -33,11 +36,11 @@ repos:
     rev: v6.0.0
     hooks:
       - id: check-added-large-files
-      - id: check-executables-have-shebangs
       - id: check-merge-conflict
-      - id: check-shebang-scripts-are-executable
       - id: check-toml
       - id: check-yaml
+        # MkDocs uses a trusted Python tag for the Mermaid fence; yamllint still checks its structure.
+        exclude: ^mkdocs\.yml$
       - id: end-of-file-fixer
       - id: trailing-whitespace
         args: ["--markdown-linebreak-ext=md"]
@@ -75,7 +78,7 @@ repos:
   # Check project-owned shell scripts for correctness and portability issues.
   #
   - repo: https://github.com/shellcheck-py/shellcheck-py
-    rev: v0.11.0.1
+    rev: v0.11.0.1-1
     hooks:
       - id: shellcheck
 
@@ -84,6 +87,13 @@ repos:
   #
   - repo: local
     hooks:
+      - id: python-types
+        name: strict Python types (Buccaneerr)
+        entry: scripts/compose/test.sh types
+        language: script
+        pass_filenames: false
+        always_run: true
+
       - id: check-build-pin-policy
         name: check build pin policy
         entry: test/policy/check-build-pin-policy.sh
@@ -108,3 +118,26 @@ repos:
         language: docker_image
         types: [dockerfile]
         args: ["--ignore", "DL3018"]
+
+  #
+  # Use Buccaneerr's Ruff for the same Python checks as Make and PR validation.
+  #
+  - repo: local
+    hooks:
+      - id: check-executable-modes
+        name: Check executable modes and shebangs
+        entry: python3 test/policy/check-executable-modes.py
+        language: system
+        types: [file]
+      - id: ruff-check
+        name: Check Python with Ruff
+        entry: scripts/compose/test.sh python-lint
+        language: script
+        pass_filenames: false
+        types: [python]
+      - id: ruff-format
+        name: Check Python formatting with Ruff
+        entry: scripts/compose/test.sh python-format
+        language: script
+        pass_filenames: false
+        types: [python]
