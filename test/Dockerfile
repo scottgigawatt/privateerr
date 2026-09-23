@@ -85,8 +85,8 @@ RUN apk upgrade --no-cache libcrypto3 libssl3 && \
 
 COPY --from=shellcheck /bin/shellcheck /usr/local/bin/shellcheck
 
-# Keep the spelling tool in the test image with a fixed release.
-RUN npm install --global cspell@9.2.2 && npm cache clean --force
+# Keep spelling and strict typing tools in the test image with fixed releases.
+RUN npm install --global cspell@9.2.2 pyright@1.1.414 && npm cache clean --force
 
 #
 # Copy over the project license and Buccaneerr script, then make the script executable.

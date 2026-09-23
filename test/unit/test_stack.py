@@ -8,18 +8,13 @@
 
 """Exercise stack validation without modifying a real firewall."""
 
-import importlib.util
 import json
 import tempfile
 import unittest
 from pathlib import Path
 from unittest.mock import Mock, patch
 
-SPEC = importlib.util.spec_from_file_location(
-    "validate_stack", Path(__file__).resolve().parents[1] / "runtime/validate_stack.py"
-)
-STACK = importlib.util.module_from_spec(SPEC)
-SPEC.loader.exec_module(STACK)
+import validate_stack as STACK
 
 
 class StackTests(unittest.TestCase):
@@ -33,13 +28,17 @@ class StackTests(unittest.TestCase):
             {"BUCCANEERR_CONFIG_PATH": str(self.root), "BUCCANEERR_GLUETUN_PATH": str(self.root)}
         )
         (self.root / "forwarded_port").write_text("45678")
-        self.preferences = {
+        self.preferences: dict[str, object] = {
             "listen_port": 45678,
             "current_network_interface": "tun0",
             "upnp": False,
             "random_port": False,
         }
-        self.check.read = Mock(side_effect=lambda _: json.dumps(self.preferences).encode())
+
+        def preferences_response(url: str) -> bytes:
+            return json.dumps(self.preferences).encode()
+
+        self.check.read = Mock(side_effect=preferences_response)
 
     def test_application_requires_exact_port_and_interface(self):
         self.assertTrue(self.check.application_ready())
@@ -67,6 +66,29 @@ class StackTests(unittest.TestCase):
         self.assertFalse(self.check.recovered("example-key"))
         (self.root / ".privateerr-pending").mkdir()
         self.assertFalse(self.check.recovered("old-example-key"))
+
+    def test_settings_reject_malformed_data_before_fault_injection(self):
+        """Require usable connection fields before stack checks can target an endpoint."""
+        valid = {
+            "wireguard": {"private_key": "example-key"},  # pragma: allowlist secret
+            "provider": {
+                "server_selection": {
+                    "names": ["example-server"],
+                    "wireguard": {"endpoint_ip": "192.0.2.1"},
+                }
+            },
+        }
+        self.check.read = Mock(return_value=json.dumps(valid).encode())
+        self.assertEqual(self.check.settings(), valid)
+
+        invalid_responses: tuple[object, ...] = ([], {"wireguard": []}, {**valid, "provider": {}})
+
+        for invalid in invalid_responses:
+            with self.subTest(invalid=invalid):
+                self.check.read = Mock(return_value=json.dumps(invalid).encode())
+
+                with self.assertRaises((ValueError, KeyError)):
+                    self.check.settings()
 
     def test_firewall_fault_is_removed_after_failure(self):
         with patch.object(STACK.subprocess, "run") as run:

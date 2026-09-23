@@ -43,6 +43,7 @@ HELP=help
 RUN_PRIVATEERR=run-privateerr
 BUILD_BUCCANEERR=build-buccaneerr
 LINT=lint
+TEST_TYPES=test-types
 FORMAT=format
 TEST_RECOVERY_API=test-recovery-api
 TEST_RECOVERY_LIVE=test-recovery-live
@@ -87,6 +88,7 @@ PROJECT_TARGETS= \
 	$(RUN_PRIVATEERR) \
 	$(BUILD_BUCCANEERR) \
 	$(LINT) \
+	$(TEST_TYPES) \
 	$(FORMAT) \
 	$(TEST_RECOVERY_API) \
 	$(TEST_RECOVERY_LIVE) \
@@ -676,6 +678,7 @@ $(HELP):
 	$(call help_line,$(BUILD_PLATFORMS),Check every published image architecture.)
 	$(call help_line,$(TEST),Run policy and automation-helper tests.)
 	$(call help_line,$(TEST_RECOVERY),Test recovery and generation inside Buccaneerr.)
+	$(call help_line,$(TEST_TYPES),Check all Python with strict Pyright in Buccaneerr.)
 	$(call help_line,$(LINT),Check Python formatting and Python/shell lint.)
 	$(call help_line,$(FORMAT),Format Python and organize imports.)
 	$(call help_line,$(TEST_RECOVERY_API),Test the real Gluetun API without PIA credentials.)
@@ -727,6 +730,14 @@ $(BUILD_BUCCANEERR): $(BUILD_DEPENDS) $(CHECK_ENV) $(ENSURE_BUILDX_BUILDER)
 #
 $(LINT):
 	$(BUCCANEERR_CHECK_CMD) lint
+
+#
+# $(TEST_TYPES): Check all project-owned Python against the shared strict configuration.
+#
+# Dependencies: Docker builds and runs the test-only Buccaneerr image.
+#
+$(TEST_TYPES):
+	$(BUCCANEERR_CHECK_CMD) types
 
 #
 # $(FORMAT): Apply Python import fixes and formatting with Buccaneerr's Ruff version.

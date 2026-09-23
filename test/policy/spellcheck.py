@@ -17,7 +17,12 @@ from pathlib import Path
 with tempfile.TemporaryDirectory() as temporary:
     # The workspace stores its word list as a JSON array inside a commented settings file.
     settings = Path(".vscode/settings.json").read_text()
-    words = json.loads(re.search(r'"cSpell.words"\s*:\s*(\[[\s\S]*?\])', settings).group(1))
+    match = re.search(r'"cSpell.words"\s*:\s*(\[[\s\S]*?\])', settings)
+
+    if match is None:
+        raise SystemExit("Add cSpell.words to .vscode/settings.json before checking spelling.")
+
+    words = json.loads(match.group(1))
     config = Path(temporary) / "cspell.json"
     config.write_text(json.dumps({"version": "0.2", "words": words}))
     paths = (

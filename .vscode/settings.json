@@ -12,6 +12,7 @@
     // Accept project names, dependencies, and intentional pirate vocabulary.
     //
     "cSpell.words": [
+        "pyrightconfig",
         "accDescr",
         "actionlint",
         "adjustin",
@@ -282,5 +283,6 @@
         "https://json.schemastore.org/pre-commit-config.json": ".pre-commit-config.yaml"
     },
     "yaml.validate": true,
-    "yaml.yamlVersion": "1.2"
+    "yaml.yamlVersion": "1.2",
+    "python.analysis.typeCheckingMode": "strict"
 }

@@ -17,12 +17,53 @@ import subprocess
 import sys
 import time
 import uuid
-from collections.abc import Callable, Iterator, Mapping
+from collections.abc import Callable, Generator, Mapping
 from contextlib import contextmanager
 from pathlib import Path
 from types import FrameType
+from typing import TypedDict, cast
 from urllib.error import URLError
 from urllib.request import ProxyHandler, Request, build_opener
+
+
+class InterfaceState(TypedDict):
+    """The local WireGuard identity used to prove that registration changed."""
+
+    private_key: str
+
+
+class PeerState(TypedDict):
+    """The remote IPv4 endpoint targeted by the temporary fault."""
+
+    endpoint_ip: str
+
+
+class SelectionState(TypedDict):
+    """The PIA identity needed to compare saved metadata."""
+
+    names: list[str]
+    wireguard: PeerState
+
+
+class ProviderState(TypedDict):
+    """The provider fields inspected by stack validation."""
+
+    server_selection: SelectionState
+
+
+class VPNState(TypedDict):
+    """Only the response fields required by the stack checks."""
+
+    wireguard: InterfaceState
+    provider: ProviderState
+
+
+def fields(value: object) -> Mapping[str, object]:
+    """Require an object before reading fields from JSON, whose keys are always strings."""
+    if not isinstance(value, dict):
+        raise ValueError("Unexpected JSON response shape.")
+
+    return cast(Mapping[str, object], value)
 
 
 class StackCheck:
@@ -51,14 +92,32 @@ class StackCheck:
         with self.opener.open(Request(url, headers=headers), timeout=5) as response:
             return response.read(1024 * 1024)
 
-    def settings(self) -> dict:
-        """Read the current WireGuard connection for comparison without printing it."""
-        active = json.loads(self.read(self.api + "/v1/vpn/settings", authenticate=True))
+    def settings(self) -> VPNState:
+        """Validate the connection fields used by recovery assertions before inspecting them."""
+        active = fields(json.loads(self.read(self.api + "/v1/vpn/settings", authenticate=True)))
+        key = fields(active["wireguard"])["private_key"]
+        selection = fields(fields(active["provider"])["server_selection"])
+        names = selection["names"]
+        endpoint = fields(selection["wireguard"])["endpoint_ip"]
 
-        if not isinstance(active, dict):
+        # Malformed API data must fail validation before a firewall rule is installed.
+        if not isinstance(key, str) or not isinstance(endpoint, str) or not isinstance(names, list):
             raise ValueError("Unexpected VPN settings response.")
 
-        return active
+        server_names = cast(list[object], names)
+
+        if not server_names or not isinstance(server_names[0], str):
+            raise ValueError("Missing VPN server name.")
+
+        return {
+            "wireguard": {"private_key": key},
+            "provider": {
+                "server_selection": {
+                    "names": [server_names[0]],
+                    "wireguard": {"endpoint_ip": endpoint},
+                }
+            },
+        }
 
     def healthy(self) -> bool:
         """Treat a failed Gluetun health request as an unavailable tunnel."""
@@ -71,11 +130,9 @@ class StackCheck:
     def application_ready(self) -> bool:
         """Require the real Web API and, when enabled, the exact live VPN port lease."""
         try:
-            preferences = json.loads(self.read(self.application + "/api/v2/app/preferences"))
-
-            # An unavailable or unauthenticated application cannot satisfy readiness.
-            if not isinstance(preferences, dict):
-                return False
+            preferences = fields(
+                json.loads(self.read(self.application + "/api/v2/app/preferences"))
+            )
 
             if not self.require_forwarding:
                 return "listen_port" in preferences
@@ -127,7 +184,7 @@ def wait_for(predicate: Callable[[], bool], seconds: float, failure: str) -> Non
 
 
 @contextmanager
-def blocked_endpoint(address: str) -> Iterator[None]:
+def blocked_endpoint(address: str) -> Generator[None]:
     """Remove only this test's labeled firewall rule, including when validation fails."""
     address = str(ipaddress.IPv4Address(address))
     rule = [

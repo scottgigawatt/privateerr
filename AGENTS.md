@@ -138,6 +138,8 @@ Use `Parameters: None.` when appropriate. Keep each short explanatory sentence o
 
 Python modules and tests start with the copyright, Apache-2.0, and filename summary block, followed by a useful module docstring. Prefer small functions, explicit types at application boundaries, standard-library facilities, and concise docstrings for public classes and non-obvious helpers. `ruff.toml` owns lint and formatting rules, including import order, four-space indentation, and Unix line endings. Run both Ruff lint and format checks during pull-request validation; editors and pre-commit must use the same configuration. Keep lint and test dependencies out of published production images.
 
+`pyrightconfig.json` owns strict Python checking for both editors and automation. Keep every project-owned Python module and test in scope, including optional fuzz harnesses. Use `make test-types` for the pinned containerized checker; `make test`, pre-commit, and PR/main/release validation must enforce it. Validate dynamic data at its boundary, annotate collection and callback contracts, and narrow optional values explicitly. Do not weaken strict mode or add blanket `Any` annotations to hide findings. Document any targeted diagnostic exception beside the intentional test or optional dependency. Keep checker packages in test images, never production images.
+
 Run CSpell across project-owned files after changes. Correct misspellings; add genuine project vocabulary to `.vscode/settings.json` under `cSpell.words`. Do not add secrets or whole arbitrary strings to silence spelling diagnostics.
 
 ## Docker Rules

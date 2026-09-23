@@ -22,7 +22,7 @@ ROOT = Path(__file__).resolve().parents[2]
 class ComposeTests(unittest.TestCase):
     """Check the default service graph and shared application settings."""
 
-    def model(self, *, overrides=""):
+    def model(self, *, overrides: str = ""):
         """Resolve example defaults and operator overrides with Buccaneerr's Compose binary."""
         content = (ROOT / "example.env").read_text()
 

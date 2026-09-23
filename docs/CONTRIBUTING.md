@@ -109,3 +109,7 @@ Tiny pull requests be easier to review than a kraken-sized rewrite with six unre
 Do not report security problems in public issues, pull requests, or Discord. Use the [security policy](SECURITY.md) and GitHub private vulnerability reporting. Use the [support guide](SUPPORT.md) for non-sensitive questions.
 
 Fair winds, clean diffs, and may yer YAML indent on the first try. ☠️
+
+## Strict Python checks
+
+Run `make test-types` to check application code and tests with the pinned Pyright version in a disposable test container. Docker is the only host prerequisite. The root `pyrightconfig.json` is shared with VS Code/Pylance; select an interpreter with the project's dependencies installed for accurate editor import resolution. `make test` and pre-commit enforce the same check during pull requests and main/release validation. Ruff continues to own lint and formatting.

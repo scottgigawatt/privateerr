@@ -24,6 +24,7 @@ on:
       - ".github/workflows/build-and-push.yml"
       - "Makefile"
       - "ruff.toml"
+      - "pyrightconfig.json"
       - ".pre-commit-config.yaml"
       - "scripts/compose/test.sh"
       - "config/**"

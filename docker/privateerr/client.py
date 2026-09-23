@@ -15,12 +15,17 @@ or malformed server cannot hold the recovery loop indefinitely.
 
 import json
 import signal
+from collections.abc import Generator, Mapping
 from contextlib import contextmanager
+from email.message import Message
 from http.client import HTTPException
+from types import FrameType
+from typing import IO
 from urllib.error import HTTPError, URLError
 from urllib.request import HTTPRedirectHandler, ProxyHandler, Request, build_opener
 
 from .config import Config
+from .data import object_fields
 
 
 class APIUnavailable(Exception):
@@ -30,16 +35,18 @@ class APIUnavailable(Exception):
 class NoRedirects(HTTPRedirectHandler):
     """Keep authentication headers on the configured server."""
 
-    def redirect_request(self, req, fp, code, msg, headers, newurl):
+    def redirect_request(
+        self, req: Request, fp: IO[bytes], code: int, msg: str, headers: Message, newurl: str
+    ) -> None:
         """Reject redirects rather than forwarding a control API key to another destination."""
         return None
 
 
 @contextmanager
-def deadline(seconds: float):
+def deadline(seconds: float) -> Generator[None]:
     """Bound DNS, connection setup, and body reads in the single-threaded Linux supervisor."""
 
-    def expired(signum, frame):
+    def expired(signum: int, frame: FrameType | None) -> None:
         """Interrupt blocking network operations when the total request time expires."""
         raise TimeoutError("HTTP deadline exceeded")
 
@@ -64,9 +71,17 @@ class Client:
         # Contact configured servers directly, ignoring inherited proxy environment variables.
         self.opener = build_opener(ProxyHandler({}), NoRedirects())
 
-    def request(self, url: str, *, timeout: int, method: str = "GET", body=None, key="") -> bytes:
+    def request(
+        self,
+        url: str,
+        *,
+        timeout: float,
+        method: str = "GET",
+        body: Mapping[str, object] | None = None,
+        key: str = "",
+    ) -> bytes:
         """Send one bounded request and return its body without logging request contents."""
-        headers = {}
+        headers: dict[str, str] = {}
 
         # Callers must explicitly supply authentication; health and catalog calls omit it.
         if key:
@@ -101,21 +116,18 @@ class Client:
         except (OSError, URLError, HTTPException, ValueError) as error:
             raise APIUnavailable from error
 
-    def get(self, route: str) -> dict:
+    def get(self, route: str) -> dict[str, object]:
         """Read a control API object, rejecting responses the supervisor cannot interpret."""
         try:
             result = json.loads(
                 self.request(self.config.api_url + route, timeout=30, key=self.config.api_key)
             )
 
-            if not isinstance(result, dict):
-                raise ValueError
-
-            return result
+            return object_fields(result)
         except (ValueError, UnicodeError) as error:
             raise APIUnavailable from error
 
-    def apply(self, settings: dict) -> None:
+    def apply(self, settings: Mapping[str, object]) -> None:
         """Submit connection fields; the supervisor separately verifies settings and health."""
         self.request(
             self.config.api_url + "/v1/vpn/settings",
@@ -133,14 +145,16 @@ class Client:
         except APIUnavailable:
             return False
 
-    def catalog(self) -> dict:
+    def catalog(self) -> dict[str, object]:
         """Read PIA's advertised regions and WireGuard servers for endpoint selection."""
 
         # PIA serves JSON on the first line followed by signature data outside that JSON document.
         try:
             result = json.loads(self.request(self.config.catalog_url, timeout=20).splitlines()[0])
 
-            if not isinstance(result, dict) or not isinstance(result.get("regions"), list):
+            result = object_fields(result)
+
+            if not isinstance(result.get("regions"), list):
                 raise ValueError
 
             return result

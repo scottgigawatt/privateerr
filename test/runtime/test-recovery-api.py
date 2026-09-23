@@ -24,7 +24,12 @@ import subprocess
 import tempfile
 import time
 import uuid
+from collections.abc import Mapping
 from pathlib import Path
+from typing import Protocol
+
+from privateerr.data import object_fields
+from privateerr.settings import ConnectionSettings
 
 ROOT = Path(__file__).resolve().parents[2]
 IMAGE = os.environ.get("PRIVATEERR_TEST_IMAGE", "privateerr:recovery-review")
@@ -35,7 +40,9 @@ RUN_ID = f"privateerr-recovery-{uuid.uuid4().hex[:12]}"
 LABEL = "io.privateerr.recovery-test"
 
 
-def docker(*args, stdin=None, check=True):
+def docker(
+    *args: str, stdin: str | None = None, check: bool = True
+) -> subprocess.CompletedProcess[str]:
     """Run Docker without printing output that could contain test credentials."""
     return subprocess.run(
         ["docker", *args],
@@ -47,11 +54,12 @@ def docker(*args, stdin=None, check=True):
     )
 
 
-def main(env_file=None, smoke=False):
+def main(env_file: Path | None = None, smoke: bool = False) -> None:
     """Verify API handoff, optionally including live PIA recovery with supplied credentials."""
 
     # Record resources as they are created so partial setup failures can be cleaned up.
-    containers = []
+    containers: list[str] = []
+    privateerr: str | None = None
     network = None
     with tempfile.TemporaryDirectory(prefix=RUN_ID) as temporary:
         directory = Path(temporary)
@@ -305,6 +313,7 @@ def main(env_file=None, smoke=False):
                     print(docker("logs", validator).stdout)
                     raise RuntimeError("Buccaneerr rejected the recovery-disabled stack")
                 wait_application_port(qbittorrent, config)
+                assert privateerr is not None
                 validate_privateerr_isolation(privateerr, legacy=True)
                 print(
                     "PASS: recovery-disabled generation, Gluetun startup, and Buccaneerr forwarding validation.",
@@ -329,7 +338,12 @@ def main(env_file=None, smoke=False):
             containers.append(probe)
             docker("start", probe)
 
-            def request(method, route, body=None, authenticate=True):
+            def request(
+                method: str,
+                route: str,
+                body: Mapping[str, object] | None = None,
+                authenticate: bool = True,
+            ) -> tuple[str, str]:
                 """Return status and body without logging private API settings."""
                 args = [
                     "exec",
@@ -347,7 +361,7 @@ def main(env_file=None, smoke=False):
                     method,
                 ]
                 # Send authentication and optional JSON through stdin, never a key file or argv.
-                configuration = []
+                configuration: list[str] = []
                 if authenticate:
                     configuration.append(
                         "header = "
@@ -395,6 +409,7 @@ def main(env_file=None, smoke=False):
 
             # Exercise real endpoint failure and recovery when credentials were supplied.
             if env_file is not None:
+                assert privateerr is not None
                 live_recovery(gluetun, probe, privateerr, qbittorrent, config, request)
                 validate_privateerr_isolation(privateerr)
                 return
@@ -417,7 +432,7 @@ def main(env_file=None, smoke=False):
             before = json.loads(docker("inspect", gluetun).stdout)[0]
             new_key = base64.b64encode(secrets.token_bytes(32)).decode()
             new_public = base64.b64encode(secrets.token_bytes(32)).decode()
-            update = {
+            update: ConnectionSettings = {
                 "wireguard": {"private_key": new_key, "addresses": ["10.0.0.3/32"]},
                 "provider": {
                     "server_selection": {
@@ -529,7 +544,7 @@ def validate_privateerr_isolation(container: str, *, legacy: bool = False) -> No
     print(f"PASS: {mode}; no IPv6 or permission warnings.", flush=True)
 
 
-def qbittorrent_preferences(container):
+def qbittorrent_preferences(container: str) -> dict[str, object]:
     """Read application preferences only over loopback within the shared VPN namespace."""
     result = docker(
         "exec",
@@ -544,12 +559,12 @@ def qbittorrent_preferences(container):
     if result.returncode:
         return {}
     try:
-        return json.loads(result.stdout)
+        return object_fields(json.loads(result.stdout))
     except ValueError:
         return {}
 
 
-def wait_qbittorrent(container):
+def wait_qbittorrent(container: str) -> None:
     """Allow application initialization without exposing its temporary Web UI password."""
     for _ in range(90):
         if qbittorrent_preferences(container):
@@ -558,7 +573,7 @@ def wait_qbittorrent(container):
     raise RuntimeError("qBittorrent Web API did not become ready")
 
 
-def wait_application_port(container, config):
+def wait_application_port(container: str, config: Path) -> None:
     """Require the application to adopt the live lease, interface, and mapping restrictions."""
     for _ in range(90):
         preferences = qbittorrent_preferences(container)
@@ -577,7 +592,21 @@ def wait_application_port(container, config):
     raise RuntimeError("qBittorrent did not adopt Gluetun's forwarded port and VPN interface")
 
 
-def live_recovery(gluetun, probe, privateerr, qbittorrent, config, request):
+class APIRequest(Protocol):
+    """Describe the authenticated request callback used by the live fault test."""
+
+    def __call__(
+        self,
+        method: str,
+        route: str,
+        body: Mapping[str, object] | None = None,
+        authenticate: bool = True,
+    ) -> tuple[str, str]: ...
+
+
+def live_recovery(
+    gluetun: str, probe: str, privateerr: str, qbittorrent: str, config: Path, request: APIRequest
+) -> None:
     """Blackhole the active endpoint and verify recovery, forwarding and leak protection."""
 
     def healthy():
@@ -702,6 +731,7 @@ def live_recovery(gluetun, probe, privateerr, qbittorrent, config, request):
         "exec", dependent, "curl", "-fsS", "--max-time", "20", "https://api.ipify.org"
     ).stdout.strip()
     port = qbittorrent_preferences(qbittorrent)["listen_port"]
+    assert isinstance(port, int)
     # Application sockets may reopen shortly after the preference update returns.
     for _ in range(15):
         try:

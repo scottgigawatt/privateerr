@@ -19,8 +19,45 @@ import json
 import re
 import shutil
 from pathlib import Path
+from typing import TypedDict
 
 from .config import Config, ConfigurationError
+from .data import is_object, object_fields
+
+
+class WireGuardSettings(TypedDict):
+    """Fields Gluetun needs for the local WireGuard interface."""
+
+    private_key: str
+    addresses: list[str]
+
+
+class EndpointSettings(TypedDict):
+    """Validated remote endpoint fields submitted to Gluetun."""
+
+    endpoint_ip: str
+    endpoint_port: int
+    public_key: str
+
+
+class ServerSelection(TypedDict):
+    """PIA server identity and its WireGuard endpoint."""
+
+    names: list[str]
+    wireguard: EndpointSettings
+
+
+class ProviderSettings(TypedDict):
+    """Only provider fields owned by Privateerr's connection update."""
+
+    server_selection: ServerSelection
+
+
+class ConnectionSettings(TypedDict):
+    """The minimal settings update, without unrelated Gluetun options."""
+
+    wireguard: WireGuardSettings
+    provider: ProviderSettings
 
 
 class InvalidSettings(ValueError):
@@ -29,7 +66,7 @@ class InvalidSettings(ValueError):
 
 def assignments(path: Path) -> dict[str, str]:
     """Read literal assignments without evaluating shell syntax or accepting duplicates."""
-    result = {}
+    result: dict[str, str] = {}
 
     # Ignore headers and comments; never source generated metadata as executable shell code.
     for line in path.read_text().splitlines():
@@ -49,7 +86,7 @@ def assignments(path: Path) -> dict[str, str]:
     return result
 
 
-def connection_settings(config: Path, metadata: Path) -> dict:
+def connection_settings(config: Path, metadata: Path) -> ConnectionSettings:
     """Build only connection fields so Gluetun preserves unrelated settings."""
     try:
         wg = assignments(config)
@@ -106,10 +143,14 @@ def contains_settings(active: object, candidate: object) -> bool:
     """Compare submitted fields while allowing unrelated fields in Gluetun's response."""
 
     # Allow extra dictionary keys, but require lists and individual values to match exactly.
-    if isinstance(candidate, dict):
-        return isinstance(active, dict) and all(
-            key in active and contains_settings(active[key], value)
-            for key, value in candidate.items()
+    if is_object(candidate):
+        if not is_object(active):
+            return False
+
+        active_fields = object_fields(active)
+        return all(
+            key in active_fields and contains_settings(active_fields[key], value)
+            for key, value in object_fields(candidate).items()
         )
 
     return active == candidate
@@ -130,11 +171,11 @@ class Store:
         if config.config_path.resolve() == config.metadata_path.resolve():
             raise ConfigurationError("Configuration and metadata must use different file paths.")
 
-    def saved_settings(self) -> dict:
+    def saved_settings(self) -> ConnectionSettings:
         """Validate the published pair used when Gluetun starts."""
         return connection_settings(self.config.config_path, self.config.metadata_path)
 
-    def candidate_settings(self, directory: Path) -> dict:
+    def candidate_settings(self, directory: Path) -> ConnectionSettings:
         """Validate a pair in a staging, pending, or interrupted-save directory."""
         return connection_settings(directory / "wg0.conf", directory / "privateerr.env")
 

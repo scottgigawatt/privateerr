@@ -1,0 +1,25 @@
+//
+// Copyright 2025-2026 Scott Gigawatt
+//
+// Licensed under the Apache License, Version 2.0.
+//
+// pyrightconfig.json: Shared strict Python checks for editors, tests, and CI.
+//
+
+{
+    "include": [
+        "docker/privateerr",
+        "test"
+    ],
+    "exclude": [
+        "**/__pycache__"
+    ],
+    "typeCheckingMode": "strict",
+    "reportUnnecessaryTypeIgnoreComment": "error",
+    "pythonVersion": "3.14",
+    "pythonPlatform": "Linux",
+    "extraPaths": [
+        "docker",
+        "test/runtime"
+    ]
+}

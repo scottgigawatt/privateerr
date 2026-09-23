@@ -12,6 +12,7 @@ import base64
 import copy
 import tempfile
 import unittest
+from collections.abc import Generator, Mapping
 from contextlib import contextmanager
 from dataclasses import replace
 from pathlib import Path
@@ -19,8 +20,9 @@ from unittest.mock import Mock, patch
 
 from privateerr.client import APIUnavailable, Client
 from privateerr.config import Config, ConfigurationError
-from privateerr.settings import InvalidSettings, Store, connection_settings
+from privateerr.settings import ConnectionSettings, InvalidSettings, Store, connection_settings
 from privateerr.supervisor import (
+    Endpoint,
     GenerationFailed,
     Pending,
     Shutdown,
@@ -29,7 +31,9 @@ from privateerr.supervisor import (
 )
 
 
-def fixture(directory: Path, endpoint="198.51.100.10", name="example-one") -> dict:
+def fixture(
+    directory: Path, endpoint: str = "198.51.100.10", name: str = "example-one"
+) -> ConnectionSettings:
     """Write matching test-only connection files with syntactically valid keys."""
     directory.mkdir(parents=True, exist_ok=True)
     key = base64.b64encode(bytes(range(32))).decode()
@@ -44,7 +48,7 @@ def fixture(directory: Path, endpoint="198.51.100.10", name="example-one") -> di
     return connection_settings(directory / "wg0.conf", directory / "privateerr.env")
 
 
-def catalog():
+def catalog() -> dict[str, object]:
     return {
         "regions": [
             {
@@ -132,18 +136,24 @@ class RecoveryTests(unittest.TestCase):
         self.candidate = fixture(self.root / "candidate", "198.51.100.11", "example-two")
         self.store = Store(self.config)
         self.client = Mock(spec=Client)
-        self.active = copy.deepcopy(self.original) | {"type": "wireguard"}
-        self.active["provider"]["name"] = "custom"
+        self.provider: dict[str, object] = {**self.original["provider"], "name": "custom"}
+        self.active: Mapping[str, object] = {
+            **copy.deepcopy(self.original),
+            "type": "wireguard",
+            "provider": self.provider,
+        }
         self.api_status = "running"
-        self.client.get.side_effect = lambda route: (
-            {"status": self.api_status} if route.endswith("status") else self.active
-        )
+
+        def response(route: str) -> Mapping[str, object]:
+            return {"status": self.api_status} if route.endswith("status") else self.active
+
+        self.client.get.side_effect = response
         self.client.healthy.return_value = False
         self.client.catalog.return_value = catalog()
         self.generator = Mock()
 
         @contextmanager
-        def generate(endpoint=None):
+        def generate(endpoint: Endpoint | None = None) -> Generator[Path]:
             yield self.root / "candidate"
 
         self.generator.generate.side_effect = generate
@@ -174,7 +184,7 @@ class RecoveryTests(unittest.TestCase):
     def test_partial_publication_finishes_after_restart(self):
         original_replace = Path.replace
 
-        def interrupted(path, target):
+        def interrupted(path: Path, target: Path) -> Path:
             if target == self.config.metadata_path:
                 raise OSError("interrupted")
             return original_replace(path, target)
@@ -221,7 +231,7 @@ class RecoveryTests(unittest.TestCase):
                 self.supervisor = Supervisor(
                     self.config, self.store, self.client, self.generator, clock=lambda: self.now
                 )
-                attempts = []
+                attempts: list[int] = []
                 self.supervisor.recover = lambda attempts=attempts: attempts.append(self.now)
                 for self.now in range(20):
                     self.api_status = (
@@ -235,7 +245,8 @@ class RecoveryTests(unittest.TestCase):
                     if scenario == "unavailable":
                         self.client.get.side_effect = APIUnavailable
                     else:
-                        self.client.get.side_effect = lambda route: {"status": self.api_status}
+                        self.client.get.return_value = {"status": self.api_status}
+                        self.client.get.side_effect = None
                     self.supervisor.step()
                 if scenario == "sustained":
                     self.assertEqual(attempts, [2, 7, 17])
@@ -259,7 +270,7 @@ class RecoveryTests(unittest.TestCase):
     def test_region_and_forwarding_selection(self):
         failed = {"198.51.100.10"}
 
-        def choose(pinned=True, forwarding=True):
+        def choose(pinned: bool = True, forwarding: bool = True) -> str:
             return select_endpoint(
                 catalog(), "ca", "198.51.100.10", failed, pinned=pinned, forwarding=forwarding
             ).ip
@@ -302,14 +313,29 @@ class RecoveryTests(unittest.TestCase):
                 self.client.apply.assert_not_called()
                 self.assertFalse(self.store.pending.exists())
 
+    def test_malformed_provider_waits_for_retry_without_generating(self):
+        """Reject unexpected API shapes without crashing monitoring or replacing saved files."""
+        self.client.get.side_effect = [
+            {"status": "running"},
+            {"status": "running"},
+            {"type": "wireguard", "provider": []},
+        ]
+        self.supervisor.step()
+        self.now = self.config.failure_seconds
+        self.supervisor.step()
+
+        self.generator.generate.assert_not_called()
+        self.assertEqual(self.store.saved_settings(), self.original)
+        self.assertGreater(self.supervisor.next_attempt, self.now)
+
     def test_wrong_provider_never_generates(self):
-        self.active["provider"]["name"] = "other"
+        self.provider["name"] = "other"
         with self.assertRaises(GenerationFailed):
             self.supervisor.recover()
         self.generator.generate.assert_not_called()
 
     def test_startup_reuses_saved_pair_and_reports_readiness_before_probing(self):
-        def stop_after_grace(seconds):
+        def stop_after_grace(seconds: float) -> None:
             self.assertTrue(self.config.marker.exists())
             self.assertEqual(seconds, self.config.failure_seconds)
             raise Shutdown

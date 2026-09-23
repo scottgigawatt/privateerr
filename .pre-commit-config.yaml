@@ -82,6 +82,13 @@ repos:
   #
   - repo: local
     hooks:
+      - id: python-types
+        name: strict Python types (Buccaneerr)
+        entry: scripts/compose/test.sh types
+        language: script
+        pass_filenames: false
+        always_run: true
+
       - id: check-build-pin-policy
         name: check build pin policy
         entry: test/policy/check-build-pin-policy.sh

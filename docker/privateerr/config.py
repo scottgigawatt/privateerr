@@ -16,7 +16,19 @@ options do not prevent a legacy deployment from starting.
 import re
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import TypedDict
 from urllib.parse import urlsplit
+
+
+class RecoveryOptions(TypedDict, total=False):
+    """Validated overrides supplied only when automatic recovery is enabled."""
+
+    api_key: str
+    api_url: str
+    health_url: str
+    interval: int
+    failure_seconds: int
+    cooldown: int
 
 
 class ConfigurationError(ValueError):
@@ -79,7 +91,7 @@ class Config:
         config_path = Path(value("PIA_CONF_PATH", "/gluetun/wireguard/wg0.conf"))
         metadata_path = Path(value("PRIVATEERR_METADATA_PATH", "/gluetun/wireguard/privateerr.env"))
         keepalive = value("PRIVATEERR_KEEPALIVE", "true") == "true"
-        options = {}
+        options: RecoveryOptions = {}
 
         # Gluetun must own the tunnel while Privateerr remains available to monitor it.
         if recovery == "true":

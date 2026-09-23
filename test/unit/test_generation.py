@@ -70,7 +70,7 @@ printf 'WG_HOSTNAME=example-one\\nPIA_TOKEN=test-token-redact\\n'  # pragma: all
         }
         self.command = ["sh", str(ROOT / "docker/privateerr-entrypoint.sh")]
 
-    def run_supervisor(self, **overrides):
+    def run_supervisor(self, **overrides: str) -> subprocess.CompletedProcess[bytes]:
         return subprocess.run(
             self.command, env=self.env | overrides, capture_output=True, timeout=12
         )

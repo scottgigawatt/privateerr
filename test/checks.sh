@@ -7,7 +7,7 @@
 #
 # checks.sh: Run repository checks using tools installed only in Buccaneerr.
 #
-# Usage: checks.sh all|python|helpers|workflows|lint|format|runtime|live|smoke|precommit|spellcheck
+# Usage: checks.sh all|python|helpers|workflows|lint|types|format|runtime|live|smoke|precommit|spellcheck
 #
 
 #
@@ -18,7 +18,7 @@ set -eu
 #
 # Import production code from the checked-out source without writing bytecode there.
 #
-export PYTHONPATH="${PWD}/docker"
+export PYTHONPATH="${PWD}/docker:${PWD}/test/runtime"
 export PYTHONDONTWRITEBYTECODE=1
 export RUFF_NO_CACHE=true
 
@@ -55,8 +55,12 @@ case "${1:-all}" in
     lint)
         ruff check docker test
         ruff format --check docker test
+        pyright --warnings
         find docker config scripts test .github -path 'docker/pia-manual-connections' -prune -o \
             -type f -name '*.sh' -exec shellcheck {} +
+        ;;
+    types)
+        pyright --warnings
         ;;
     python-lint)
         ruff check docker test

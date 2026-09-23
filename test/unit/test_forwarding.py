@@ -21,7 +21,9 @@ HOOK = ROOT / "config/gluetun/scripts/qbittorrent-port-forwarding.sh"
 class ForwardingTests(unittest.TestCase):
     """Use a command stub to distinguish a reachable API from a successful update."""
 
-    def run_hook(self, *args, post_fails=False, unavailable=False, enabled=True):
+    def run_hook(
+        self, *args: str, post_fails: bool = False, unavailable: bool = False, enabled: bool = True
+    ) -> subprocess.CompletedProcess[str]:
         """Return the real shell helper's status and logs with a deterministic API stub."""
         with tempfile.TemporaryDirectory() as temporary:
             wget = Path(temporary) / "wget"

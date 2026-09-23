@@ -21,12 +21,12 @@ from privateerr.config import Config
 
 class ClientTests(unittest.TestCase):
     def setUp(self):
-        self.headers = []
-        self.bodies = []
+        self.headers: list[str | None] = []
+        self.bodies: list[object] = []
         owner = self
 
         class Handler(BaseHTTPRequestHandler):
-            def log_message(self, *args):
+            def log_message(self, format: str, *args: object) -> None:
                 pass
 
             def do_GET(self):

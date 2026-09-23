@@ -29,13 +29,17 @@ import signal
 import subprocess
 import tempfile
 import time
+from collections.abc import Callable
+from collections.abc import Generator as IteratorGenerator
 from contextlib import contextmanager
 from dataclasses import dataclass
 from enum import Enum, auto
 from pathlib import Path
+from types import FrameType
 
 from .client import APIUnavailable, Client
 from .config import Config, ConfigurationError
+from .data import is_list, is_object, object_fields
 from .settings import InvalidSettings, Store, assignments, contains_settings
 
 LOG = logging.getLogger("privateerr")
@@ -71,15 +75,27 @@ class Endpoint:
 
 
 def select_endpoint(
-    catalog: dict, region: str, current: str, failed: set[str], *, pinned: bool, forwarding: bool
+    catalog: dict[str, object],
+    region: str,
+    current: str,
+    failed: set[str],
+    *,
+    pinned: bool,
+    forwarding: bool,
 ) -> Endpoint:
     """Prefer untried eligible endpoints in the saved region, then the permitted current endpoint."""
-    eligible = []
+    eligible: list[tuple[bool, Endpoint]] = []
+    regions = catalog["regions"]
+
+    if not is_list(regions):
+        raise GenerationFailed("No valid region catalog is available.")
 
     # Respect region pinning and forwarding requirements before considering individual servers.
-    for item in catalog["regions"]:
-        if not isinstance(item, dict):
+    for raw_item in regions:
+        if not is_object(raw_item):
             continue
+
+        item = object_fields(raw_item)
 
         if forwarding and item.get("port_forward") is not True:
             continue
@@ -89,14 +105,24 @@ def select_endpoint(
 
         servers = item.get("servers", {})
 
-        if not isinstance(servers, dict) or not isinstance(servers.get("wg"), list):
+        if not is_object(servers):
+            continue
+
+        wireguard_servers = object_fields(servers).get("wg")
+
+        if not is_list(wireguard_servers):
             continue
 
         # Ignore malformed catalog entries instead of passing untrusted text to the shell adapter.
-        for server in servers["wg"]:
+        for raw_server in wireguard_servers:
             try:
-                ip = str(ipaddress.IPv4Address(server["ip"]))
-                name = server["cn"]
+                server = object_fields(raw_server)
+                address, name = server["ip"], server["cn"]
+
+                if not isinstance(address, str) or not isinstance(name, str):
+                    continue
+
+                ip = str(ipaddress.IPv4Address(address))
 
                 if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9.-]*", name):
                     continue
@@ -135,7 +161,7 @@ def reap_children() -> None:
             return
 
 
-def stop_group(process: subprocess.Popen) -> None:
+def stop_group(process: subprocess.Popen[bytes]) -> None:
     """Stop the generator and any surviving descendants before removing staged secrets."""
 
     # Give the shell adapter and its children a short opportunity to exit cleanly.
@@ -166,7 +192,7 @@ class Generator:
         self.store = store
 
     @contextmanager
-    def generate(self, endpoint: Endpoint | None = None):
+    def generate(self, endpoint: Endpoint | None = None) -> IteratorGenerator[Path]:
         """Yield a validated temporary pair, then remove staged secrets when the caller finishes."""
 
         # Generate beside the saved files without overwriting the last usable configuration.
@@ -229,8 +255,8 @@ class Supervisor:
         client: Client,
         generator: Generator,
         *,
-        clock=time.monotonic,
-        wait=time.sleep,
+        clock: Callable[[], float] = time.monotonic,
+        wait: Callable[[float], None] = time.sleep,
     ):
         self.config = config
         self.store = store
@@ -240,7 +266,7 @@ class Supervisor:
         self.wait = wait
 
         # Track outage age separately from retry timing; both use the injected monotonic clock.
-        self.failed_since = None
+        self.failed_since: float | None = None
         self.next_attempt = 0.0
         self.delay = config.cooldown
 
@@ -314,7 +340,9 @@ class Supervisor:
         # Never apply PIA settings to an unrelated provider or VPN protocol.
         active = self.client.get("/v1/vpn/settings")
 
-        if active.get("type") != "wireguard" or active.get("provider", {}).get("name") != "custom":
+        provider = object_fields(active.get("provider", {}))
+
+        if active.get("type") != "wireguard" or provider.get("name") != "custom":
             raise GenerationFailed("Recovery requires Gluetun's custom WireGuard provider.")
 
         # Dedicated IP tokens stay with upstream selection; public endpoints use the catalog.
@@ -322,7 +350,12 @@ class Supervisor:
         token = self.config.environment.get("DIP_TOKEN", "no")
 
         if not token or token.startswith(("n", "N")):
-            current = active["provider"]["server_selection"]["wireguard"]["endpoint_ip"]
+            selection = object_fields(provider["server_selection"])
+            current = object_fields(selection["wireguard"])["endpoint_ip"]
+
+            if not isinstance(current, str):
+                raise GenerationFailed("Gluetun returned an invalid endpoint address.")
+
             self.failed_ips.add(current)
             pinned = self.config.environment.get("AUTOCONNECT", "true") == "false"
             region = assignments(self.config.metadata_path).get("PIA_REGION_ID", "unknown")
@@ -423,7 +456,15 @@ class Supervisor:
 
         try:
             self.recover()
-        except (APIUnavailable, GenerationFailed, InvalidSettings, OSError, KeyError, TypeError):
+        except (
+            APIUnavailable,
+            GenerationFailed,
+            InvalidSettings,
+            OSError,
+            KeyError,
+            TypeError,
+            ValueError,
+        ):
             LOG.info(
                 "Recovery preparation failed; retained saved configuration and will retry after cooldown."
             )
@@ -482,7 +523,7 @@ def main() -> int:
     # New configuration, staging, and log files must not be readable by other users.
     os.umask(0o077)
 
-    def shutdown(signum, frame):
+    def shutdown(signum: int, frame: FrameType | None) -> None:
         """Unwind through generator cleanup on Docker stop or an interactive interrupt."""
 
         # Ignore repeated signals while the active process group is being stopped.

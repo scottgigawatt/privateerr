@@ -7,7 +7,7 @@
 #
 # test.sh: Build Buccaneerr and run checks without installing tools on the host.
 #
-# Usage: scripts/compose/test.sh [all|python|helpers|workflows|lint|format|runtime|live|smoke|precommit|spellcheck]
+# Usage: scripts/compose/test.sh [all|python|helpers|workflows|lint|types|format|runtime|live|smoke|precommit|spellcheck]
 #
 # Offline suites mount source read-only without networking or Docker access.
 # Runtime suites use isolated, labeled resources and a shared temporary directory.
