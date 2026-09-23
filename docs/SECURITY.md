@@ -21,7 +21,7 @@ Privateerr sails by the stable `latest` image and the `edge` image built from `m
 
 Please do not open a public GitHub issue for secrets, credential leaks, auth bypasses, or anything that could help another scallywag attack a user.
 
-Report vulnerabilities using GitHub's private vulnerability reporting feature:
+Report vulnerabilities using [GitHub's private vulnerability reporting form](https://github.com/scottgigawatt/privateerr/security/advisories/new). To find it from the repository:
 
 1. Go to the repository's **Security** tab.
 2. Choose **Report a vulnerability**.
@@ -73,7 +73,9 @@ The protected build path then:
 - Publishes exact, minor, major, and `latest` aliases from stable semantic-version tags.
 - Attests build provenance and mirrors Privateerr from GHCR to Docker Hub with digest preservation.
 
-Rebuilding the same commit does not automatically pick up a newer Alpine base. To pick up patched packages, merge the Renovate update PR first, then pull `edge` from the updated `main` or publish a stable version tag when the change is ready for `latest`.
+Rebuilding the same commit keeps the pinned base image, but uncached APK installation can pick up newer packages from Alpine. Renovate updates base and tool pins separately. Pull the resulting `edge` image or publish a stable release to deliver fixes to `latest`.
+
+See the [container scan review](container-scan-review.md) for the September 2026 dependency fixes and the upstream evidence behind remaining package-level alerts.
 
 > [!TIP]
 >

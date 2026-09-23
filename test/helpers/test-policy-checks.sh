@@ -154,7 +154,7 @@ write_valid_environment
 # Reject a metadata block missing the stable major alias rule.
 #
 awk '
-    /type=semver,pattern={{major}},enable=/ {
+    index($0, "type=semver,pattern={{major}},enable=") {
         major_rule_count++
         if (major_rule_count == 2) {
             next

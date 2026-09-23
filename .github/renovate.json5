@@ -48,6 +48,7 @@
         "docker-compose",
         "dockerfile",
         "git-submodules",
+        "npm",
         "github-actions",
         "pre-commit",
         "pip_requirements"
@@ -77,18 +78,6 @@
             "versioningTemplate": "docker"
         },
 
-        // Track pinned npm tools installed inside the development image.
-        {
-            "customType": "regex",
-            "managerFilePatterns": [
-                "/^test/Dockerfile$/"
-            ],
-            "matchStrings": [
-                "(?<depName>cspell|pyright)@(?<currentValue>\\d+\\.\\d+\\.\\d+)"
-            ],
-            "datasourceTemplate": "npm",
-            "versioningTemplate": "npm"
-        },
         {
             "customType": "regex",
             "managerFilePatterns": [
