@@ -141,7 +141,7 @@ def select_endpoint(
 
                 if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9.-]*", name):
                     continue
-            except (KeyError, ValueError, TypeError):
+            except KeyError, ValueError, TypeError:
                 continue
 
             eligible.append((item.get("id") != region, Endpoint(ip, name)))
@@ -341,7 +341,7 @@ class Supervisor:
             # Publish only the pair now verified against the running tunnel.
             self.store.publish(self.store.pending)
             shutil.rmtree(self.store.pending)
-        except (APIUnavailable, InvalidSettings, OSError):
+        except APIUnavailable, InvalidSettings, OSError:
             # Preserve uncertain state so the next probe can retry reconciliation safely.
             return Pending.UNAVAILABLE
 
@@ -518,7 +518,7 @@ class Supervisor:
             try:
                 self.store.saved_settings()
                 reuse = True
-            except (OSError, InvalidSettings):
+            except OSError, InvalidSettings:
                 pass
 
         if reuse:

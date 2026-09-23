@@ -6,7 +6,8 @@
 # ruff.toml: Share Python linting and formatting rules between editors and Buccaneerr.
 #
 
-target-version = "py312"
+# Match the Python 3.14 runtime and the strict Pyright configuration.
+target-version = "py314"
 line-length = 100
 src = ["docker"]
 force-exclude = true

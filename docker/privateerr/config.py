@@ -60,7 +60,7 @@ class Config:
     catalog_url: str = "https://serverlist.piaservers.net/vpninfo/servers/v6"
 
     @classmethod
-    def from_environment(cls, environment: dict[str, str]) -> "Config":
+    def from_environment(cls, environment: dict[str, str]) -> Config:
         """Preserve existing defaults and validate recovery-only settings when enabled.
 
         Args:
