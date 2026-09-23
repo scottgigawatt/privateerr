@@ -61,7 +61,17 @@ class Config:
 
     @classmethod
     def from_environment(cls, environment: dict[str, str]) -> "Config":
-        """Preserve existing defaults and validate recovery-only settings when enabled."""
+        """Preserve existing defaults and validate recovery-only settings when enabled.
+
+        Args:
+            environment: Deployment settings to copy and normalize without changing the caller.
+
+        Returns:
+            Validated settings with credentials omitted from their object representation.
+
+        Raises:
+            ConfigurationError: If enabled recovery has incompatible or invalid settings.
+        """
 
         # Normalize a private copy so adapter defaults do not modify the caller's environment.
         env = environment.copy()

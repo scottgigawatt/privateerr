@@ -117,7 +117,7 @@ Renovate keeps those pins from going stale. It tracks:
 - Compose image references.
 - Git submodules.
 
-When Renovate opens a dependency pull request, the validation workflow checks that every digest-pinned build dependency matches across Dockerfiles, workflow build arguments, and the example environment file. If one build argument drifts away from the fleet, [`check-build-pin-policy.sh`](../test/policy/check-build-pin-policy.sh) fails before the pull request can merge.
+When Renovate opens a dependency pull request, the validation workflow checks that every digest-pinned build dependency matches across Dockerfiles, workflow build arguments, and the example environment file. If one build argument drifts away from the fleet, [`check-build-pin-policy.sh`](https://github.com/scottgigawatt/privateerr/blob/main/test/policy/check-build-pin-policy.sh) fails before the pull request can merge.
 
 > [!NOTE]
 >

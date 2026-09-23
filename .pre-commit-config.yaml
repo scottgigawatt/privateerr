@@ -39,6 +39,8 @@ repos:
       - id: check-merge-conflict
       - id: check-toml
       - id: check-yaml
+        # MkDocs uses a trusted Python tag for the Mermaid fence; yamllint still checks its structure.
+        exclude: ^mkdocs\.yml$
       - id: end-of-file-fixer
       - id: trailing-whitespace
         args: ["--markdown-linebreak-ext=md"]

@@ -62,3 +62,7 @@ make test-make-helpers
 
 > [!IMPORTANT]
 > Keep credentials in the ignored `.env` file. Do not pass them as command-line arguments, paste them into issues, or commit generated WireGuard state.
+
+## Documentation tools
+
+[`docs/build.sh`](docs/build.sh) provides the container implementation behind `make docs-install`, `make docs`, and `make docs-serve`. It uses Buccaneerr's optional documentation target with hash-verified dependencies, read-only source mounts, and a local preview port. It does not start the VPN stack.

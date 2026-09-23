@@ -33,6 +33,8 @@ on:
       - "docker-compose.yml"
       - "example.env"
       - "test/**"
+      - ".dockerignore"
+      - "requirements-docs.txt"
   schedule:
     - cron: "17 7 * * 1"
   workflow_dispatch:
@@ -361,7 +363,7 @@ jobs:
         id: publish-buccaneerr
         uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc  # v7
         with:
-          context: test
+          context: .
           file: test/Dockerfile
           platforms: ${{ env.IMAGE_PLATFORMS }}
           push: true

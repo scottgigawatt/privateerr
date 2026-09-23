@@ -87,7 +87,19 @@ def assignments(path: Path) -> dict[str, str]:
 
 
 def connection_settings(config: Path, metadata: Path) -> ConnectionSettings:
-    """Build only connection fields so Gluetun preserves unrelated settings."""
+    """Build only connection fields so Gluetun preserves unrelated settings.
+
+    Args:
+        config: Generated WireGuard configuration to validate.
+        metadata: PIA metadata naming the same endpoint and port.
+
+    Returns:
+        The minimal connection update accepted by Gluetun's control API.
+
+    Raises:
+        InvalidSettings: If required fields are missing, malformed, or inconsistent.
+        OSError: If either source file cannot be read.
+    """
     try:
         wg = assignments(config)
         meta = assignments(metadata)
@@ -195,7 +207,16 @@ class Store:
         (destination / "ready").touch()
 
     def publish(self, source: Path) -> None:
-        """Replace each complete file and retain source copies until both replacements finish."""
+        """Replace each complete file and retain source copies until both replacements finish.
+
+        Args:
+            source: Directory containing a validated configuration and metadata pair.
+
+        Raises:
+            InvalidSettings: If the source files do not describe one usable connection.
+            OSError: If copying or replacement fails. A complete commit directory is
+                retained so startup can finish an interrupted publication.
+        """
 
         # Keep complete source copies before replacing either published file.
         self.candidate_settings(source)

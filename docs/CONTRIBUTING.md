@@ -4,7 +4,7 @@ Ahoy, improbable contributor. Since this project will likely be maintained by on
 
 ## Before you start ⚓
 
-- Read the [README](../README.md).
+- Read the [README](https://github.com/scottgigawatt/privateerr#readme).
 - Read the [security policy](SECURITY.md) before sharing logs or generated config.
 - Read the [documentation style](documentation-style.md) before changing public Markdown.
 - Keep to the [Code](CODE_OF_CONDUCT.md).
@@ -113,3 +113,9 @@ Fair winds, clean diffs, and may yer YAML indent on the first try. ☠️
 ## Strict Python checks
 
 Run `make test-types` to check application code and tests with the pinned Pyright version in a disposable test container. Docker is the only host prerequisite. The root `pyrightconfig.json` is shared with VS Code/Pylance; select an interpreter with the project's dependencies installed for accurate editor import resolution. `make test` and pre-commit enforce the same check during pull requests and main/release validation. Ruff continues to own lint and formatting.
+
+## Build the developer documentation
+
+Run `make docs` after changing guides, Python signatures, or docstrings. Buccaneerr installs the same exact, hash-verified MkDocs toolchain used by the Plundarr developer site and builds Privateerr's generated Python reference in strict mode. Use `make docs-serve` to preview the graphite and electric lime theme locally.
+
+Follow the [Python documentation conventions](development/privateerr/documentation.md) and [testing guide](development/privateerr/testing.md). The Pages workflow publishes merged documentation from `main`; pull requests build the site without deployment permissions.

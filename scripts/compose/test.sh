@@ -38,7 +38,8 @@ fi
 #
 # Build with Docker's cache so changed test tooling is never silently skipped.
 #
-"${DOCKER_BIN}" build --quiet --tag "${BUCCANEERR_TEST_IMAGE}" "${repository_root}/test" >/dev/null
+"${DOCKER_BIN}" build --quiet --tag "${BUCCANEERR_TEST_IMAGE}" \
+    --file "${repository_root}/test/Dockerfile" "${repository_root}" >/dev/null
 set -- --rm --init --network none --volume "${repository_root}:${repository_root}:ro" --workdir "${repository_root}"
 
 #

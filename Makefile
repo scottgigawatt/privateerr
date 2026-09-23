@@ -49,6 +49,9 @@ TEST_RECOVERY_API=test-recovery-api
 TEST_RECOVERY_LIVE=test-recovery-live
 TEST_PRECOMMIT=test-precommit
 SPELLCHECK=spellcheck
+DOCS_INSTALL=docs-install
+DOCS=docs
+DOCS_SERVE=docs-serve
 
 #
 # Common targets.
@@ -93,7 +96,10 @@ PROJECT_TARGETS= \
 	$(TEST_RECOVERY_API) \
 	$(TEST_RECOVERY_LIVE) \
 	$(TEST_PRECOMMIT) \
-	$(SPELLCHECK)
+	$(SPELLCHECK) \
+	$(DOCS_INSTALL) \
+	$(DOCS) \
+	$(DOCS_SERVE)
 
 #
 # Internal targets.
@@ -142,7 +148,7 @@ RUNTIME_ARTIFACT_PATHS         := config/privateerr/logs \
 PRIVATEERR_DOCKERFILE    ?= docker/Dockerfile
 PRIVATEERR_BUILD_CONTEXT ?= docker
 BUCCANEERR_DOCKERFILE    ?= test/Dockerfile
-BUCCANEERR_BUILD_CONTEXT ?= test
+BUCCANEERR_BUILD_CONTEXT ?= .
 DOCKERFILES              ?= $(PRIVATEERR_DOCKERFILE) $(BUCCANEERR_DOCKERFILE)
 
 #
@@ -182,10 +188,18 @@ CONFIG_BACKUP_CMD        ?= scripts/compose/backup.sh
 BUCCANEERR_CHECK_CMD     ?= scripts/compose/test.sh
 
 #
+# Documentation targets share Buccaneerr's optional, hash-verified docs build.
+#
+DOCS_CMD           ?= scripts/docs/build.sh
+DOCS_IMAGE         ?= privateerr-buccaneerr:docs
+DOCS_SITE_PATH     ?= site
+DOCS_SERVE_ADDRESS ?= 127.0.0.1:8000
+
+#
 # Disposable developer artifacts. Deployment state, generated credentials,
 # containers, volumes, and images must never enter this list.
 #
-CLEAN_ARTIFACT_PATHS      := .pytest_cache .ruff_cache test/logs
+CLEAN_ARTIFACT_PATHS      := .pytest_cache .ruff_cache test/logs site
 CLEAN_ARTIFACT_FIND_ROOT  := .
 CLEAN_ARTIFACT_FIND_PRUNE := -path './.git' -o -path './docker/pia-manual-connections'
 CLEAN_ARTIFACT_FIND_MATCH := -type d -name '__pycache__' -o -type f \( -name '*.pyc' -o -name '*.pyo' -o -name '.DS_Store' \)
@@ -688,6 +702,10 @@ $(HELP):
 	$(call help_line,$(TEST_MAKE_HELPERS),Test reusable Make and Compose helpers.)
 	$(call help_line,$(TEST_WORKFLOWS),Test workflow helpers and shared publishing policies.)
 	$(call help_line,$(TEST_E2E),Validate the application stack and automatic VPN recovery.)
+	$(call help_heading,📚 Developer documentation)
+	$(call help_line,$(DOCS_INSTALL),Build the locked documentation tools in Buccaneerr.)
+	$(call help_line,$(DOCS),Build the strict developer site and Python reference.)
+	$(call help_line,$(DOCS_SERVE),Preview developer documentation at localhost:8000.)
 	$(call help_heading,🧹 Maintenance)
 	$(call help_line,$(BACKUP),Archive the complete config directory.)
 	$(call help_line,$(RESTORE_TEST_CONFIG),Restore checked-in example VPN config.)
@@ -778,3 +796,29 @@ $(TEST_PRECOMMIT):
 #
 $(SPELLCHECK):
 	$(BUCCANEERR_CHECK_CMD) spellcheck
+
+#
+# $(DOCS_INSTALL): Build the optional documentation target in Buccaneerr.
+#
+# Dependencies: None; Docker reuses unchanged toolchain layers.
+#
+$(DOCS_INSTALL):
+	DOCS_IMAGE="$(DOCS_IMAGE)" $(DOCS_CMD) install
+
+#
+# $(DOCS): Build the complete developer site with documentation warnings treated as errors.
+#
+# Dependencies:
+#   $(DOCS_INSTALL) - Install exact, hash-verified documentation packages in Buccaneerr.
+#
+$(DOCS): $(DOCS_INSTALL)
+	DOCS_IMAGE="$(DOCS_IMAGE)" DOCS_SITE_PATH="$(DOCS_SITE_PATH)" $(DOCS_CMD) build
+
+#
+# $(DOCS_SERVE): Preview the developer site with automatic reloads for source edits.
+#
+# Dependencies:
+#   $(DOCS_INSTALL) - Install exact, hash-verified documentation packages in Buccaneerr.
+#
+$(DOCS_SERVE): $(DOCS_INSTALL)
+	DOCS_IMAGE="$(DOCS_IMAGE)" DOCS_SERVE_ADDRESS="$(DOCS_SERVE_ADDRESS)" $(DOCS_CMD) serve

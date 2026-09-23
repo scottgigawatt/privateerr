@@ -254,6 +254,7 @@ Successful `main` builds publish `edge`; only a reviewed stable version advances
 
 ## Read more and get help 📚
 
+- [Developer documentation](https://scottgigawatt.github.io/privateerr/): Supervisor architecture, contributor guides, and generated Python reference.
 - [Advanced usage](docs/advanced-usage.md): Testing, builds, publishing, maintenance, and generated files.
 - [Configuration directories](config/README.md): Runtime state and Gluetun handoff paths.
 - [Host scripts](scripts/README.md): Backup, credential preflight, cleanup, and status helpers.

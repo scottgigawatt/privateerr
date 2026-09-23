@@ -10,7 +10,7 @@ The test tree keeps responsibilities separate:
 - `runtime/` performs opt-in acceptance checks against isolated Docker resources.
 - `stubs/` supplies deterministic Docker and Skopeo stand-ins for those tests.
 - `examples/` stores the checked-in WireGuard and metadata examples restored after a live voyage.
-- the test-root `Dockerfile` and `buccaneerr-entrypoint.sh` remain the Buccaneerr build context.
+- `test/Dockerfile` builds Buccaneerr from a restricted repository-root context; `.dockerignore` admits only test sources and the documentation lockfile.
 
 ## Find a test script 🗺️
 

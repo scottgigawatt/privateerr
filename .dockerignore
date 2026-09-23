@@ -1,0 +1,24 @@
+#
+# Copyright 2025-2026 Scott Gigawatt
+#
+# Licensed under the Apache License, Version 2.0.
+#
+# .dockerignore: Allow only Buccaneerr sources and the locked documentation toolchain.
+#
+
+#
+# Exclude credentials, generated VPN state, Git metadata, and unrelated sources by default.
+#
+**
+!requirements-docs.txt
+!test/
+!test/**
+
+#
+# Test logs, bytecode, and workstation metadata remain local.
+#
+test/logs/
+**/__pycache__/
+**/*.py[cod]
+**/.DS_Store
+**/*.log

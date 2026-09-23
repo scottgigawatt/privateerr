@@ -133,3 +133,33 @@ jobs:
           severity: CRITICAL,HIGH
           ignore-unfixed: true
           exit-code: 1
+
+  #
+  # Build the same strict developer site as Pages without deployment permissions.
+  #
+  validate-docs:
+    name: "Inspect the Developer Charts 📚"
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      #
+      # Generated API pages read the project-owned Python source directly.
+      #
+      - name: "Grab the Source Charts 📖"
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
+
+      #
+      # Keep exact, hash-verified documentation dependencies inside Buccaneerr.
+      #
+      - name: "Load the Documentation Tools 🧰"
+        run: make docs-install
+
+      #
+      # Reject broken navigation, unresolved references, and documentation warnings.
+      #
+      - name: "Render Every Developer Chart 🔎"
+        run: make docs

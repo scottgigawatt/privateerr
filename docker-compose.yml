@@ -164,7 +164,7 @@ services:
 
     # Publish only the application Web UI on the configured Web UI port
     ports:
-      - "${QBITTORRENT_WEBUI_PORT}:${QBITTORRENT_WEBUI_PORT}"  # Publish the configured application Web UI port
+      - "${QBITTORRENT_WEBUI_PORT}:${QBITTORRENT_WEBUI_PORT}"  # Match host and application ports for qBittorrent CSRF checks
 
     # Mount host directories into the container
     volumes:
@@ -203,7 +203,7 @@ services:
       PUID: ${QBITTORRENT_PUID}              # Host user owning configuration and downloads
       PGID: ${QBITTORRENT_PGID}              # Host group owning configuration and downloads
       TZ: ${QBITTORRENT_TZ}                  # Application time zone
-      WEBUI_PORT: ${QBITTORRENT_WEBUI_PORT}  # Internal and published application port
+      WEBUI_PORT: ${QBITTORRENT_WEBUI_PORT}  # Match the published port for qBittorrent CSRF checks
 
     # Preserve application state and downloads across container replacement
     volumes:
@@ -234,8 +234,8 @@ services:
     # Docker image build and container information
     image: ghcr.io/scottgigawatt/buccaneerr:${BUCCANEERR_TAG}             # Buccaneerr image name and tag
     build:                                                                # Define build context and Dockerfile
-      context: test                                                       # Directory containing Buccaneerr Dockerfile
-      dockerfile: Dockerfile                                              # Dockerfile used for validation tools
+      context: .                                                          # Restricted root context includes test sources and docs dependencies
+      dockerfile: test/Dockerfile                                         # Dockerfile used for validation tools
       args:                                                               # Arguments passed to the Buccaneerr image
         ALPINE_TAG: ${ALPINE_TAG}                                         # Base Alpine image version
         BUCCANEERR_BIN_HOME: ${BUCCANEERR_BIN_HOME}                       # Directory where Buccaneerr scripts will reside

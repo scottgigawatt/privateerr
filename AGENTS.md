@@ -23,7 +23,7 @@ The companion Buccaneerr image is test-only. The default Compose example include
 - `docker/`: Privateerr image build context, Python supervisor, and shell integration helpers.
 - `docker/privateerr/`: Standard-library Python supervisor, API client, configuration validation, and persistence.
 - `docker/pia-manual-connections/`: PIA upstream scripts as a git submodule. Treat this as third-party code.
-- `test/`: Buccaneerr image build context and organized test support files.
+- `test/`: Buccaneerr Dockerfile and organized test support files; builds use the restricted repository-root context.
 - `test/policy/`: Static repository policy checks used by Make and pre-commit.
 - `test/unit/`: Python supervisor, client, generation, and forwarding-hook tests.
 - `test/runtime/`: Real Gluetun and qBittorrent integration tests, including optional live PIA recovery.
@@ -342,3 +342,9 @@ Secondary development target: macOS with Docker Desktop.
 Preserve one-file Compose compatibility for Synology. Avoid modular Compose designs that require multiple Compose files at runtime.
 
 Prefer simple, maintainable automation over clever abstractions.
+
+## Developer documentation site
+
+Keep Privateerr's MkDocs site closely aligned with the Plundarr repository's developer site: Material navigation, system fonts, Google-style Python docstrings, source-generated mkdocstrings reference, GitHub-alert rendering, strict builds, exact SHA-256-verified `requirements-docs.txt`, and separate read-only build and Pages deployment jobs. Privateerr uses a graphite and electric lime palette; preserve the shared component styling and accessibility behavior.
+
+Run `make docs` after changing guides, signatures, or docstrings and use `make docs-serve` for rendered review. Documentation tools belong in Buccaneerr's optional `docs` target, never the production image or another deployed service. The restricted repository-root build context admits only test sources and the docs lockfile. Keep source mounts read-only, generated `site/` output ignored, and PR documentation jobs free of deployment permissions. Pages publishes `main` and release tags whose commits belong to `main`.

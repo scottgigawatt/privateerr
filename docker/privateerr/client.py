@@ -80,7 +80,21 @@ class Client:
         body: Mapping[str, object] | None = None,
         key: str = "",
     ) -> bytes:
-        """Send one bounded request and return its body without logging request contents."""
+        """Send one bounded request and return its body without logging request contents.
+
+        Args:
+            url: Complete destination; redirects and inherited proxies are not followed.
+            timeout: Maximum total seconds for connection setup and response reads.
+            method: HTTP method used for this request.
+            body: Optional object to encode as JSON for a settings update.
+            key: Optional API credential; omit it for health and catalog requests.
+
+        Returns:
+            The response body, limited to four MiB.
+
+        Raises:
+            APIUnavailable: If transport, status, size, or deadline checks fail.
+        """
         headers: dict[str, str] = {}
 
         # Callers must explicitly supply authentication; health and catalog calls omit it.
@@ -128,7 +142,15 @@ class Client:
             raise APIUnavailable from error
 
     def apply(self, settings: Mapping[str, object]) -> None:
-        """Submit connection fields; the supervisor separately verifies settings and health."""
+        """Submit connection fields; the supervisor separately verifies settings and health.
+
+        Args:
+            settings: Minimal connection update; unrelated Gluetun settings are omitted.
+
+        Raises:
+            APIUnavailable: If the response cannot confirm the request. The update may
+                still have succeeded, so callers must reconcile it before retrying.
+        """
         self.request(
             self.config.api_url + "/v1/vpn/settings",
             timeout=30,

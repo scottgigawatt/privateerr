@@ -83,7 +83,22 @@ def select_endpoint(
     pinned: bool,
     forwarding: bool,
 ) -> Endpoint:
-    """Prefer untried eligible endpoints in the saved region, then the permitted current endpoint."""
+    """Prefer untried eligible endpoints in the saved region, then the permitted current endpoint.
+
+    Args:
+        catalog: Validated outer PIA catalog object; individual regions are checked here.
+        region: Saved region to prefer, or the configured region when selection is pinned.
+        current: Active endpoint used only if no untried eligible server remains.
+        failed: Addresses already attempted during this outage.
+        pinned: Restrict selection to the requested region.
+        forwarding: Require a region that advertises port-forwarding support.
+
+    Returns:
+        The selected IPv4 address and its matching PIA server name.
+
+    Raises:
+        GenerationFailed: If no permitted endpoint is available.
+    """
     eligible: list[tuple[bool, Endpoint]] = []
     regions = catalog["regions"]
 
@@ -193,7 +208,19 @@ class Generator:
 
     @contextmanager
     def generate(self, endpoint: Endpoint | None = None) -> IteratorGenerator[Path]:
-        """Yield a validated temporary pair, then remove staged secrets when the caller finishes."""
+        """Yield a validated temporary pair, then remove staged secrets when the caller finishes.
+
+        Args:
+            endpoint: Optional recovery endpoint; omit it to retain upstream selection.
+
+        Yields:
+            Private directory containing matching configuration and metadata files.
+
+        Raises:
+            GenerationFailed: If upstream setup fails or exceeds its deadline.
+            InvalidSettings: If upstream output does not describe a valid connection.
+            OSError: If staging or launching the adapter fails.
+        """
 
         # Generate beside the saved files without overwriting the last usable configuration.
         with tempfile.TemporaryDirectory(
@@ -281,7 +308,12 @@ class Supervisor:
             self.last_message = message
 
     def resolve_pending(self) -> Pending:
-        """Check an earlier API update before deciding whether to save or replace its candidate."""
+        """Check an earlier API update before deciding whether to save or replace its candidate.
+
+        Returns:
+            Whether the pending update is resolved, cannot be checked, or is applied
+            but still unhealthy. Only matching settings and health permit publication.
+        """
         if not self.store.pending.exists():
             return Pending.RESOLVED
 
