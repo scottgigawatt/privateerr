@@ -33,7 +33,10 @@ from privateerr.settings import ConnectionSettings
 
 ROOT = Path(__file__).resolve().parents[2]
 IMAGE = os.environ.get("PRIVATEERR_TEST_IMAGE", "privateerr:recovery-review")
-GLUETUN = os.environ.get("GLUETUN_TEST_IMAGE", "qmcgaw/gluetun:v3.41.3")
+GLUETUN = os.environ.get(
+    "GLUETUN_TEST_IMAGE",
+    "qmcgaw/gluetun:v3.41.3@sha256:fa19cc76b2af13d57a8d3dc3066f2ada061b1c761b8aecf989b3877c0486e027",
+)
 RUN_ID = f"privateerr-recovery-{uuid.uuid4().hex[:12]}"
 
 # Every created resource carries this run identifier so cleanup cannot remove another stack.
