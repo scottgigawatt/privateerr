@@ -12,7 +12,6 @@
     // Accept project names, dependencies, and intentional pirate vocabulary.
     //
     "cSpell.words": [
-        "pyrightconfig",
         "accDescr",
         "actionlint",
         "adjustin",
@@ -93,6 +92,7 @@
         "PUID",
         "pycache",
         "Pypi",
+        "pyrightconfig",
         "pytest",
         "PYTHONDONTWRITEBYTECODE",
         "PYTHONPATH",

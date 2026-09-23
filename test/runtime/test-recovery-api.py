@@ -720,7 +720,16 @@ def live_recovery(
     assert candidate["wireguard"]["private_key"] in saved
     assert candidate["provider"]["server_selection"]["names"][0] in metadata
     assert candidate["provider"]["server_selection"]["wireguard"]["endpoint_ip"] != old_ip
-    assert "PIA_REGION_ID=ca\n" in metadata
+    # Report only the public region identifier when pinned-region validation fails.
+    saved_region = next(
+        (
+            line.removeprefix("PIA_REGION_ID=")
+            for line in metadata.splitlines()
+            if line.startswith("PIA_REGION_ID=")
+        ),
+        "missing",
+    )
+    assert saved_region == "ca", f"Expected pinned ca region; saved region was {saved_region!r}"
     after = json.loads(docker("inspect", gluetun).stdout)[0]
     assert before["State"]["StartedAt"] == after["State"]["StartedAt"]
     assert before["NetworkSettings"]["SandboxID"] == after["NetworkSettings"]["SandboxID"]
