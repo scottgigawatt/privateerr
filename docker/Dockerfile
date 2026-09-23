@@ -77,7 +77,7 @@ COPY pia-manual-connections/LICENSE /licenses/pia-manual-connections/LICENSE
 COPY pia-manual-connections         ${PIA_BIN_HOME}
 COPY privateerr-entrypoint.sh       ${PRIVATEERR_BIN_HOME}/privateerr-entrypoint.sh
 COPY privateerr-generate.sh         ${PRIVATEERR_BIN_HOME}/privateerr-generate.sh
-COPY privateerr                    ${PRIVATEERR_BIN_HOME}/privateerr
+COPY privateerr                     ${PRIVATEERR_BIN_HOME}/privateerr
 COPY privateerr-healthcheck.sh      /usr/local/bin/privateerr-healthcheck
 COPY privateerr-date.sh             /usr/local/bin/date
 

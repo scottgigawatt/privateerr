@@ -93,13 +93,13 @@ RUN npm install --global cspell@9.2.2 pyright@1.1.414 && npm cache clean --force
 #
 COPY LICENSE                  /LICENSE
 COPY buccaneerr-entrypoint.sh ${BUCCANEERR_BIN_HOME}/buccaneerr-entrypoint.sh
-COPY checks.sh               ${BUCCANEERR_BIN_HOME}/checks.sh
-COPY helpers                 ${BUCCANEERR_BIN_HOME}/helpers
-COPY policy                  ${BUCCANEERR_BIN_HOME}/policy
-COPY stubs                   ${BUCCANEERR_BIN_HOME}/stubs
-COPY examples                ${BUCCANEERR_BIN_HOME}/examples
-COPY unit                    ${BUCCANEERR_BIN_HOME}/unit
-COPY runtime                 ${BUCCANEERR_BIN_HOME}/runtime
+COPY checks.sh                ${BUCCANEERR_BIN_HOME}/checks.sh
+COPY helpers                  ${BUCCANEERR_BIN_HOME}/helpers
+COPY policy                   ${BUCCANEERR_BIN_HOME}/policy
+COPY stubs                    ${BUCCANEERR_BIN_HOME}/stubs
+COPY examples                 ${BUCCANEERR_BIN_HOME}/examples
+COPY unit                     ${BUCCANEERR_BIN_HOME}/unit
+COPY runtime                  ${BUCCANEERR_BIN_HOME}/runtime
 
 #
 # Make the Buccaneerr entrypoint script executable.

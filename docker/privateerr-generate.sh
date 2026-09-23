@@ -123,7 +123,6 @@ cd "${PIA_BIN_HOME}"
 # With PIA_CONNECT=false, upstream connection messages describe config generation only.
 #
 run_pia() {
-
     #
     # Use normal upstream setup unless recovery selected a specific endpoint.
     #
@@ -137,6 +136,7 @@ run_pia() {
     #
     ./get_token.sh || return
     local token
+
     #
     # Read the upstream token file once and remove it after transferring the value to memory.
     #
@@ -241,7 +241,6 @@ if [[ -n "${server_metadata}" ]]; then
     if [[ -n "${matched_wg_server_name}" && "${matched_wg_server_name}" != "null" ]]; then
         wg_server_name="${matched_wg_server_name}"
     fi
-
 fi
 
 #

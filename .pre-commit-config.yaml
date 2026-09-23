@@ -7,6 +7,9 @@
 #                          policy, YAML, and Dockerfile validation hooks.
 #
 
+#
+# Define the pre-commit configuration for the repository
+#
 repos:
   #
   # Scan changed content for hardcoded secrets before it can be committed.

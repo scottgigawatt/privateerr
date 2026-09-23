@@ -51,9 +51,11 @@ services:
     restart: unless-stopped                                               # Restart the supervisor unless explicitly stopped
     hostname: privateerr                                                  # Set hostname inside the container
 
-    # Generate configuration without container privileges or capability escalation
+    # Drop Linux capabilities for security hardening
     cap_drop:
-      - ALL  # Upstream requires UID 0 but does not need Linux capabilities
+      - ALL  # Upstream PIA scripts require UID 0 but do not need Linux capabilities
+
+    # Prevent the container from acquiring additional privileges
     security_opt:
       - no-new-privileges:true  # Prevent subprocesses from acquiring additional privileges
 

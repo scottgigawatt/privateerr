@@ -175,11 +175,11 @@ COMPOSE_LOGS_OPTIONS            ?= --follow
 #
 # Project-owned helpers used by Make and GitHub Actions.
 #
-PIA_CREDENTIAL_CHECK_CMD  ?= scripts/compose/check-pia-credentials.sh
-COMPOSE_STATUS_CMD        ?= scripts/compose/ps.sh
-COMPOSE_NUKE_CMD          ?= scripts/compose/nuke.sh
-CONFIG_BACKUP_CMD         ?= scripts/compose/backup.sh
-BUCCANEERR_CHECK_CMD      ?= scripts/compose/test.sh
+PIA_CREDENTIAL_CHECK_CMD ?= scripts/compose/check-pia-credentials.sh
+COMPOSE_STATUS_CMD       ?= scripts/compose/ps.sh
+COMPOSE_NUKE_CMD         ?= scripts/compose/nuke.sh
+CONFIG_BACKUP_CMD        ?= scripts/compose/backup.sh
+BUCCANEERR_CHECK_CMD     ?= scripts/compose/test.sh
 
 #
 # Disposable developer artifacts. Deployment state, generated credentials,
