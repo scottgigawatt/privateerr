@@ -132,7 +132,7 @@ class StackCheck:
         try:
             self.read(self.health)
             return True
-        except (OSError, URLError):
+        except OSError, URLError:
             return False
 
     def application_ready(self) -> bool:
@@ -155,7 +155,7 @@ class StackCheck:
                 and preferences.get("upnp") is False
                 and preferences.get("random_port") is False
             )
-        except (OSError, URLError, ValueError):
+        except OSError, URLError, ValueError:
             return False
 
     def recovered(self, old_key: str) -> bool:
@@ -179,7 +179,7 @@ class StackCheck:
                 and self.healthy()
                 and self.application_ready()
             )
-        except (OSError, URLError, ValueError, KeyError, IndexError):
+        except OSError, URLError, ValueError, KeyError, IndexError:
             return False
 
 

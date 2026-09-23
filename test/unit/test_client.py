@@ -69,7 +69,7 @@ class ClientTests(unittest.TestCase):
                             self.wfile.write(b" ")
                             self.wfile.flush()
                             time.sleep(0.1)
-                    except (BrokenPipeError, ConnectionResetError):
+                    except BrokenPipeError, ConnectionResetError:
                         # The client closes the connection when its request deadline expires.
                         pass
 
