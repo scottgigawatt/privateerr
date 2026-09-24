@@ -190,6 +190,11 @@
     "makefile.configureOnOpen": false,
 
     //
+    // Use the bundled Ruff executable without Python environment discovery.
+    //
+    "ruff.importStrategy": "useBundled",
+
+    //
     // Associate special repository files with their correct language modes.
     //
     "files.associations": {
