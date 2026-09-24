@@ -322,6 +322,5 @@
         "https://json.schemastore.org/pre-commit-config.json": ".pre-commit-config.yaml"
     },
     "yaml.validate": true,
-    "yaml.yamlVersion": "1.2",
-    "python.analysis.typeCheckingMode": "strict"
+    "yaml.yamlVersion": "1.2"
 }
