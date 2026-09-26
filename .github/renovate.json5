@@ -36,6 +36,13 @@
     "timezone": "America/New_York",
     "schedule": ["before 8am on monday"],
     "dependencyDashboard": true,
+
+    // Merge dependency PRs after required checks pass; keep branches current.
+    "automerge": true,
+    "automergeType": "pr",
+    "automergeStrategy": "squash",
+    "platformAutomerge": true,
+    "rebaseWhen": "behind-base-branch",
     "labels": ["dependencies"],
     "assignees": ["scottgigawatt"],
     "reviewers": ["scottgigawatt"],
