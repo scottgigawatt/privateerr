@@ -23,7 +23,7 @@ Maraudarr uses the same Compose 5.5.1 donor and Scout reports the four Compose-r
 
 ## Stable image refresh
 
-The scanned Privateerr `edge` images have no findings in either scanner. Trivy reports no high or critical findings in the current `edge` images. The older `latest` images for Privateerr, Buccaneerr, and Maraudarr still contain libexpat 2.8.4-r0 and report **CVE-2026-93990**. Alpine stable now provides fixed 2.8.5-r0 on all three supported architectures, and current builds install it. A rebuilt stable release is required to deliver that fix to `latest`; merging a source update alone only refreshes `edge`.
+The scanned Privateerr `edge` images have no findings in either scanner. Trivy reports no high or critical findings in the current `edge` images. The v2.1.1 stable artifacts scanned on this date for Privateerr, Buccaneerr, and Maraudarr contain libexpat 2.8.4-r0 and report **CVE-2026-93990**. Alpine stable now provides fixed 2.8.5-r0 on all three supported architectures, and current builds install it. A rebuilt stable release is required to deliver that fix to `latest`; merging a source update alone only refreshes `edge`.
 
 Alpine 3.24 stable still provides nghttp2 1.69.0-r0 and setuptools 82.0.1-r1 on all three platforms. Keep the narrow edge-package exceptions until stable supplies the fixed versions. The PCRE2, Windows-only, and OpenPGP explanations remain relevant because Scout still reports those alerts; a clean Trivy result does not mean Scout agrees.
 
