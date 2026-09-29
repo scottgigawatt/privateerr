@@ -44,6 +44,7 @@ ARG ALPINE_TAG=3.24@sha256:294b683cb724975bec92580e1e685676bd4b50bda910ddb8c51d4
 #
 ARG BUCCANEERR_BIN_HOME=/buccaneerr
 ARG EDGE_APK_REPOSITORY=https://dl-cdn.alpinelinux.org/alpine/edge/main
+ARG PRE_COMMIT_APK_MIN_VERSION=4.6.2-r0
 ARG NGHTTP2_APK_MIN_VERSION=1.70.0-r0
 ARG SETUPTOOLS_APK_MIN_VERSION=83.0.0-r0
 ARG IMAGE_CREATED=unknown
@@ -77,6 +78,7 @@ LABEL org.opencontainers.image.title="Buccaneerr" \
 # Upgrade the base OpenSSL runtime libraries to Alpine's current fixed release,
 # then install validation tools. These stay out of the production image.
 # Use fixed nghttp2 and setuptools from edge until stable includes their security updates.
+# Stable pre-commit still passes obsolete npm flags; use the compatible edge package.
 # BusyBox supplies the portable AWK and core utilities used by the tests.
 #
 RUN apk upgrade --no-cache libcrypto3 libssl3 && \
@@ -92,13 +94,15 @@ RUN apk upgrade --no-cache libcrypto3 libssl3 && \
         python3 \
         ruff \
         actionlint \
-        pre-commit \
         nodejs \
         npm && \
     apk add --no-cache \
         --repository="${EDGE_APK_REPOSITORY}" \
         "nghttp2-libs>=${NGHTTP2_APK_MIN_VERSION}" \
-        "py3-setuptools>=${SETUPTOOLS_APK_MIN_VERSION}"
+        "py3-setuptools>=${SETUPTOOLS_APK_MIN_VERSION}" && \
+    apk add --no-cache \
+        --repository="${EDGE_APK_REPOSITORY%/main}/community" \
+        "pre-commit>=${PRE_COMMIT_APK_MIN_VERSION}"
 
 COPY --from=shellcheck /bin/shellcheck /usr/local/bin/shellcheck
 COPY --from=docker-cli /usr/local/bin/docker /usr/local/bin/docker
@@ -112,7 +116,7 @@ COPY test/package.json test/package-lock.json /opt/tools/
 #
 # Install locked tools and remove vulnerable npm-bundled copies so Node resolves
 # the integrity-locked ip-address and undici packages from /opt/tools/node_modules.
-# Keep npm 11 for pre-commit compatibility until its bundled dependencies are fixed.
+# npm 12 still bundles these vulnerable versions despite the compatible pre-commit upgrade.
 #
 RUN npm ci --prefix /opt/tools --omit=dev --ignore-scripts && \
     rm -rf /opt/tools/node_modules/npm/node_modules/ip-address \
