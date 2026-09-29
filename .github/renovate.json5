@@ -48,8 +48,8 @@
     "reviewers": ["scottgigawatt"],
 
     //
-    // Generate lock files with the same compatible npm major as Buccaneerr.
-    // npm 12 also rejects Renovate's bundled npm tarball fetch by default.
+    // Use npm 11 to generate compatible lock files until Renovate supports
+    // npm 12's restrictions on its package-manager tarball bootstrap.
     //
     "constraints": {
         "npm": "^11.0.0"
@@ -137,17 +137,7 @@
     // Keep related update types grouped and image pins deterministic.
     //
     "packageRules": [
-        //
-        // pre-commit still invokes --ignore-prepublish, which npm 12 rejects.
-        // Keep npm 11 updates enabled until upstream supports the new CLI.
-        //
-        {
-            "description": "Keep npm compatible with pre-commit Node hook installation",
-            "matchManagers": ["npm"],
-            "matchPackageNames": ["npm"],
-            "allowedVersions": "<12"
-        },
-        // Keep the replacement packages within npm 11's supported major versions.
+        // Keep the replacement packages within npm's supported major versions.
         {
             "description": "Keep the npm bundled dependency replacement compatible",
             "matchManagers": ["npm"],

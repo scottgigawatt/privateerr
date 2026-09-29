@@ -4,9 +4,13 @@ Reviewed on September 29, 2026 with Trivy 0.74.0 and a refreshed database, plus 
 
 ## Dependency fixes
 
-Buccaneerr uses Docker CLI 29.8.1 and Compose 5.5.1 from digest-pinned official images. It replaces Alpine's bootstrap npm with npm 11.20.0. The tool manifest additionally locks ip-address 10.7.2 and undici 6.29.0; the image removes npm's older bundled copies so Node resolves these integrity-checked replacements. This fixes CVE-2026-101910, CVE-2026-101913, CVE-2026-85024, CVE-2026-18540, and CVE-2026-19534 without moving to npm 12, which rejects a flag still used by pre-commit. Remove this replacement policy when a compatible npm release bundles fixed versions. The committed npm lockfile records integrity hashes for the complete tool dependency graph; `npm ci` checks them during builds. npm 11 retains installation flags required by pre-commit. BusyBox supplies AWK and core utilities, avoiding unnecessary GNU packages.
+Buccaneerr uses Docker CLI 29.8.1 and Compose 5.5.1 from digest-pinned official images. It replaces Alpine's bootstrap npm with npm 12.1.0. Pre-commit 4.6.2 installs Node hooks without the obsolete `--ignore-prepublish` option rejected by npm 12. BusyBox supplies AWK and core utilities, avoiding unnecessary GNU packages.
 
-The image installs fixed nghttp2 1.70.0 or newer and setuptools 83.0.0 or newer from Alpine's edge repository until those fixes reach stable. These are narrow package exceptions; the base and remaining tools stay on stable Alpine. Privateerr already uses the same nghttp2 fix, and its scanned runtime had no reported findings.
+The tool manifest additionally locks ip-address 10.7.2 and undici 6.29.0; the image removes npm's older bundled copies so Node resolves these integrity-checked replacements. This fixes CVE-2026-101910, CVE-2026-101913, CVE-2026-85024, CVE-2026-18540, and CVE-2026-19534 in the completed image. npm 12.1.0 still bundles affected versions, so keep the replacements until upstream fixes its distribution. The committed npm lockfile records integrity hashes for the complete tool dependency graph; `npm ci` checks them during builds.
+
+GitHub dependency alerts still identify the vulnerable bundled entries in `test/package-lock.json`. A standalone `npm ci` restores those copies; the complete Docker build applies the replacements. Keep these source alerts visible until npm ships patched dependencies. Renovate uses npm 11 to generate the compatible lockfile because its package-manager bootstrap does not yet support npm 12's restrictions on remote tarballs; this does not select the npm version installed in Buccaneerr.
+
+The image installs fixed nghttp2 1.70.0 or newer and setuptools 83.0.0 or newer from Alpine's edge repository until those fixes reach stable. It also takes pre-commit 4.6.2 or newer from edge/community because stable still supplies 4.6.0. These are narrow package exceptions; the base and remaining tools stay on stable Alpine. Privateerr already uses the same nghttp2 fix, and its scanned runtime had no reported findings.
 
 ## Remaining package-level alerts
 
@@ -23,7 +27,7 @@ Maraudarr uses the same Compose 5.5.1 donor and Scout reports the four Compose-r
 
 ## Stable image refresh
 
-The scanned Privateerr `edge` images have no findings in either scanner. Trivy reports no high or critical findings in the current `edge` images. The v2.1.1 stable artifacts scanned on this date for Privateerr, Buccaneerr, and Maraudarr contain libexpat 2.8.4-r0 and report **CVE-2026-93990**. Alpine stable now provides fixed 2.8.5-r0 on all three supported architectures, and current builds install it. A rebuilt stable release is required to deliver that fix to `latest`; merging a source update alone only refreshes `edge`.
+The published v2.1.2 Privateerr runtime images have no findings in either scanner across all three platforms. The v2.1.2 Privateerr, Buccaneerr, and Maraudarr artifacts contain fixed libexpat 2.8.5-r0; CVE-2026-93990 from their previous stable images is absent. Trivy reports no high or critical findings in these release artifacts. Future fixes need a rebuilt stable release to reach `latest`; merging a source update alone only refreshes `edge`.
 
 Alpine 3.24 stable still provides nghttp2 1.69.0-r0 and setuptools 82.0.1-r1 on all three platforms. Keep the narrow edge-package exceptions until stable supplies the fixed versions. The PCRE2, Windows-only, and OpenPGP explanations remain relevant because Scout still reports those alerts; a clean Trivy result does not mean Scout agrees.
 
