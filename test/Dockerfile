@@ -110,9 +110,13 @@ COPY --from=compose /docker-compose /usr/local/lib/docker/cli-plugins/docker-com
 COPY test/package.json test/package-lock.json /opt/tools/
 
 #
-# Install locked tools, then remove Alpine's bootstrap npm and cached packages.
+# Install locked tools and remove vulnerable npm-bundled copies so Node resolves
+# the integrity-locked ip-address and undici packages from /opt/tools/node_modules.
+# Keep npm 11 for pre-commit compatibility until its bundled dependencies are fixed.
 #
 RUN npm ci --prefix /opt/tools --omit=dev --ignore-scripts && \
+    rm -rf /opt/tools/node_modules/npm/node_modules/ip-address \
+        /opt/tools/node_modules/npm/node_modules/undici && \
     apk del npm && \
     rm -rf /root/.npm
 
