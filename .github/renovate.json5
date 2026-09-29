@@ -147,6 +147,19 @@
             "matchPackageNames": ["npm"],
             "allowedVersions": "<12"
         },
+        // Keep the replacement packages within npm 11's supported major versions.
+        {
+            "description": "Keep the npm bundled dependency replacement compatible",
+            "matchManagers": ["npm"],
+            "matchPackageNames": ["ip-address"],
+            "allowedVersions": "<11"
+        },
+        {
+            "description": "Keep the npm HTTP client replacement compatible",
+            "matchManagers": ["npm"],
+            "matchPackageNames": ["undici"],
+            "allowedVersions": "<7"
+        },
         {
             "description": "Keep documentation dependencies exact and hash-verified",
             "matchManagers": ["pip_requirements"],
