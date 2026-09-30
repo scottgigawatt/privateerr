@@ -27,7 +27,7 @@ Maraudarr uses the same Compose 5.5.1 donor and Scout reports the four Compose-r
 
 ## Stable image refresh
 
-The published v2.1.2 Privateerr runtime images have no findings in either scanner across all three platforms. The v2.1.2 Privateerr, Buccaneerr, and Maraudarr artifacts contain fixed libexpat 2.8.5-r0; CVE-2026-93990 from their previous stable images is absent. New brace-expansion advisories now affect the v2.1.2 Buccaneerr artifact: Trivy reports two high and one medium finding for its bundled 5.0.9. The rebuilt image with 5.0.12 removes those findings and retains only the documented Compose findings. A rebuilt stable release is needed to deliver this fix to `latest`; merging the source update alone only refreshes `edge`.
+The published v2.1.2 Privateerr runtime images have no findings in either scanner across all three platforms. The v2.1.2 Privateerr, Buccaneerr, and Maraudarr artifacts contain fixed libexpat 2.8.5-r0; CVE-2026-93990 from their previous stable images is absent. New brace-expansion advisories now affect the v2.1.2 Buccaneerr artifact: Trivy reports two high and one medium finding for its bundled 5.0.9. The rebuilt image with 5.0.12 removes those findings and retains only the documented Compose findings in Trivy. A rebuilt stable release is needed to deliver this fix to `latest`; merging the source update alone only refreshes `edge`.
 
 Alpine 3.24 stable still provides nghttp2 1.69.0-r0 and setuptools 82.0.1-r1 on all three platforms. Keep the narrow edge-package exceptions until stable supplies the fixed versions. The PCRE2, Windows-only, and OpenPGP explanations remain relevant because Scout still reports those alerts; a clean Trivy result does not mean Scout agrees.
 
