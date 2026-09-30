@@ -115,11 +115,12 @@ COPY test/package.json test/package-lock.json /opt/tools/
 
 #
 # Install locked tools and remove vulnerable npm-bundled copies so Node resolves
-# the integrity-locked ip-address and undici packages from /opt/tools/node_modules.
+# the integrity-locked replacement packages from /opt/tools/node_modules.
 # npm 12 still bundles these vulnerable versions despite the compatible pre-commit upgrade.
 #
 RUN npm ci --prefix /opt/tools --omit=dev --ignore-scripts && \
-    rm -rf /opt/tools/node_modules/npm/node_modules/ip-address \
+    rm -rf /opt/tools/node_modules/npm/node_modules/brace-expansion \
+        /opt/tools/node_modules/npm/node_modules/ip-address \
         /opt/tools/node_modules/npm/node_modules/undici && \
     apk del npm && \
     rm -rf /root/.npm

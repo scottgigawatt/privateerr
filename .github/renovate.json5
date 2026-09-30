@@ -139,6 +139,12 @@
     "packageRules": [
         // Keep the replacement packages within npm's supported major versions.
         {
+            "description": "Keep the npm brace expansion replacement compatible",
+            "matchManagers": ["npm"],
+            "matchPackageNames": ["brace-expansion"],
+            "allowedVersions": "<6"
+        },
+        {
             "description": "Keep the npm bundled dependency replacement compatible",
             "matchManagers": ["npm"],
             "matchPackageNames": ["ip-address"],
