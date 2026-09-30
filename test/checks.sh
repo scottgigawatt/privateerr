@@ -7,7 +7,7 @@
 #
 # checks.sh: Run repository checks using tools installed only in Buccaneerr.
 #
-# Usage: checks.sh all|python|helpers|workflows|lint|types|format|runtime|live|smoke|precommit|spellcheck
+# Usage: checks.sh all|python|helpers|workflows|lint|types|format|runtime|live|smoke|precommit|markdown|spellcheck
 #
 
 #
@@ -80,6 +80,9 @@ case "${1:-all}" in
         ;;
     smoke)
         python3 test/runtime/test-recovery-api.py --env-file "${PRIVATEERR_TEST_ENV_FILE:-.env}" --smoke
+        ;;
+    markdown)
+        markdownlint-cli2
         ;;
     precommit)
         pre-commit run --all-files
