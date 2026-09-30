@@ -78,7 +78,7 @@ LABEL org.opencontainers.image.title="Buccaneerr" \
 # Upgrade the base OpenSSL runtime libraries to Alpine's current fixed release,
 # then install validation tools. These stay out of the production image.
 # Use fixed nghttp2 and setuptools from edge until stable includes their security updates.
-# Stable pre-commit still passes obsolete npm flags; use the compatible edge package.
+# Keep pre-commit on the current supported release from edge/community.
 # BusyBox supplies the portable AWK and core utilities used by the tests.
 #
 RUN apk upgrade --no-cache libcrypto3 libssl3 && \
@@ -94,8 +94,7 @@ RUN apk upgrade --no-cache libcrypto3 libssl3 && \
         python3 \
         ruff \
         actionlint \
-        nodejs \
-        npm && \
+        nodejs && \
     apk add --no-cache \
         --repository="${EDGE_APK_REPOSITORY}" \
         "nghttp2-libs>=${NGHTTP2_APK_MIN_VERSION}" \
@@ -114,19 +113,16 @@ COPY --from=compose /docker-compose /usr/local/lib/docker/cli-plugins/docker-com
 COPY test/package.json test/package-lock.json /opt/tools/
 
 #
-# Install locked tools and remove vulnerable npm-bundled copies so Node resolves
-# the integrity-locked replacement packages from /opt/tools/node_modules.
-# npm 12 still bundles these vulnerable versions despite the compatible pre-commit upgrade.
+# Install the locked checkers with a temporary package manager. Removing npm in
+# the same layer keeps its bundled dependencies out of the published image.
 #
-RUN npm ci --prefix /opt/tools --omit=dev --ignore-scripts && \
-    rm -rf /opt/tools/node_modules/npm/node_modules/brace-expansion \
-        /opt/tools/node_modules/npm/node_modules/ip-address \
-        /opt/tools/node_modules/npm/node_modules/undici && \
-    apk del npm && \
+RUN apk add --no-cache --virtual .node-build-deps npm && \
+    npm ci --prefix /opt/tools --omit=dev --ignore-scripts && \
+    apk del .node-build-deps && \
     rm -rf /root/.npm
 
 #
-# Use the locked spelling, typing, and npm commands throughout the test image.
+# Use the locked spelling, typing, and Markdown commands throughout the test image.
 #
 ENV PATH="/opt/tools/node_modules/.bin:${PATH}"
 

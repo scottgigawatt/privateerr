@@ -48,8 +48,8 @@
     "reviewers": ["scottgigawatt"],
 
     //
-    // Use npm 11 to generate compatible lock files until Renovate supports
-    // npm 12's restrictions on its package-manager tarball bootstrap.
+    // Use npm 11 to generate lock files compatible with Alpine's build-only
+    // package manager and Renovate's package-manager bootstrap.
     //
     "constraints": {
         "npm": "^11.0.0"
@@ -137,25 +137,6 @@
     // Keep related update types grouped and image pins deterministic.
     //
     "packageRules": [
-        // Keep the replacement packages within npm's supported major versions.
-        {
-            "description": "Keep the npm brace expansion replacement compatible",
-            "matchManagers": ["npm"],
-            "matchPackageNames": ["brace-expansion"],
-            "allowedVersions": "<6"
-        },
-        {
-            "description": "Keep the npm bundled dependency replacement compatible",
-            "matchManagers": ["npm"],
-            "matchPackageNames": ["ip-address"],
-            "allowedVersions": "<11"
-        },
-        {
-            "description": "Keep the npm HTTP client replacement compatible",
-            "matchManagers": ["npm"],
-            "matchPackageNames": ["undici"],
-            "allowedVersions": "<7"
-        },
         {
             "description": "Keep documentation dependencies exact and hash-verified",
             "matchManagers": ["pip_requirements"],
