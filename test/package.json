@@ -5,6 +5,7 @@
     "description": "Hash-locked spelling, strict typing, and Node environment tools for Buccaneerr.",
     "license": "Apache-2.0",
     "dependencies": {
+        "brace-expansion": "5.0.12",
         "cspell": "10.3.6",
         "ip-address": "10.7.2",
         "npm": "12.1.0",
