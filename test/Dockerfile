@@ -27,7 +27,7 @@ FROM docker:29.8.2-cli@sha256:b1805116a6a86cc591b5d5f60a910a0715cdcc9d18d866ad68
 # Stage 3 of 6: Obtain the same reviewed Compose client used by Maraudarr.
 # Copying the standalone binary avoids Alpine's older embedded Go dependencies.
 #
-FROM docker/compose-bin:v5.5.1@sha256:14162382692aae43977f79effa64a499d61de19d4645461881daaf88773f7e74 AS compose
+FROM docker/compose-bin:v5.6.0@sha256:db34ebea4a1acd4b130e9abc305cdb51b3fe53b9116a6c2ac268a451eb308bed AS compose
 
 #
 # Stage 4 of 6: Keep all validation tools in the test-only Buccaneerr image.
