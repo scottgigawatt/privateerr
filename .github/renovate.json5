@@ -138,9 +138,15 @@
     //
     "packageRules": [
         {
-            "description": "Keep documentation dependencies exact and hash-verified",
+            "description": "Keep Python tool dependencies exact and hash-verified",
             "matchManagers": ["pip_requirements"],
             "rangeStrategy": "pin"
+        },
+        {
+            "description": "Respect virtualenv's filelock compatibility bound",
+            "matchFileNames": ["test/requirements-tools.txt"],
+            "matchDepNames": ["filelock"],
+            "allowedVersions": "<4"
         },
         {
             "matchDatasources": ["docker"],
