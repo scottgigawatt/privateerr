@@ -10,7 +10,7 @@ The tool manifest locks CSpell, Pyright, and Markdownlint CLI2. Alpine's npm ins
 
 Pre-commit 4.6.2 and virtualenv 21.7.13 now install into `/opt/precommit` from `test/requirements-tools.txt`. Every dependency has an exact version and SHA-256 hashes, enforced with pip's `--require-hashes` mode. The bootstrap pip is removed after installation, keeping its older bundled libraries out of the completed image. This isolated test environment replaces Alpine's virtualenv 21.3.3, including four advisories reported by Scout: [CVE-2026-102925](https://github.com/advisories/GHSA-p58f-9548-mpm2), [CVE-2026-102930](https://github.com/advisories/GHSA-94p9-xgh2-xp45), [CVE-2026-102937](https://github.com/advisories/GHSA-x78j-v8h9-3j2q), and [CVE-2026-102938](https://github.com/advisories/GHSA-9h9j-4vrj-gf7g). These packages remain outside the production Privateerr image.
 
-Current `edge` images contain Python 3.14.8-r0; Buccaneerr also contains PCRE2 10.49-r0. These fix the Python and PCRE2 findings listed below. Both images still install nghttp2 1.70.0 or newer from Alpine's edge repository, and Buccaneerr installs setuptools 83.0.0 or newer from edge. Keep these narrow package exceptions until stable supplies the fixed versions.
+Current `edge` images contain Python 3.14.8-r0; Buccaneerr also contains PCRE2 10.49-r0. These fix the Python and PCRE2 findings listed below. Alpine 3.24 stable now supplies nghttp2 1.70.0-r0 on all three platforms, so both images remove the old edge-package override. Buccaneerr still installs setuptools 83.0.0 or newer from edge because stable supplies 82.0.1-r1. Keep that remaining narrow exception until stable supplies the fixed version.
 
 ## Remaining package-level alerts
 
