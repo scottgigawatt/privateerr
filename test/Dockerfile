@@ -99,11 +99,13 @@ RUN apk upgrade --no-cache libcrypto3 libssl3 && \
 
 # Install pre-commit with fixed virtualenv outside Alpine's older Python tool packages.
 # The complete lockfile verifies every dependency and keeps these tools test-only.
+# Keep only seed wheels for the installed Python, preserving their upstream hash checks.
 COPY test/requirements-tools.txt /tmp/requirements-tools.txt
 RUN python3 -m venv /opt/precommit && \
     /opt/precommit/bin/python -m pip install --no-cache-dir --disable-pip-version-check \
         --require-hashes --requirement /tmp/requirements-tools.txt && \
     /opt/precommit/bin/python -m pip uninstall --yes pip && \
+    /opt/precommit/bin/python -c 'import sys; from virtualenv.seed.wheels import embed; version = ".".join(map(str, sys.version_info[:2])); active = embed.BUNDLE_SUPPORT[version]; [embed.get_embed_wheel(package, version) for package in active]; [wheel.unlink() for wheel in embed.BUNDLE_FOLDER.glob("*.whl") if wheel.name not in active.values()]' && \
     apk del py3-pip && \
     rm /tmp/requirements-tools.txt
 ENV PATH="/opt/precommit/bin:${PATH}"
