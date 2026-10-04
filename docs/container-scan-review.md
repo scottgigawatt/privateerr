@@ -1,42 +1,51 @@
 # Container scan review
 
-Reviewed on September 30, 2026 with Trivy 0.74.0 (database updated at 07:10 UTC), plus Docker Scout 1.24.0. The review covers immutable `edge` and `latest` digests for all three supported platforms, plus the rebuilt Buccaneerr image with build-only npm. Scanner databases change, so these findings apply to the scanned artifacts rather than every future image with the same tag.
+Reviewed on October 4, 2026 with Trivy 0.74.0 for published artifacts, Trivy 0.75.0 for the rebuilt ARM64 image, and Docker Scout 1.24.0 (Trivy database updated at 14:28 UTC). The review covers immutable `edge` and `latest` digests on `linux/amd64`, `linux/arm64`, and `linux/arm/v7`. Scanner databases change, so these findings apply to the scanned artifacts rather than every future image with the same tag.
 
 ## Dependency fixes
 
-Buccaneerr uses Docker CLI 29.8.1 and Compose 5.5.1 from digest-pinned official images. BusyBox supplies AWK and core utilities, avoiding unnecessary GNU packages.
+Buccaneerr uses Docker CLI 29.8.2 and Compose 5.6.0 from digest-pinned official images. Compose includes containerd 2.4.1, fixing [CVE-2026-53493](https://github.com/containerd/containerd/security/advisories/GHSA-pg57-6jwg-q645) and [CVE-2026-53495](https://github.com/containerd/containerd/security/advisories/GHSA-7jxh-36q5-gcqv). BusyBox supplies AWK and core utilities, avoiding unnecessary GNU packages.
 
-The tool manifest locks CSpell, Pyright, and Markdownlint CLI2. Alpine's npm installs these checkers during the image build and is removed in the same layer, keeping its bundled dependencies out of the completed image. Pre-commit runs Markdownlint through the same Buccaneerr helper used for Python checks, so it does not install a separate Node environment or require npm when running hooks. Node.js remains available to run the installed checkers.
+The tool manifest locks CSpell, Pyright, and Markdownlint CLI2. Alpine's npm installs these checkers during the image build and is removed in the same layer, keeping its bundled dependencies out of the completed image. Pre-commit runs Markdownlint through the same Buccaneerr helper used for Python checks, so it does not install a separate Node environment. Removing npm also eliminates the bundled brace-expansion and http-cache-semantics vulnerabilities, including CVE-2026-102276, CVE-2026-102277, CVE-2026-102278, and CVE-2026-93748. Renovate maintains the checker lockfile using npm 11.
 
-Removing npm from the manifest eliminates the vulnerable bundled entries behind the ten GitHub dependency alerts and the three replacement-package workarounds. GitHub must scan the merged lockfile again before alert closure can be confirmed. The committed lockfile retains exact versions and integrity hashes for every checker dependency; `npm ci` verifies them during builds. Renovate maintains the checkers through its npm manager, using npm 11 to generate a lockfile compatible with the build-only package manager.
+Pre-commit 4.6.2 and virtualenv 21.7.13 now install into `/opt/precommit` from `test/requirements-tools.txt`. Every dependency has an exact version and SHA-256 hashes, enforced with pip's `--require-hashes` mode. The bootstrap pip is removed after installation, keeping its older bundled libraries out of the completed image. This isolated test environment replaces Alpine's virtualenv 21.3.3, including four advisories reported by Scout: [CVE-2026-102925](https://github.com/advisories/GHSA-p58f-9548-mpm2), [CVE-2026-102930](https://github.com/advisories/GHSA-94p9-xgh2-xp45), [CVE-2026-102937](https://github.com/advisories/GHSA-x78j-v8h9-3j2q), and [CVE-2026-102938](https://github.com/advisories/GHSA-9h9j-4vrj-gf7g). These packages remain outside the production Privateerr image.
 
-The image installs fixed nghttp2 1.70.0 or newer and setuptools 83.0.0 or newer from Alpine's edge repository until those fixes reach stable. It also takes pre-commit 4.6.2 or newer from edge/community because stable still supplies 4.6.0. These are narrow package exceptions; the base and remaining tools stay on stable Alpine. Privateerr already uses the same nghttp2 fix, and its scanned runtime had no reported findings.
+Current `edge` images contain Python 3.14.8-r0; Buccaneerr also contains PCRE2 10.49-r0. These fix the Python and PCRE2 findings listed below. Alpine 3.24 stable now supplies nghttp2 1.70.0-r0 on all three platforms, so both images remove the old edge-package override. Buccaneerr still installs setuptools 83.0.0 or newer from edge because stable supplies 82.0.1-r1. Keep that remaining narrow exception until stable supplies the fixed version.
 
 ## Remaining package-level alerts
 
-With npm removed, eight package-level alerts remain in Docker Scout for Buccaneerr. Trivy reports only the two containerd advisories and the OpenPGP warning. None is hidden by a new scanner exclusion. Review the affected code and platform as well as the package name:
+Privateerr `edge` has no findings in either scanner across all three platforms. Before the virtualenv update, Buccaneerr `edge` has two unique Trivy findings and nine unique Scout findings; the four virtualenv findings have published fixes and are addressed by this change. The rebuilt ARM64 image has two unique Trivy findings and five unique Scout findings, with all four virtualenv advisories removed. The remaining package-level reports require the following context. No scanner exclusion hides them.
 
-- **CVE-2025-15558:** Docker's [advisory](https://github.com/docker/cli/security/advisories/GHSA-p436-gjf2-799p) applies to Windows plugin discovery and is fixed in CLI 29.2.0 and Compose 5.1.0. These Linux images contain newer versions.
-- **CVE-2026-39824:** The Go [advisory](https://pkg.go.dev/vuln/GO-2026-5024) affects a Windows string conversion in `golang.org/x/sys/windows`. Buccaneerr runs the Linux actionlint binary.
-- **GO-2026-5932:** The Go [advisory](https://pkg.go.dev/vuln/GO-2026-5932) concerns the unmaintained OpenPGP package, not every package in `golang.org/x/crypto`. Binary analysis of Compose 5.5.1 found no compiled OpenPGP package.
-- **CVE-2026-53493:** The containerd [advisory](https://github.com/containerd/containerd/security/advisories/GHSA-pg57-6jwg-q645) concerns resource exhaustion while pulling malicious image descriptor graphs. Compose 5.5.1 includes an affected containerd module version and remains the newest official Compose donor. Buccaneerr contains clients, not a containerd daemon; assess the separate host runtime and avoid untrusted image sources while awaiting the upstream update.
-- **CVE-2026-53495:** The containerd [advisory](https://github.com/containerd/containerd/security/advisories/GHSA-7jxh-36q5-gcqv) affects the daemon's CRI execution implementation. Compose includes containerd client libraries, but no CRI implementation or containerd daemon. This does not assess the separate Docker host's daemon.
-- **CVE-2026-89157, CVE-2026-89160, and CVE-2026-89162:** PCRE2 [10.48 release notes](https://github.com/PCRE2Project/pcre2/releases/tag/pcre2-10.48) include the pattern-conversion, invalid UTF matching, and serialization fixes. The image already contains Alpine's PCRE2 10.48 package; Scout currently reports it as unfixed.
+- **CVE-2026-93687:** [braces 3.0.3](https://github.com/advisories/GHSA-vfj7-8cjw-p6xm) has a stack-exhaustion issue in deeply nested patterns and no published patched version. Markdownlint CLI2 depends on it through micromatch. Keep the GitHub dependency alert visible and use repository-controlled file patterns for checks.
+- **GO-2026-5932:** The Go [advisory](https://pkg.go.dev/vuln/GO-2026-5932) concerns the unmaintained OpenPGP package. Compose's module metadata includes `golang.org/x/crypto`; the advisory does not apply to every package in that module.
+- **CVE-2025-15558:** Docker's [advisory](https://github.com/docker/cli/security/advisories/GHSA-p436-gjf2-799p) applies to Windows plugin discovery. These Linux images use CLI 29.8.2 and Compose 5.6.0, newer than the patched releases. Scout still reports the Docker CLI module.
+- **CVE-2026-39824:** The Go [advisory](https://pkg.go.dev/vuln/GO-2026-5024) affects a Windows string conversion in `golang.org/x/sys/windows`. Buccaneerr runs the Linux actionlint binary, whose module metadata still includes the older version.
+- **CVE-2026-84445:** The gRPC [advisory](https://github.com/grpc/grpc-go/security/advisories/GHSA-2v4p-qf9q-27wj) affects servers configured with `xds.NewGRPCServer()`. Scout reports gRPC 1.84.0 in the Docker client, but the current upstream advisory lists 1.84.0 as patched. Buccaneerr also starts no xDS server; review the separate Docker host independently.
 
-Maraudarr uses the same Compose 5.5.1 donor and Scout reports the four Compose-related alerts above. Updating to an older or custom-built Compose solely to remove scanner metadata would not improve the affected runtime behavior.
+A successful workflow scan rejects fixed high or critical findings; it does not mean either scanner reports zero findings. CI uses `ignore-unfixed: true` and scans its local build. Use the full artifact scans above when evaluating other severities, unfixed dependencies, platforms, and published stable images.
 
 ## Stable image refresh
 
-The published v2.1.2 Privateerr runtime images have no findings in either scanner across all three platforms. The v2.1.2 Privateerr, Buccaneerr, and Maraudarr artifacts contain fixed libexpat 2.8.5-r0; CVE-2026-93990 from their previous stable images is absent. New brace-expansion advisories now affect the v2.1.2 Buccaneerr artifact: Trivy reports two high and one medium finding for its bundled 5.0.9. The rebuilt image without npm removes those findings and retains only the documented Compose findings in Trivy. A rebuilt stable release is needed to deliver this fix to `latest`; merging the source update alone only refreshes `edge`.
+The scanned `latest` images still select v2.1.2. Privateerr has seven unique Python advisories in both scanners: CVE-2026-19553, CVE-2026-82049, CVE-2026-15806, CVE-2026-17084, CVE-2026-19672, CVE-2026-15310, and CVE-2026-19445. Python 3.14.8-r0 fixes all seven; the `edge` artifacts already contain it.
 
-Alpine 3.24 stable still provides nghttp2 1.69.0-r0 and setuptools 82.0.1-r1 on all three platforms. Keep the narrow edge-package exceptions until stable supplies the fixed versions. The PCRE2, Windows-only, and OpenPGP explanations remain relevant because Scout still reports those alerts; a clean Trivy result does not mean Scout agrees.
+Buccaneerr v2.1.2 has 15 unique Trivy findings and 21 unique Scout findings. In addition to the Python advisories, it contains fixed PCRE2 CVE-2026-103111, the old npm dependency findings, the old containerd module findings, and the four virtualenv advisories. Fixed findings require rebuilding stable images from the corrected source. Merging source changes refreshes `edge`; a stable release is required to deliver those fixes through `latest`.
+
+The reviewed image index digests are:
+
+| Image | Tag | Index digest |
+| --- | --- | --- |
+| Privateerr | `edge` | `sha256:46c7c388908894225ccc63020c185e0bee77e67df8916efae1f2156bddb78f22` |
+| Privateerr | `latest` | `sha256:04db2616bb7198917c4b316db5b34ae62cac6032084047549d768b8de1421f7b` |
+| Buccaneerr | `edge` | `sha256:a98ac7f7919463334554cc486d37649b930b0a5eeefb3e69f26a2c69890c65f8` |
+| Buccaneerr | `latest` | `sha256:a2255599b6a9905275e5ffe714190fa1beea8293a0428267605199daa3061052` |
 
 ## Repeat the review
 
-Scan an immutable published digest and specify its platform so results can be compared reliably:
+Scan immutable published digests, including findings with no fix and every severity:
 
 ```sh
-docker scout cves registry://ghcr.io/scottgigawatt/buccaneerr@sha256:IMAGE_DIGEST --platform linux/amd64
+trivy image --image-src remote --scanners vuln ghcr.io/scottgigawatt/buccaneerr@sha256:IMAGE-DIGEST
+docker scout cves registry://ghcr.io/scottgigawatt/buccaneerr@sha256:IMAGE-DIGEST --platform linux/amd64
 ```
 
-Replace `IMAGE_DIGEST` with the published digest. Repeat for every supported platform and retain the scanner version, package versions, and scan date. A clean scan is evidence about that artifact and database snapshot, not a guarantee that no vulnerabilities exist.
+Replace `IMAGE-DIGEST` with the published manifest digest for the platform being reviewed. Repeat for every supported platform and retain the scanner version, database date, package versions, and scan date. A clean scan is evidence about that artifact and database snapshot.
