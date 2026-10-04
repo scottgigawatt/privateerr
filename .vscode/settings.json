@@ -152,6 +152,7 @@
         "SERVERLIST",
         "setitimer",
         "setsid",
+        "sboms",
         "setuptools",
         "shellcheck",
         "SIGALRM",
