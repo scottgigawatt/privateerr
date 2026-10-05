@@ -14,9 +14,9 @@ distlib==0.4.3 \
     --hash=sha256:4b0ce306c966eb73bc3a7b6abad017c556dadd92c44701562cd528ac7fde4d5b \
     --hash=sha256:f152097224a0ae24be5a0f6bae1b9359af82133bce63f98a95f86cae1aede9ed
 
-filelock==4.0.10 \
-    --hash=sha256:00d6a81f976a6332551c2c10f39e12b4abb7e01c64d4c497b81a615bc9186f1f \
-    --hash=sha256:698048d158dc3c9e18cc5e88b3efdd4bd0e77d76686b22adb4511cc4b2c2f0db
+filelock==4.0.11 \
+    --hash=sha256:1cbdc4ace7fb11d2f6d073f5c3d91537a23b3d58d2bf2fdffc12c6d717a589c6 \
+    --hash=sha256:9dc453a1edd25626a6fc97c2cb1bd9f7e46345843d40b3181c071761fb9a5f7a
 
 identify==2.6.20 \
     --hash=sha256:6a16b69b93187244e0548cbfd25b3e4a6f9a7a2ad784625c3bec2b8d27b81aaa \
