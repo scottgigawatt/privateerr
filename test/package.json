@@ -8,5 +8,11 @@
         "cspell": "10.3.6",
         "markdownlint-cli2": "0.23.3",
         "pyright": "1.1.414"
+    },
+    "overrides": {
+        "katex": "0.18.2",
+        "markdownlint-cli2": {
+            "smol-toml": "1.9.0"
+        }
     }
 }
