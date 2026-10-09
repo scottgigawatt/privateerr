@@ -41,10 +41,10 @@ SHELL ["/bin/ash", "-o", "pipefail", "-c"]
 
 # Download checksum-verified upstream module sources, retaining the release behavior.
 # Override only the networking dependency until upstream publishes its security refresh.
+WORKDIR /src
 RUN go mod download "github.com/docker/compose/v5@${DOCKER_COMPOSE_VERSION}" && \
-    cp -a "$(go env GOMODCACHE)/github.com/docker/compose/v5@${DOCKER_COMPOSE_VERSION}" /src && \
+    cp -a "$(go env GOMODCACHE)/github.com/docker/compose/v5@${DOCKER_COMPOSE_VERSION}/." /src && \
     chmod -R u+w /src && \
-    cd /src && \
     current_net=$(go list -m -f '{{.Version}}' golang.org/x/net) && \
     if [ "$(printf '%s\n' "${current_net}" "${GO_X_NET_VERSION}" | sort -V | head -n 1)" != "${GO_X_NET_VERSION}" ]; then \
         go get "golang.org/x/net@${GO_X_NET_VERSION}"; \
@@ -57,10 +57,10 @@ RUN go mod download "github.com/docker/compose/v5@${DOCKER_COMPOSE_VERSION}" && 
 
 # Rebuild the reviewed workflow checker with the same fixed Go runtime.
 # Its Windows-only syscall advisory is also absent after the module refresh.
+WORKDIR /actionlint-src
 RUN go mod download "github.com/rhysd/actionlint@${ACTIONLINT_VERSION}" && \
-    cp -a "$(go env GOMODCACHE)/github.com/rhysd/actionlint@${ACTIONLINT_VERSION}" /actionlint-src && \
+    cp -a "$(go env GOMODCACHE)/github.com/rhysd/actionlint@${ACTIONLINT_VERSION}/." /actionlint-src && \
     chmod -R u+w /actionlint-src && \
-    cd /actionlint-src && \
     current_net=$(go list -m -f '{{.Version}}' golang.org/x/net) && \
     if [ "$(printf '%s\n' "${current_net}" "${GO_X_NET_VERSION}" | sort -V | head -n 1)" != "${GO_X_NET_VERSION}" ]; then \
         go get "golang.org/x/net@${GO_X_NET_VERSION}"; \
