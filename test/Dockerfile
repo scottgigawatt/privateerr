@@ -21,7 +21,7 @@ FROM koalaman/shellcheck:v0.11.0@sha256:61862eba1fcf09a484ebcc6feea46f1782532571
 # Stage 2 of 6: Obtain the current Docker client without a daemon or extra plugins.
 # Alpine's packaged client lags behind upstream security releases.
 #
-FROM docker:29.8.2-cli@sha256:35cfcf893c20f2931f4909151b5407aaaeab711277de7ce8b8f521f095d54c32 AS docker-cli
+FROM docker:29.9.0-cli@sha256:1a4c7cb63513f349bdad01fcc6e0f3f2f67d37b9da86f14dc0d4a0942eecda00 AS docker-cli
 
 #
 # Stage 3 of 6: Rebuild Compose and actionlint with fixed Go libraries.
