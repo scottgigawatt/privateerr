@@ -6,7 +6,7 @@ Reviewed on October 9, 2026 with Trivy 0.75.0 and Docker Scout 1.25.0. The revie
 
 Production Privateerr reports no Docker Scout findings on the reviewed platforms. The zlib, Expat, KaTeX, and smol-toml findings from the earlier review are resolved in the published v2.1.5 images. Their old artifact digests and pending-release guidance have been removed.
 
-Buccaneerr's published images still include Go 1.26.8 in Docker CLI, Compose, and actionlint. Newly published fixes require Go 1.26.9 and `golang.org/x/net` 0.60.0. The Docker CLI update uses upstream 29.9.0. Compose 5.6.0 and actionlint 1.7.12 are rebuilt from their checksum-verified upstream Go modules using the digest-pinned patched Go builder and fixed networking dependencies. Actionlint also requires `golang.org/x/sys` 0.48.0 or newer. Renovate tracks these source versions, dependency floors, and the builder image. Build tools remain outside the published test image and production Privateerr.
+The reviewed stable Buccaneerr v2.1.5 images still include Go 1.26.8 in Docker CLI, Compose, and actionlint. The fixes ship in Go 1.26.9 or 1.27.2 and `golang.org/x/net` 0.60.0. The Docker CLI update uses upstream 29.9.0. Compose 5.6.0 and actionlint 1.7.12 are rebuilt from their checksum-verified upstream Go modules using the digest-pinned patched Go builder and fixed networking dependencies. Actionlint also requires `golang.org/x/sys` 0.48.0 or newer. Renovate tracks these source versions, dependency floors, and the builder image. Build tools remain outside the published test image and production Privateerr.
 
 Both images retain the zlib 1.3.2-r1 minimum. Alpine 3.24 still supplies Expat 2.8.5, so the narrow Expat 2.9.0 edge exception remains necessary. Buccaneerr retains its setuptools edge exception until stable supplies version 83 or later. No general edge upgrade is performed.
 
@@ -18,7 +18,7 @@ Pre-commit 4.6.2 and virtualenv 21.14.6 install into `/opt/precommit` from the c
 
 ## Published artifact findings
 
-The reviewed production Privateerr images report zero Scout identifiers. Published Buccaneerr images report thirty-six Scout identifiers on every platform before the Go tool rebuilds. The recorded immutable digests retain that baseline. Merged fixes refresh `edge`; refreshing stable `latest` requires a new stable release.
+The reviewed production Privateerr images report zero Scout identifiers. The recorded pre-rebuild Buccaneerr artifacts report thirty-six Scout identifiers on every platform. The recorded immutable digests retain that baseline. Merged fixes refresh `edge`; refreshing stable `latest` requires a new stable release.
 
 The remaining package-level reports require the following context. No scanner exclusion hides them.
 
