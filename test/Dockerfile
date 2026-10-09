@@ -167,6 +167,11 @@ COPY --from=docker-cli /usr/local/bin/docker /usr/local/bin/docker
 COPY --from=compose /docker-compose /usr/local/lib/docker/cli-plugins/docker-compose
 COPY --from=compose /actionlint /usr/bin/actionlint
 
+# Retain upstream license and notice files for rebuilt third-party tools.
+COPY --from=compose /src/LICENSE /licenses/docker-compose/LICENSE
+COPY --from=compose /src/NOTICE /licenses/docker-compose/NOTICE
+COPY --from=compose /actionlint-src/LICENSE.txt /licenses/actionlint/LICENSE.txt
+
 #
 # Copy the integrity-checked dependency manifests for the test tools.
 #
