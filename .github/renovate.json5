@@ -80,6 +80,38 @@
     // Track image and npm pins that need explicit extraction patterns.
     //
     "customManagers": [
+        // Keep the rebuilt workflow checker and its syscall dependency current.
+        {
+            "customType": "regex",
+            "managerFilePatterns": ["/^test/Dockerfile$/"],
+            "matchStrings": ["ACTIONLINT_VERSION=(?<currentValue>v[^\\s]+)"],
+            "depNameTemplate": "rhysd/actionlint",
+            "datasourceTemplate": "github-tags"
+        },
+        {
+            "customType": "regex",
+            "managerFilePatterns": ["/^test/Dockerfile$/"],
+            "matchStrings": ["GO_X_SYS_VERSION=(?<currentValue>v[^\\s]+)"],
+            "depNameTemplate": "golang.org/x/sys",
+            "datasourceTemplate": "go"
+        },
+
+        // Track upstream Compose sources and the narrow Go networking security floor.
+        {
+            "customType": "regex",
+            "managerFilePatterns": ["/^test/Dockerfile$/"],
+            "matchStrings": ["DOCKER_COMPOSE_VERSION=(?<currentValue>v[^\\s]+)"],
+            "depNameTemplate": "docker/compose",
+            "datasourceTemplate": "github-tags"
+        },
+        {
+            "customType": "regex",
+            "managerFilePatterns": ["/^test/Dockerfile$/"],
+            "matchStrings": ["GO_X_NET_VERSION=(?<currentValue>v[^\\s]+)"],
+            "depNameTemplate": "golang.org/x/net",
+            "datasourceTemplate": "go"
+        },
+
         // Keep the real integration suite on a reviewed Gluetun release.
         {
             "customType": "regex",

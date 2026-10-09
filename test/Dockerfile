@@ -24,10 +24,56 @@ FROM koalaman/shellcheck:v0.11.0@sha256:61862eba1fcf09a484ebcc6feea46f1782532571
 FROM docker:29.8.2-cli@sha256:35cfcf893c20f2931f4909151b5407aaaeab711277de7ce8b8f521f095d54c32 AS docker-cli
 
 #
-# Stage 3 of 6: Obtain the same reviewed Compose client used by Maraudarr.
-# Copying the standalone binary avoids Alpine's older embedded Go dependencies.
+# Stage 3 of 6: Rebuild Compose and actionlint with fixed Go libraries.
+# Build tools stay separate from the published test image and production runtime.
 #
-FROM docker/compose-bin:v5.6.0@sha256:db34ebea4a1acd4b130e9abc305cdb51b3fe53b9116a6c2ac268a451eb308bed AS compose
+FROM --platform=$BUILDPLATFORM golang:1.26.9-alpine3.24@sha256:cdfd4fe2da6b225d8b40c6b7a105736e548e83ff56d5d8f9394446eeb5eb84e0 AS compose
+
+ARG TARGETOS
+ARG TARGETARCH
+ARG TARGETVARIANT
+ARG DOCKER_COMPOSE_VERSION=v5.6.0
+ARG GO_X_NET_VERSION=v0.60.0
+ARG ACTIONLINT_VERSION=v1.7.12
+ARG GO_X_SYS_VERSION=v0.48.0
+ENV GOTOOLCHAIN=local CGO_ENABLED=0
+SHELL ["/bin/ash", "-o", "pipefail", "-c"]
+
+# Download checksum-verified upstream module sources, retaining the release behavior.
+# Override only the networking dependency until upstream publishes its security refresh.
+RUN go mod download "github.com/docker/compose/v5@${DOCKER_COMPOSE_VERSION}" && \
+    cp -a "$(go env GOMODCACHE)/github.com/docker/compose/v5@${DOCKER_COMPOSE_VERSION}" /src && \
+    chmod -R u+w /src && \
+    cd /src && \
+    current_net=$(go list -m -f '{{.Version}}' golang.org/x/net) && \
+    if [ "$(printf '%s\n' "${current_net}" "${GO_X_NET_VERSION}" | sort -V | head -n 1)" != "${GO_X_NET_VERSION}" ]; then \
+        go get "golang.org/x/net@${GO_X_NET_VERSION}"; \
+    fi && \
+    go mod verify && \
+    GOOS=${TARGETOS} GOARCH=${TARGETARCH} GOARM=${TARGETVARIANT#v} \
+    go build -mod=readonly -trimpath -tags=e2e \
+        -ldflags="-w -X github.com/docker/compose/v5/internal.Version=${DOCKER_COMPOSE_VERSION}" \
+        -o /docker-compose ./cmd
+
+# Rebuild the reviewed workflow checker with the same fixed Go runtime.
+# Its Windows-only syscall advisory is also absent after the module refresh.
+RUN go mod download "github.com/rhysd/actionlint@${ACTIONLINT_VERSION}" && \
+    cp -a "$(go env GOMODCACHE)/github.com/rhysd/actionlint@${ACTIONLINT_VERSION}" /actionlint-src && \
+    chmod -R u+w /actionlint-src && \
+    cd /actionlint-src && \
+    current_net=$(go list -m -f '{{.Version}}' golang.org/x/net) && \
+    if [ "$(printf '%s\n' "${current_net}" "${GO_X_NET_VERSION}" | sort -V | head -n 1)" != "${GO_X_NET_VERSION}" ]; then \
+        go get "golang.org/x/net@${GO_X_NET_VERSION}"; \
+    fi && \
+    current_sys=$(go list -m -f '{{.Version}}' golang.org/x/sys) && \
+    if [ "$(printf '%s\n' "${current_sys}" "${GO_X_SYS_VERSION}" | sort -V | head -n 1)" != "${GO_X_SYS_VERSION}" ]; then \
+        go get "golang.org/x/sys@${GO_X_SYS_VERSION}"; \
+    fi && \
+    go mod verify && \
+    GOOS=${TARGETOS} GOARCH=${TARGETARCH} GOARM=${TARGETVARIANT#v} \
+    go build -mod=readonly -trimpath \
+        -ldflags="-w -X github.com/rhysd/actionlint.version=${ACTIONLINT_VERSION}" \
+        -o /actionlint ./cmd/actionlint
 
 #
 # Stage 4 of 6: Keep all validation tools in the test-only Buccaneerr image.
@@ -95,7 +141,6 @@ RUN apk upgrade --no-cache libcrypto3 libssl3 && \
         python3 \
         py3-pip \
         ruff \
-        actionlint \
         nodejs \
         "zlib>=${ZLIB_APK_MIN_VERSION}" && \
     apk add --no-cache \
@@ -120,6 +165,7 @@ ENV PATH="/opt/precommit/bin:${PATH}"
 COPY --from=shellcheck /bin/shellcheck /usr/local/bin/shellcheck
 COPY --from=docker-cli /usr/local/bin/docker /usr/local/bin/docker
 COPY --from=compose /docker-compose /usr/local/lib/docker/cli-plugins/docker-compose
+COPY --from=compose /actionlint /usr/bin/actionlint
 
 #
 # Copy the integrity-checked dependency manifests for the test tools.
