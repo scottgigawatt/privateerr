@@ -6,7 +6,7 @@ Reviewed on October 9, 2026 with Trivy 0.75.0 and Docker Scout 1.25.0. The revie
 
 Production Privateerr reports no Docker Scout findings on the reviewed platforms. The zlib, Expat, KaTeX, and smol-toml findings from the earlier review are resolved in the published v2.1.5 images. Their old artifact digests and pending-release guidance have been removed.
 
-Buccaneerr's published images still include Go 1.26.8 in Docker CLI, Compose, and actionlint. Newly published fixes require Go 1.26.9 and `golang.org/x/net` 0.60.0. The Docker CLI update uses upstream 29.9.0. Compose 5.6.0 and actionlint 1.7.12 are rebuilt from their checksum-verified upstream Go modules using the digest-pinned Go builder and fixed networking dependencies. Actionlint also uses `golang.org/x/sys` 0.48.0. Renovate tracks these source versions, dependency floors, and the builder image. Build tools remain outside the published test image and production Privateerr.
+The reviewed stable Buccaneerr v2.1.5 images still include Go 1.26.8 in Docker CLI, Compose, and actionlint. The fixes ship in Go 1.26.9 or 1.27.2 and `golang.org/x/net` 0.60.0. The Docker CLI update uses upstream 29.9.0. Compose 5.6.0 and actionlint 1.7.12 are rebuilt from their checksum-verified upstream Go modules using the digest-pinned patched Go builder and fixed networking dependencies. Actionlint also requires `golang.org/x/sys` 0.48.0 or newer. Renovate tracks these source versions, dependency floors, and the builder image. Build tools remain outside the published test image and production Privateerr.
 
 Both images retain the zlib 1.3.2-r1 minimum. Alpine 3.24 still supplies Expat 2.8.5, so the narrow Expat 2.9.0 edge exception remains necessary. Buccaneerr retains its setuptools edge exception until stable supplies version 83 or later. No general edge upgrade is performed.
 
@@ -18,7 +18,7 @@ Pre-commit 4.6.2 and virtualenv 21.14.6 install into `/opt/precommit` from the c
 
 ## Published artifact findings
 
-The reviewed production Privateerr images report zero Scout identifiers. Published Buccaneerr images report thirty-six Scout identifiers on every platform before the Go tool rebuilds. The recorded immutable digests retain that baseline. Merged fixes refresh `edge`; refreshing stable `latest` requires a new stable release.
+The reviewed production Privateerr images report zero Scout identifiers. The recorded pre-rebuild Buccaneerr artifacts report thirty-six Scout identifiers on every platform. The recorded immutable digests retain that baseline. Merged fixes refresh `edge`; refreshing stable `latest` requires a new stable release.
 
 The remaining package-level reports require the following context. No scanner exclusion hides them.
 
@@ -36,7 +36,7 @@ Virtualenv needs its integrity-checked pip seed wheel to create fresh Python hoo
 | urllib3 2.7.0 | [CVE-2026-97687](https://www.cve.org/CVERecord?id=CVE-2026-97687), [CVE-2026-97688](https://www.cve.org/CVERecord?id=CVE-2026-97688), [CVE-2026-97689](https://www.cve.org/CVERecord?id=CVE-2026-97689) | 2.8.0 |
 | setuptools 70.3.0, limited to pip's vendored `pkg_resources` | [CVE-2025-47273](https://www.cve.org/CVERecord?id=CVE-2025-47273), [CVE-2026-59890](https://www.cve.org/CVERecord?id=CVE-2026-59890) | 78.1.1 and 83.0.0, respectively |
 
-The unused pip 26.0.1 and setuptools 82.0.1 seed wheels target Python 3.9, which this image does not provide. Removing those assets removes their vulnerable code without changing the active Python 3.14 seed wheels. Scout still reports the removed assets from virtualenv's original package SBOM at `virtualenv-21.14.6.dist-info/sboms/virtualenv.cdx.json`; that upstream inventory describes the unmodified distributed wheel, not the image after pruning. Keep this distinction visible when reviewing the scan. A fresh pre-commit Python hook environment verifies that environment creation and package installation still work.
+The unused pip 26.0.1 and setuptools 82.0.1 seed wheels target Python 3.9, which this image does not provide. Removing those assets removes their vulnerable code without changing the active Python 3.14 seed wheels. Scout still reports the removed assets from virtualenv's original package SBOM at `virtualenv-*.dist-info/sboms/virtualenv.cdx.json`; that upstream inventory describes the unmodified distributed wheel, not the image after pruning. Keep this distinction visible when reviewing the scan. A fresh pre-commit Python hook environment verifies that environment creation and package installation still work.
 
 A successful workflow scan rejects fixed high or critical findings; it does not mean either scanner reports zero findings. CI uses `ignore-unfixed: true` and scans its local build. Use the full artifact scans when evaluating other severities, unfixed dependencies, platforms, and published stable images.
 
