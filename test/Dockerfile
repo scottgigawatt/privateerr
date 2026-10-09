@@ -27,7 +27,7 @@ FROM docker:29.9.0-cli@sha256:1a4c7cb63513f349bdad01fcc6e0f3f2f67d37b9da86f14dc0
 # Stage 3 of 6: Rebuild Compose and actionlint with fixed Go libraries.
 # Build tools stay separate from the published test image and production runtime.
 #
-FROM --platform=$BUILDPLATFORM golang:1.26.9-alpine3.24@sha256:cdfd4fe2da6b225d8b40c6b7a105736e548e83ff56d5d8f9394446eeb5eb84e0 AS compose
+FROM --platform=$BUILDPLATFORM golang:1.27.2-alpine3.24@sha256:85dc1069ac644ea3c527b177303a406eb3358192816cd7f9e5848eb658851673 AS compose
 
 ARG TARGETOS
 ARG TARGETARCH
