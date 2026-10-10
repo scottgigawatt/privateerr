@@ -1,0 +1,38 @@
+#
+# Copyright 2025-2026 Scott Gigawatt
+#
+# Licensed under the Apache License, Version 2.0.
+#
+# .trivyignore.yaml: Expiring CI exceptions for official Buccaneerr CLI tools.
+#
+
+vulnerabilities:
+  #
+  # Supported Compose and actionlint checks do not expose Go HTTP file serving.
+  # Reassess the official tools and remove this exception before its expiry.
+  #
+  - id: CVE-2026-78667
+    paths:
+      - usr/local/lib/docker/cli-plugins/docker-compose
+      - usr/bin/actionlint
+    expired_at: 2026-10-23
+    statement: >-
+      These test-only tools validate source and Compose files or manage test containers.
+      Supported invocations do not expose the HTTP file-serving path in this advisory.
+      Runtime tests may use networking; this is not a network-isolation exemption.
+      Retain unfiltered artifact scans while awaiting compatible official tool updates.
+
+  #
+  # Supported CLI invocations do not expose the affected Go TLS-server handshake.
+  # Reassess the official tools and remove this exception before its expiry.
+  #
+  - id: CVE-2026-97031
+    paths:
+      - usr/local/lib/docker/cli-plugins/docker-compose
+      - usr/bin/actionlint
+    expired_at: 2026-10-23
+    statement: >-
+      These test-only tools validate source and Compose files or manage test containers.
+      Supported invocations do not accept TLS connections through the affected server path.
+      Other findings and unsupported invocation paths have not been proved safe.
+      Retain unfiltered artifact scans while awaiting compatible official tool updates.
