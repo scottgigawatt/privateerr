@@ -6,21 +6,25 @@ Reviewed on October 9, 2026 with Trivy 0.75.0 and Docker Scout 1.25.0. The revie
 
 Production Privateerr reports no Docker Scout findings on the reviewed platforms. The zlib, Expat, KaTeX, and smol-toml findings from the earlier review are resolved in the published v2.1.5 images. Their old artifact digests and pending-release guidance have been removed.
 
-The reviewed stable Buccaneerr v2.1.5 images still include Go 1.26.8 in Docker CLI, Compose, and actionlint. The fixes ship in Go 1.26.9 or 1.27.2 and `golang.org/x/net` 0.60.0. The Docker CLI update uses upstream 29.9.0. Compose 5.6.0 and actionlint 1.7.12 are rebuilt from their checksum-verified upstream Go modules using the digest-pinned patched Go builder and fixed networking dependencies. Actionlint also requires `golang.org/x/sys` 0.48.0 or newer. Renovate tracks these source versions, dependency floors, and the builder image. Build tools remain outside the published test image and production Privateerr.
+Buccaneerr uses the digest-pinned official Compose 5.6.0 image and Alpine's actionlint package. Docker CLI 29.9.0 remains digest-pinned, and the repaired smol-toml 1.9.1 lockfile remains intact. The project-specific Go builds and dependency overrides have been removed to avoid maintaining a separate tool dependency graph and cross-compilation pipeline. These tools remain outside production Privateerr.
+
+The official Compose and packaged actionlint binaries can still report Go vulnerabilities. CI temporarily excludes only CVE-2026-78667 and CVE-2026-97031 at their exact binary paths until October 23, 2026. Those advisories concern HTTP file-serving and TLS-server denial of service; the supported CLI validation and test-container management commands do not expose those server paths. Buccaneerr runtime tests can use networking inside the VPN namespace, so this rationale does not depend on every test being offline. It is an invocation-boundary assessment, not proof that every dependency or unsupported command is unexploitable.
+
+The existing fixed HIGH/CRITICAL gate remains active for all other findings and paths, including Docker CLI. Braces and the OpenPGP module warning are not excluded. Full artifact reviews remain unfiltered. Review or remove the exceptions before their expiry, and remove them once compatible official tools on all three supported platforms include the Go fixes. Any extension requires a separate review of the expiry, exact paths, and affected package identifiers; a blanket exclusion is not an acceptable substitute.
 
 Both images retain the zlib 1.3.2-r1 minimum. Alpine 3.24 still supplies Expat 2.8.5, so the narrow Expat 2.9.0 edge exception remains necessary. Buccaneerr retains its setuptools edge exception until stable supplies version 83 or later. No general edge upgrade is performed.
 
 ## Retained security controls
 
-Buccaneerr uses digest-pinned Docker CLI and the rebuilt Compose 5.6.0 binary. Compose includes fixed containerd 2.4.1. BusyBox supplies AWK and core utilities; npm is installed only during the build and removed in the same layer. Pre-commit runs Markdownlint through the same test-image helper as other checks.
+Buccaneerr uses digest-pinned Docker CLI and the official Compose 5.6.0 binary. Compose includes fixed containerd 2.4.1. BusyBox supplies AWK and core utilities; npm is installed only during the build and removed in the same layer. Pre-commit runs Markdownlint through the same test-image helper as other checks.
 
-Pre-commit 4.6.2 and virtualenv 21.14.6 install into `/opt/precommit` from the complete exact, SHA-256-verified `test/requirements-tools.txt` lockfile. Bootstrap pip is removed after installation. Virtualenv retains the exact upstream pip 26.2.1 and setuptools 84.0.0 seed wheels for Python 3.14 with their SHA-256 verification; unused Python 3.9 seed archives are removed. No production Python dependencies, customized pip distribution, scanner exclusions, or rewritten upstream package inventory are introduced.
+Pre-commit 4.6.2 and virtualenv 21.14.6 install into `/opt/precommit` from the complete exact, SHA-256-verified `test/requirements-tools.txt` lockfile. Bootstrap pip is removed after installation. Virtualenv retains the exact upstream pip 26.2.1 and setuptools 84.0.0 seed wheels for Python 3.14 with their SHA-256 verification; unused Python 3.9 seed archives are removed. No production Python dependencies, customized pip distribution, or rewritten upstream package inventory are introduced.
 
 ## Published artifact findings
 
-The reviewed production Privateerr images report zero Scout identifiers. The recorded pre-rebuild Buccaneerr artifacts report thirty-six Scout identifiers on every platform. The recorded immutable digests retain that baseline. Merged fixes refresh `edge`; refreshing stable `latest` requires a new stable release.
+The reviewed production Privateerr images report zero Scout identifiers. The recorded Buccaneerr artifacts report thirty-six Scout identifiers on every platform. The recorded immutable digests retain that baseline. Merged fixes refresh `edge`; refreshing stable `latest` requires a new stable release.
 
-The remaining package-level reports require the following context. No scanner exclusion hides them.
+The following package-level reports remain visible and require context.
 
 - **CVE-2026-93687:** [braces 3.0.3](https://github.com/advisories/GHSA-vfj7-8cjw-p6xm) still has no published patched version. Markdownlint CLI2 depends on it through micromatch. Keep the GitHub dependency alert visible and use repository-controlled file patterns for checks.
 - **GO-2026-5932:** The Go [advisory](https://pkg.go.dev/vuln/GO-2026-5932) concerns the unmaintained OpenPGP package. Compose's module metadata includes `golang.org/x/crypto`; the advisory does not apply to every package in that module.
@@ -38,7 +42,7 @@ Virtualenv needs its integrity-checked pip seed wheel to create fresh Python hoo
 
 The unused pip 26.0.1 and setuptools 82.0.1 seed wheels target Python 3.9, which this image does not provide. Removing those assets removes their vulnerable code without changing the active Python 3.14 seed wheels. Scout still reports the removed assets from virtualenv's original package SBOM at `virtualenv-*.dist-info/sboms/virtualenv.cdx.json`; that upstream inventory describes the unmodified distributed wheel, not the image after pruning. Keep this distinction visible when reviewing the scan. A fresh pre-commit Python hook environment verifies that environment creation and package installation still work.
 
-A successful workflow scan rejects fixed high or critical findings; it does not mean either scanner reports zero findings. CI uses `ignore-unfixed: true` and scans its local build. Use the full artifact scans when evaluating other severities, unfixed dependencies, platforms, and published stable images.
+A successful workflow scan rejects fixed high or critical findings; it does not mean either scanner reports zero findings. CI uses `ignore-unfixed: true`, applies the two expiring binary-path exceptions above, and scans its local build. Use the full artifact scans when evaluating other severities, unfixed dependencies, platforms, and published stable images.
 
 ## Reviewed image indices
 
@@ -56,7 +60,7 @@ The scanned `latest` images select v2.1.5. These immutable index digests record 
 Scan immutable published digests, including findings with no fix and every severity:
 
 ```sh
-trivy image --image-src remote --scanners vuln ghcr.io/scottgigawatt/buccaneerr@sha256:IMAGE-DIGEST
+trivy image --image-src remote --scanners vuln --ignorefile /dev/null ghcr.io/scottgigawatt/buccaneerr@sha256:IMAGE-DIGEST
 docker scout cves registry://ghcr.io/scottgigawatt/buccaneerr@sha256:IMAGE-DIGEST --platform linux/amd64
 ```
 
