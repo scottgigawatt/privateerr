@@ -58,6 +58,12 @@ If an authentication file already exists at `/gluetun/auth/config.toml`, or `HTT
 
 Follow [Gluetun's authentication documentation](https://github.com/qdm12/gluetun-wiki/blob/main/setup/advanced/control-server.md#authentication). Settings responses contain secrets; do not paste them into support discussions.
 
+## Restart a healthy stack
+
+With `PRIVATEERR_AUTO_RECOVER=true`, restarting or recreating the stack reuses the valid saved `wg0.conf` and `privateerr.env`. It does not rerun PIA's lowest-latency selection or switch servers while Gluetun remains healthy. Privateerr monitors the reused connection and refreshes it after a sustained outage.
+
+This changes the old restart-to-refresh workflow. To request a fresh registration or rerun automatic server selection, follow the [explicit regeneration steps](#choose-a-region) below. With recovery disabled, Privateerr still generates fresh files each time it starts.
+
 ## Choose a region
 
 Automatic selection remains the default. To select the `ca` region, edit `.env`:
@@ -93,7 +99,7 @@ For one-shot generation, `make run-privateerr` disables recovery and keepalive f
 
 ## Understand the recovery sequence
 
-Privateerr generates and validates the initial configuration before reporting ready. Gluetun can therefore retain `depends_on: service_healthy`; Privateerr's Docker healthcheck does not depend on a working tunnel.
+Privateerr validates the saved configuration or generates a new pair before reporting ready. Gluetun can therefore retain `depends_on: service_healthy`; Privateerr's Docker healthcheck does not depend on a working tunnel.
 
 With recovery enabled, the monitor follows this sequence after the startup grace period. Blue marks monitoring, purple marks the settings handoff, green marks a verified save, and amber marks waiting or retrying. The arrow labels explain each transition.
 
