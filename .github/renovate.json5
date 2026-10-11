@@ -34,14 +34,19 @@
     // Keep dependency work predictable for a single-maintainer repository.
     //
     "timezone": "America/New_York",
-    "schedule": ["before 8am"],
+    "schedule": ["* 0-7 1 * *"],
+    "automergeSchedule": ["* 0-7 1 * *"],
+    "updateNotScheduled": false,
+    "prConcurrentLimit": 2,
     "dependencyDashboard": true,
 
-    // Merge dependency PRs after required checks pass; keep branches current.
+    //
+    // Merge dependency PRs within their maintenance window after checks pass.
+    //
     "automerge": true,
     "automergeType": "pr",
     "automergeStrategy": "squash",
-    "platformAutomerge": true,
+    "platformAutomerge": false,
     "rebaseWhen": "behind-base-branch",
     "labels": ["dependencies"],
     "assignees": ["scottgigawatt"],
@@ -167,6 +172,74 @@
         {
             "groupName": "Submodules",
             "matchManagers": ["git-submodules"]
+        },
+
+        //
+        // Batch non-major tooling updates into the monthly maintenance window.
+        //
+        {
+            "matchUpdateTypes": ["minor", "patch", "pin", "digest"],
+            "groupName": "monthly maintenance"
+        },
+
+        //
+        // Update all Docker references together during the weekly production window.
+        //
+        {
+            "matchDatasources": ["docker"],
+            "schedule": ["* 0-7 * * 1"],
+            "automergeSchedule": ["* 0-7 * * 1"],
+            "groupName": "weekly production dependencies"
+        },
+
+        //
+        // Keep the upstream PIA scripts in the same weekly production batch.
+        //
+        {
+            "matchManagers": ["git-submodules"],
+            "schedule": ["* 0-7 * * 1"],
+            "automergeSchedule": ["* 0-7 * * 1"],
+            "groupName": "weekly production dependencies"
+        },
+
+        //
+        // Track the current test-image source builders weekly until they are retired.
+        //
+        {
+            "matchManagers": ["custom.regex"],
+            "matchFileNames": ["test/Dockerfile"],
+            "matchDepNames": [
+                "rhysd/actionlint",
+                "docker/compose",
+                "golang.org/x/sys",
+                "golang.org/x/net"
+            ],
+            "schedule": ["* 0-7 * * 1"],
+            "automergeSchedule": ["* 0-7 * * 1"],
+            "groupName": "weekly production dependencies"
+        },
+
+        //
+        // Require separate approval for major upgrades instead of routine grouping.
+        //
+        {
+            "matchUpdateTypes": ["major"],
+            "dependencyDashboardApproval": true,
+            "automerge": false,
+            "groupName": null
         }
-    ]
+    ],
+
+    //
+    // Surface security fixes immediately for review outside maintenance windows.
+    //
+    "vulnerabilityAlerts": {
+        "enabled": true,
+        "dependencyDashboardApproval": false,
+        "groupName": null,
+        "automerge": false,
+        "schedule": ["at any time"],
+        "automergeSchedule": ["at any time"],
+        "updateNotScheduled": true
+    }
 }
