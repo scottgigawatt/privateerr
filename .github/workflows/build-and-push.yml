@@ -34,6 +34,7 @@ on:
       - "example.env"
       - "test/**"
       - ".dockerignore"
+      - ".trivyignore.yaml"
       - "requirements-docs.txt"
   schedule:
     - cron: "17 7 * * 1"
@@ -236,6 +237,7 @@ jobs:
           vuln-type: os,library
           severity: CRITICAL,HIGH
           ignore-unfixed: true
+          trivyignores: .trivyignore.yaml
           exit-code: 1
 
       #
@@ -249,6 +251,7 @@ jobs:
           vuln-type: os,library
           severity: CRITICAL,HIGH
           ignore-unfixed: true
+          trivyignores: .trivyignore.yaml
           exit-code: 1
 
       #
