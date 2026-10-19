@@ -6,7 +6,7 @@ Reviewed on October 19, 2026 with Trivy 0.75.0 in comprehensive mode. The vulner
 
 The recorded published production images report 48 Trivy findings covering 24 identifiers on every platform, all from curl and libcurl 8.22.0. CVE-2026-92392 is HIGH severity; the other reports are MEDIUM or LOW. Official curl 8.23.0 fixes all 24 identifiers. Source builds now require that version from a narrowly tagged Alpine edge repository because stable Alpine 3.24 still supplies 8.22.0. This source fix reaches `edge` after a successful main publication; the recorded `latest` images remain v2.1.6 until a new release. Do not treat a source merge as a fix to an existing immutable image.
 
-Buccaneerr uses the digest-pinned official Compose 5.6.0 image and Alpine's actionlint package. Docker CLI 29.9.0 remains digest-pinned, and the repaired smol-toml 1.9.1 lockfile remains intact. The project-specific Go builds and dependency overrides have been removed to avoid maintaining a separate tool dependency graph and cross-compilation pipeline. These tools remain outside production Privateerr.
+Buccaneerr uses the digest-pinned official Compose 5.6.0 image and Alpine's actionlint package. Docker CLI remains digest-pinned, and the repaired smol-toml 1.9.1 lockfile remains intact. The project-specific Go builds and dependency overrides have been removed to avoid maintaining a separate tool dependency graph and cross-compilation pipeline. These tools remain outside production Privateerr.
 
 The official Compose and packaged actionlint binaries can still report Go vulnerabilities. The latest upstream releases remain Compose 5.6.0, actionlint 1.7.12, and pip 26.2.1 as of October 19; no successor release removes these recorded tool or bundled-installer findings. CI temporarily excludes CVE-2026-78667 and CVE-2026-97031 at their exact Compose and actionlint binary paths until October 23, 2026. Those advisories concern HTTP file-serving and TLS-server denial of service; the supported CLI validation and test-container management commands do not expose those server paths. Buccaneerr runtime tests can use networking inside the VPN namespace, so this rationale does not depend on every test being offline. It is an invocation-boundary assessment, not proof about every dependency or unsupported command.
 
@@ -30,7 +30,7 @@ The following package-level reports remain visible and require context.
 
 - **CVE-2026-93687:** [braces 3.0.3](https://github.com/advisories/GHSA-vfj7-8cjw-p6xm) still has no published patched version. Markdownlint CLI2 depends on it through micromatch. Keep the GitHub dependency alert visible and use repository-controlled file patterns for checks.
 - **GO-2026-5932:** The Go [advisory](https://pkg.go.dev/vuln/GO-2026-5932) concerns the unmaintained OpenPGP package. Compose's module metadata includes `golang.org/x/crypto`; the advisory does not apply to every package in that module.
-- **CVE-2025-15558:** Docker's [advisory](https://github.com/docker/cli/security/advisories/GHSA-p436-gjf2-799p) applies to Windows plugin discovery. These Linux tools use CLI 29.9.0 and Compose 5.6.0, newer than the patched releases. Scout still reports the Docker CLI module.
+- **CVE-2025-15558:** Docker's [advisory](https://github.com/docker/cli/security/advisories/GHSA-p436-gjf2-799p) applies to Windows plugin discovery. These Linux tools use separately pinned Docker CLI and Compose 5.6.0 releases newer than the patched versions. Scout still reports the Docker CLI module.
 
 ## Bundled installer findings
 
