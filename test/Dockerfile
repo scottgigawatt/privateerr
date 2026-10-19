@@ -44,6 +44,7 @@ ARG ALPINE_TAG=3.24@sha256:294b683cb724975bec92580e1e685676bd4b50bda910ddb8c51d4
 #
 ARG BUCCANEERR_BIN_HOME=/buccaneerr
 ARG EDGE_APK_REPOSITORY=https://dl-cdn.alpinelinux.org/alpine/edge/main
+ARG ACTIONLINT_APK_MIN_VERSION=1.7.12-r3
 ARG SETUPTOOLS_APK_MIN_VERSION=83.0.0-r0
 ARG CURL_APK_MIN_VERSION=8.23.0-r0
 ARG LIBEXPAT_APK_MIN_VERSION=2.9.0-r0
@@ -95,7 +96,7 @@ RUN apk upgrade --no-cache libcrypto3 libssl3 && \
         python3 \
         py3-pip \
         ruff \
-        actionlint \
+        "actionlint>=${ACTIONLINT_APK_MIN_VERSION}" \
         nodejs \
         "zlib>=${ZLIB_APK_MIN_VERSION}" \
         "libexpat>=${LIBEXPAT_APK_MIN_VERSION}" && \
