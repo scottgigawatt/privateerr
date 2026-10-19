@@ -45,6 +45,7 @@ ARG ALPINE_TAG=3.24@sha256:294b683cb724975bec92580e1e685676bd4b50bda910ddb8c51d4
 ARG BUCCANEERR_BIN_HOME=/buccaneerr
 ARG EDGE_APK_REPOSITORY=https://dl-cdn.alpinelinux.org/alpine/edge/main
 ARG SETUPTOOLS_APK_MIN_VERSION=83.0.0-r0
+ARG CURL_APK_MIN_VERSION=8.23.0-r0
 ARG LIBEXPAT_APK_MIN_VERSION=2.9.0-r0
 ARG ZLIB_APK_MIN_VERSION=1.3.2-r1
 ARG IMAGE_CREATED=unknown
@@ -77,8 +78,8 @@ LABEL org.opencontainers.image.title="Buccaneerr" \
 #
 # Upgrade the base OpenSSL runtime libraries to Alpine's current fixed release,
 # then install validation tools. These stay out of the production image.
-# Use only fixed setuptools and libexpat from edge until stable includes their security updates.
-# Retain the tagged repository so later APK operations can resolve libexpat.
+# Use only fixed curl and setuptools from edge until stable includes their security updates.
+# Keep the curl repository tagged so other packages stay on stable Alpine.
 # The zlib floor rejects the older vulnerable stable revision.
 # BusyBox supplies the portable AWK and core utilities used by the tests.
 #
@@ -86,7 +87,6 @@ RUN apk upgrade --no-cache libcrypto3 libssl3 && \
     apk add --no-cache \
         bash \
         ca-certificates \
-        curl \
         git \
         make \
         grep \
@@ -97,12 +97,15 @@ RUN apk upgrade --no-cache libcrypto3 libssl3 && \
         ruff \
         actionlint \
         nodejs \
-        "zlib>=${ZLIB_APK_MIN_VERSION}" && \
+        "zlib>=${ZLIB_APK_MIN_VERSION}" \
+        "libexpat>=${LIBEXPAT_APK_MIN_VERSION}" && \
     apk add --no-cache \
         --repository="${EDGE_APK_REPOSITORY}" \
         "py3-setuptools>=${SETUPTOOLS_APK_MIN_VERSION}" && \
-    printf '%s\n' "@expatfix ${EDGE_APK_REPOSITORY}" >> /etc/apk/repositories && \
-    apk add --no-cache "libexpat@expatfix>=${LIBEXPAT_APK_MIN_VERSION}"
+    printf '%s\n' "@curlfix ${EDGE_APK_REPOSITORY}" >> /etc/apk/repositories && \
+    apk add --no-cache \
+        "curl@curlfix>=${CURL_APK_MIN_VERSION}" \
+        "libcurl@curlfix>=${CURL_APK_MIN_VERSION}"
 
 # Install pre-commit with fixed virtualenv outside Alpine's older Python tool packages.
 # The complete lockfile verifies every dependency and keeps these tools test-only.
