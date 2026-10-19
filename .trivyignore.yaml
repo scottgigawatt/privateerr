@@ -8,13 +8,12 @@
 
 vulnerabilities:
   #
-  # Supported Compose and actionlint checks do not expose Go HTTP file serving.
+  # Supported Compose checks do not expose Go HTTP file serving.
   # Reassess the official tools and remove this exception before its expiry.
   #
   - id: CVE-2026-78667
     paths:
       - usr/local/lib/docker/cli-plugins/docker-compose
-      - usr/bin/actionlint
     expired_at: 2026-10-23
     statement: >-
       These test-only tools validate source and Compose files or manage test containers.
@@ -29,7 +28,6 @@ vulnerabilities:
   - id: CVE-2026-97031
     paths:
       - usr/local/lib/docker/cli-plugins/docker-compose
-      - usr/bin/actionlint
     expired_at: 2026-10-23
     statement: >-
       These test-only tools validate source and Compose files or manage test containers.
