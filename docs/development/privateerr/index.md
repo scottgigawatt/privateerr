@@ -14,6 +14,7 @@ Privateerr's standard-library Python program coordinates PIA configuration gener
 | HTTP client | Bound authenticated control requests, health probes, and catalog downloads | `docker/privateerr/client.py` |
 | JSON validation | Narrow external values before inspecting their fields | `docker/privateerr/data.py` |
 | Connection settings | Validate matching generated files and finish interrupted publication | `docker/privateerr/settings.py` |
+| Filesystem diagnostics | Probe storage and explain failures without exposing configuration contents | `docker/privateerr/diagnostics.py` |
 | Supervisor | Select endpoints, manage generation, and reconcile recovery state | `docker/privateerr/supervisor.py` |
 | Generation adapter | Invoke upstream PIA scripts and collect their generated metadata | `docker/privateerr-generate.sh` |
 | Gluetun wrapper | Load saved metadata and configure the existing API and health listener | `config/gluetun/scripts/gluetun-entrypoint-wrapper.sh` |

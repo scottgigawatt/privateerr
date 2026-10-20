@@ -44,6 +44,7 @@ nav:
       - HTTP client: development/privateerr/reference/client.md
       - JSON validation: development/privateerr/reference/data.md
       - Connection settings: development/privateerr/reference/settings.md
+      - Filesystem diagnostics: development/privateerr/reference/diagnostics.md
       - Supervisor: development/privateerr/reference/supervisor.md
   - Project Guides:
       - Guide map: project-guides/index.md

@@ -10,6 +10,7 @@
 
 import base64
 import copy
+import errno
 import tempfile
 import unittest
 from collections.abc import Generator, Mapping
@@ -20,6 +21,7 @@ from unittest.mock import Mock, patch
 
 from privateerr.client import APIUnavailable, Client
 from privateerr.config import Config, ConfigurationError
+from privateerr.diagnostics import FileOperationError
 from privateerr.settings import ConnectionSettings, InvalidSettings, Store, connection_settings
 from privateerr.supervisor import (
     Endpoint,
@@ -452,6 +454,117 @@ class RecoveryTests(unittest.TestCase):
 
         self.generator.generate.assert_not_called()
         self.client.get.assert_not_called()
+
+    def test_unwritable_reused_pair_warns_without_blocking_readiness(self):
+        """Existing deployments can start Gluetun while reporting degraded recovery."""
+        before = self.config.config_path.read_bytes(), self.config.metadata_path.read_bytes()
+        error = FileOperationError(
+            "check recovery write access",
+            self.config.config_path.parent,
+            PermissionError(errno.EACCES, "secret-detail"),
+        )
+        self.supervisor.wait = Mock(side_effect=Shutdown)
+
+        with (
+            patch("privateerr.supervisor.check_recovery_directory", side_effect=error),
+            self.assertLogs("privateerr", level="INFO") as logged,
+            self.assertRaises(Shutdown),
+        ):
+            self.supervisor.run()
+
+        output = "\n".join(logged.output)
+        self.assertIn("permission denied", output)
+        self.assertIn("Continuing with saved configuration", output)
+        self.assertIn("VPN region: ca", output)
+        self.assertNotIn("secret-detail", output)
+        self.assertTrue(self.config.marker.exists())
+        self.assertEqual(
+            before, (self.config.config_path.read_bytes(), self.config.metadata_path.read_bytes())
+        )
+        self.generator.generate.assert_not_called()
+
+    def test_first_generation_fails_with_specific_storage_error(self):
+        """An unusable output directory must fail before contacting PIA on first generation."""
+        config = replace(self.config, recover=False, keepalive=False)
+        error = FileOperationError(
+            "check recovery write access",
+            config.config_path.parent,
+            OSError(errno.EROFS, "secret-detail"),
+        )
+
+        with (
+            patch("privateerr.supervisor.check_recovery_directory", side_effect=error),
+            self.assertRaises(FileOperationError),
+        ):
+            Supervisor(config, self.store, self.client, self.generator).run()
+
+        self.generator.generate.assert_not_called()
+        self.assertFalse(config.marker.exists())
+
+    def test_recovery_permission_error_reports_retry_and_preserves_pair(self):
+        """A staged-write failure identifies storage and leaves published files untouched."""
+        self.generator.generate.side_effect = FileOperationError(
+            "generate replacement files",
+            self.config.config_path.parent,
+            PermissionError(errno.EACCES, "secret-detail"),
+        )
+        self.supervisor.step()
+        self.now = self.config.failure_seconds
+
+        with self.assertLogs("privateerr", level="WARNING") as logged:
+            self.supervisor.step()
+
+        output = "\n".join(logged.output)
+        self.assertIn("permission denied", output)
+        self.assertIn("next recovery attempt in 5 seconds", output)
+        self.assertNotIn("secret-detail", output)
+        self.client.apply.assert_not_called()
+        self.assertEqual(self.store.saved_settings(), self.original)
+
+    def test_pending_publication_error_is_not_reported_as_api_failure(self):
+        """Preserve pending state after an applied update whose local publication fails."""
+        self.supervisor.recover()
+        self.active = self.candidate
+        self.client.healthy.return_value = True
+        error = FileOperationError(
+            "publish configuration",
+            self.config.config_path.parent,
+            OSError(errno.ENOSPC, "secret-detail"),
+        )
+
+        with (
+            patch.object(self.store, "publish", side_effect=error),
+            self.assertLogs("privateerr", level="WARNING") as logged,
+        ):
+            self.assertEqual(self.supervisor.resolve_pending(), Pending.UNAVAILABLE)
+            self.assertEqual(self.supervisor.resolve_pending(), Pending.UNAVAILABLE)
+
+        self.assertEqual(len(logged.output), 1)
+        self.assertIn("no space left", logged.output[0])
+        self.assertNotIn("API connectivity", logged.output[0])
+        self.assertTrue(self.store.pending.exists())
+        self.assertEqual(self.store.saved_settings(), self.original)
+
+    def test_region_logs_distinguish_candidate_from_confirmed_recovery(self):
+        """Log the saved candidate region, never a requested region or unconfirmed success."""
+        path = self.root / "candidate/privateerr.env"
+        path.write_text(path.read_text().replace("PIA_REGION_ID=ca", "PIA_REGION_ID=ca_toronto"))
+
+        with self.assertLogs("privateerr", level="INFO") as logged:
+            self.supervisor.recover()
+
+        output = "\n".join(logged.output)
+        self.assertIn("candidate VPN region: ca_toronto; not yet applied", output)
+        self.assertNotIn("tunnel recovered", output)
+        self.assertNotIn("198.51.100", output)
+        self.assertNotIn(self.candidate["wireguard"]["private_key"], output)
+        self.active = self.candidate
+        self.client.healthy.return_value = True
+
+        with self.assertLogs("privateerr", level="INFO") as logged:
+            self.supervisor.resolve_pending()
+
+        self.assertIn("VPN region: ca_toronto", "\n".join(logged.output))
 
     def test_one_shot_regenerates_even_with_valid_saved_pair(self):
         """Preserve legacy one-shot behavior even when a valid configuration already exists."""

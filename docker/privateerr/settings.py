@@ -23,6 +23,7 @@ from typing import TypedDict
 
 from .config import Config, ConfigurationError
 from .data import is_object, object_fields
+from .diagnostics import filesystem_operation
 
 
 class WireGuardSettings(TypedDict):
@@ -69,7 +70,10 @@ def assignments(path: Path) -> dict[str, str]:
     result: dict[str, str] = {}
 
     # Ignore headers and comments; never source generated metadata as executable shell code.
-    for line in path.read_text().splitlines():
+    with filesystem_operation("read configuration", path):
+        lines = path.read_text().splitlines()
+
+    for line in lines:
         match = re.fullmatch(r"([A-Za-z_]+)\s*=\s*(.*?)\s*", line)
 
         if match is None:
@@ -151,6 +155,35 @@ def connection_settings(config: Path, metadata: Path) -> ConnectionSettings:
     }
 
 
+def region_description(metadata: Path) -> str:
+    """Read optional region labels without logging other metadata or blocking recovery.
+
+    This is the provider's advertised VPN region, not the operator's location or
+    proof of the physical server location. Old metadata may have no region fields.
+    """
+    try:
+        fields = assignments(metadata)
+    except OSError, InvalidSettings, UnicodeError:
+        return "unknown"
+
+    region = fields.get("PIA_REGION_ID", "unknown")
+    name = fields.get("PIA_REGION_NAME", "unknown").removeprefix('"').removesuffix('"')
+
+    # Reject control characters, shell escapes, and oversized values from saved metadata.
+    if not re.fullmatch(r"[a-z][a-z0-9_-]{0,63}", region):
+        region = "unknown"
+
+    if not 1 <= len(name) <= 80 or not all(
+        character.isalnum() or character in " .()'-" for character in name
+    ):
+        name = "unknown"
+
+    if name != "unknown" and region != "unknown":
+        return f"{name} ({region})"
+
+    return name if name != "unknown" else region
+
+
 def contains_settings(active: object, candidate: object) -> bool:
     """Compare submitted fields while allowing unrelated fields in Gluetun's response."""
 
@@ -194,17 +227,18 @@ class Store:
     def retain(self, source: Path, destination: Path) -> None:
         """Mark a candidate ready only after copying and validating both files."""
 
-        # Remove any old ready marker before replacing the candidate it described.
-        shutil.rmtree(destination, ignore_errors=True)
-        destination.mkdir(mode=0o700)
+        with filesystem_operation("retain recovery candidate", destination):
+            # Remove any old ready marker before replacing the candidate it described.
+            shutil.rmtree(destination, ignore_errors=True)
+            destination.mkdir(mode=0o700)
 
-        for name in ("wg0.conf", "privateerr.env"):
-            shutil.copyfile(source / name, destination / name)
+            for name in ("wg0.conf", "privateerr.env"):
+                shutil.copyfile(source / name, destination / name)
 
-        # Mark completion last so startup can distinguish a usable pair from a partial copy.
-        settings = self.candidate_settings(destination)
-        (destination / "settings.json").write_text(json.dumps(settings))
-        (destination / "ready").touch()
+            # Mark completion last so startup can distinguish a usable pair from a partial copy.
+            settings = self.candidate_settings(destination)
+            (destination / "settings.json").write_text(json.dumps(settings))
+            (destination / "ready").touch()
 
     def publish(self, source: Path) -> None:
         """Replace each complete file and retain source copies until both replacements finish.
@@ -218,29 +252,33 @@ class Store:
                 retained so startup can finish an interrupted publication.
         """
 
-        # Keep complete source copies before replacing either published file.
-        self.candidate_settings(source)
+        with filesystem_operation("publish configuration", self.config.config_path.parent):
+            # Keep complete source copies before replacing either published file.
+            self.candidate_settings(source)
 
-        if source != self.journal:
-            self.retain(source, self.journal)
+            if source != self.journal:
+                self.retain(source, self.journal)
 
-        # Each rename is atomic; startup can finish a save interrupted between the two replacements.
-        for name, destination in (
-            ("wg0.conf", self.config.config_path),
-            ("privateerr.env", self.config.metadata_path),
-        ):
-            replacement = destination.with_name(destination.name + ".new")
-            shutil.copyfile(self.journal / name, replacement)
-            replacement.replace(destination)
+            # Each rename is atomic; startup can finish a save interrupted between the two replacements.
+            for name, destination in (
+                ("wg0.conf", self.config.config_path),
+                ("privateerr.env", self.config.metadata_path),
+            ):
+                replacement = destination.with_name(destination.name + ".new")
+                shutil.copyfile(self.journal / name, replacement)
+                replacement.replace(destination)
 
-        # Both published files now match, so the recovery copies are no longer needed.
-        shutil.rmtree(self.journal)
+            # Both published files now match, so the recovery copies are no longer needed.
+            shutil.rmtree(self.journal)
 
     def resume(self) -> None:
         """Finish an interrupted save when both source files were copied and validated."""
 
-        # A ready marker identifies a complete pair; discard incomplete copies when it is absent.
-        if (self.journal / "ready").is_file():
-            self.publish(self.journal)
-        else:
-            shutil.rmtree(self.journal, ignore_errors=True)
+        with filesystem_operation(
+            "resume configuration publication", self.config.config_path.parent
+        ):
+            # A ready marker identifies a complete pair; discard incomplete copies when it is absent.
+            if (self.journal / "ready").is_file():
+                self.publish(self.journal)
+            else:
+                shutil.rmtree(self.journal, ignore_errors=True)

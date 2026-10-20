@@ -35,7 +35,7 @@ The supervisor reads environment settings once at startup. Configuration generat
 
 ## Separate readiness from tunnel health
 
-Startup first completes any interrupted file publication. With recovery enabled, an existing valid configuration pair can be reused; otherwise Privateerr generates and saves one. The startup marker, `/healthcheck/privateerr.ready` by default, then allows Gluetun to start. `PRIVATEERR_HEALTHCHECK_MARKER` can change its path. It means that valid files exist, not that the VPN is healthy, avoiding a circular startup dependency.
+Startup first completes any interrupted file publication. With recovery enabled, an existing valid configuration pair can be reused; otherwise Privateerr generates and saves one. A disposable create/write/replace/delete probe checks recovery storage. When a valid pair is reused, probe failure warns without preventing Gluetun startup; when generation is required, it fails with a specific diagnostic. Existing files and permissions are not changed by the probe. The startup marker, `/healthcheck/privateerr.ready` by default, then allows Gluetun to start. `PRIVATEERR_HEALTHCHECK_MARKER` can change its path. It means that valid files exist, not that the VPN is healthy, avoiding a circular startup dependency.
 
 Recovery begins after the startup grace period. Every probe checks control API access, intentional stop state, pending updates, and tunnel health before considering another registration. A sustained failure must exceed the configured threshold and retry cooldown. Healthy probes reset the failure timer and retry delay.
 
@@ -47,6 +47,7 @@ All paths below except the startup marker are relative to the shared configurati
 
 | Directory or file | Meaning | Lifetime |
 | :--- | :--- | :--- |
+| `.privateerr-check.*` | Disposable startup filesystem probe | Removed on completion or ordinary failure; abrupt termination can leave a probe behind |
 | `.privateerr-stage.*` | Temporary output from one PIA generation | Removed when generation completes, fails, or is interrupted |
 | `.privateerr-pending/` | Candidate awaiting API and health confirmation | Retained across uncertain updates and process restarts; removed after acceptance or rejection |
 | `.privateerr-commit/` | Complete source copies for interrupted publication | Removed after both saved files have been replaced |
@@ -63,6 +64,14 @@ Each file replacement is atomic, but replacing the pair is not one filesystem tr
 HTTP requests have a total deadline and a response-size limit. Redirects are rejected, inherited HTTP proxies are ignored, and only control requests receive the API key. External JSON remains untrusted until its structure and fields are validated. Generated metadata is parsed as data rather than executed as shell code.
 
 The supervisor measures outage and retry intervals with a **monotonic clock**: an elapsed-time counter that only moves forward and is unaffected by changes to the system date or time. Correcting the host clock therefore cannot shorten a recovery cooldown or make an outage appear older. These timers start afresh when the supervisor process restarts; retained candidate files are reconciled separately. PIA generation has a deadline; shutdown interrupts waiting and stops the generation process group. New files use a restrictive umask, and logs omit credentials, keys, and response bodies.
+
+## Diagnose failures without disclosing secrets
+
+`diagnostics.py` wraps filesystem operations with a known operation and path. It reports error categories and numeric ownership instead of raw exception messages. Startup preparation, staging, configuration reads, publication, and persistent-log access retain their own context. Pending-update persistence failures preserve reconciliation semantics rather than being misreported as API failures. HTTP errors retain safe categories and status codes without recording headers, bodies, or credentials.
+
+The supervisor adds severity and next-attempt delay to recovery failure messages. Repeated identical status failures are suppressed. Optional region names and IDs are read from metadata, bounded, and filtered before logging; unknown or malformed labels do not prevent reuse or publication. Candidate logs precede API application and cannot imply a healthy tunnel. Confirmed region logs follow settings readback, health verification, and successful publication.
+
+The root identity, restrictive umask, environment defaults, mount paths, and readiness-marker contract remain unchanged. Permission diagnosis does not automatically change ownership or ACLs. A passed probe is only an early check; actual operations can still fail later.
 
 ## Respect recovery limits
 

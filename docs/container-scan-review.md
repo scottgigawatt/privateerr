@@ -2,7 +2,7 @@
 
 Reviewed on October 19, 2026 with Trivy 0.75.0 in comprehensive mode. The vulnerability database was updated at 13:35 UTC that day. Docker Scout 1.26.0 requires Docker Hub sign-in, so a fresh Scout comparison was blocked during this review; the older Scout counts below are not current scan results. The review covers immutable `edge` and `latest` digests on `linux/amd64`, `linux/arm64`, and `linux/arm/v7`. Scanner databases change, so these findings apply to the recorded artifacts rather than every future image with the same tag.
 
-## Current security status
+## Security status at the recorded review
 
 The recorded published production images report 48 Trivy findings covering 24 identifiers on every platform, all from curl and libcurl 8.22.0. CVE-2026-92392 is HIGH severity; the other reports are MEDIUM or LOW. Official curl 8.23.0 fixes all 24 identifiers. Source builds now require that version from a narrowly tagged Alpine edge repository because stable Alpine 3.24 still supplies 8.22.0. This source fix reaches `edge` after a successful main publication; the recorded `latest` images remain v2.1.6 until a new release. Do not treat a source merge as a fix to an existing immutable image.
 

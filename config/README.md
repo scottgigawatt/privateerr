@@ -2,7 +2,7 @@
 
 This directory holds persistent and generated state for the local Privateerr, Gluetun, and Buccaneerr Compose services. Each subdirectory documents its owner and retention rules.
 
-Privateerr replaces these shared files whenever it generates a connection:
+Privateerr generates or reuses these matching shared files at startup. During automatic recovery it publishes a replacement only after Gluetun confirms the applied settings and tunnel health:
 
 ```text
 config/gluetun/wireguard/wg0.conf

@@ -13,7 +13,7 @@ make spellcheck
 
 `make test` runs Ruff lint and formatting, strict Pyright, ShellCheck, helper and workflow tests, and Python unit tests. `make test-types` is also enforced by pre-commit and pull-request validation. Compose tests check the complete service graph and verify that Web UI port changes keep the host mapping, internal listener, healthcheck, and API clients synchronized.
 
-Python tests exercise environment validation, endpoint selection, bounded HTTP behavior, candidate publication, recovery timing, uncertain updates, and shutdown. They use controlled clocks and temporary state rather than real credentials.
+Python tests exercise environment validation, endpoint selection, bounded HTTP behavior, candidate publication, recovery timing, uncertain updates, and shutdown. They use controlled clocks and temporary state rather than real credentials. Filesystem regressions cover readable saved files with blocked writes, first-generation failure, failed publication after API acceptance, probe cleanup, safe region summaries, and credential-free error diagnostics. A Linux root-only test drops all capabilities in a disposable child process and verifies that UID 0 cannot write another user's directory; the parent retains cleanup access.
 
 ## Check the integration
 

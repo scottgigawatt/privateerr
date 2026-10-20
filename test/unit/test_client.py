@@ -139,3 +139,19 @@ class ClientTests(unittest.TestCase):
 
         # The client must finish well before the server completes its two-second stream.
         self.assertLess(time.monotonic() - started, 1)
+
+    def test_error_diagnostics_exclude_credentials_and_response_contents(self):
+        """Retain HTTP status without reporting URLs, authentication, or arbitrary reasons."""
+        with self.assertRaises(APIUnavailable) as caught:
+            self.client.get("/denied")
+
+        self.assertEqual(caught.exception.diagnostic(), "HTTP response rejected (HTTP 401)")
+        self.assertNotIn(self.client.config.api_key, caught.exception.diagnostic())
+        self.assertEqual(APIUnavailable("secret-value").diagnostic(), "request failed")
+
+    def test_timeout_has_a_distinct_safe_diagnostic(self):
+        """A request deadline should be distinguishable from an authentication failure."""
+        with self.assertRaises(APIUnavailable) as caught:
+            self.client.request(self.client.config.api_url + "/slow", timeout=0.2)
+
+        self.assertEqual(caught.exception.diagnostic(), "request timed out")

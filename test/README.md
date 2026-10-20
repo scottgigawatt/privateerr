@@ -6,7 +6,7 @@ The test tree keeps responsibilities separate:
 
 - `policy/` verifies repository-wide dependency and image-tag rules.
 - `helpers/` exercises Make and workflow helpers without external writes.
-- `unit/` tests Python recovery decisions, HTTP behavior, persistence, and generation lifecycle.
+- `unit/` tests Python recovery decisions, HTTP behavior, persistence, filesystem permissions, safe diagnostics, region summaries, and generation lifecycle.
 - `runtime/` performs opt-in acceptance checks against isolated Docker resources.
 - `stubs/` supplies deterministic Docker and Skopeo stand-ins for those tests.
 - `examples/` stores the checked-in WireGuard and metadata examples restored after a live voyage.
@@ -83,12 +83,12 @@ make test-e2e
 
 ## Follow the end-to-end voyage 🧭
 
-The Compose stack starts Privateerr first. Privateerr writes:
+The Compose stack starts Privateerr first. Its Python supervisor checks recovery storage and validates a saved pair or generates these files:
 
 - `config/gluetun/wireguard/wg0.conf`
 - `config/gluetun/wireguard/privateerr.env`
 
-Then Gluetun uses those files to start WireGuard and request PIA port forwarding. Buccaneerr runs after that and validates the finished voyage from inside Gluetun's network namespace.
+Then Gluetun uses those files to start WireGuard and request PIA port forwarding. Privateerr remains running to monitor tunnel health and apply replacement settings through the authenticated API after sustained failures. It saves recovered files only after confirmation. Buccaneerr runs inside Gluetun's network namespace and, with the example defaults, temporarily blocks the active endpoint to verify that recovery restores VPN egress, matching saved files, and qBittorrent settings. Its firewall rule is removed on completion or failure.
 
 If Buccaneerr exits cleanly, the ship be seaworthy. If it fails, check the service logs before blaming the sea monster in yer YAML.
 

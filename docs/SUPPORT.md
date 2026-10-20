@@ -8,6 +8,12 @@ Use the [🔥HADES🔥 Discord server](https://discord.gg/BpEGzWwGYf) for setup 
 
 Redact PIA credentials, WireGuard keys, live `wg0.conf`, live `privateerr.env`, forwarded ports, private URLs, and sensitive logs before sharing anything.
 
+## Diagnose storage and recovery failures
+
+Start with [recovery diagnostics](automatic-recovery.md#read-diagnostics-and-check-storage). Share the sanitized failure category, operation, numeric UID/GID and mode, image versions, and relevant volume mapping. Avoid posting full environment output or Gluetun settings responses, which can contain secrets. Report whether the message concerns startup, candidate generation, API application, or saving an already-applied candidate.
+
+A healthy Privateerr container means startup configuration is ready for Gluetun. It does not prove the tunnel is healthy or that future recovery writes are possible. Region messages identify the configured VPN destination; redact them too if that preference is private.
+
 ## Recover a missing PIA submodule
 
 If an image build reports that `pia-manual-connections/LICENSE` is missing, check whether the PIA scripts were checked out:

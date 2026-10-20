@@ -4,7 +4,7 @@ Privateerr is a tiny Docker wrapper that packages the original, unmodified [pia-
 
 > [!IMPORTANT]
 >
-> Privateerr is not a VPN client. It generates a PIA WireGuard configuration file and a small Gluetun port-forwarding metadata file, then exits.
+> Privateerr is not a VPN client. It generates a PIA WireGuard configuration file and server metadata. Its Python supervisor can also monitor Gluetun and recover sustained tunnel failures through the authenticated API. Gluetun owns the VPN tunnel.
 
 ## Pull an image 📦
 
@@ -73,9 +73,13 @@ That writes:
 
 Gluetun is a real VPN client. Privateerr generates PIA WireGuard configuration and server metadata for that client.
 
-The simple use case is: generate `wg0.conf`, copy it into the VPN client you already use, and leave.
+For one-shot generation, `make run-privateerr` disables recovery and keepalive for that disposable run, then exits. Stop a running supervisor before generating into the same directory.
 
 The powerful use case is: run Privateerr and Gluetun together in Docker Compose. Privateerr writes the WireGuard config plus `PIA_WG_SERVER_NAME`; the included Gluetun wrapper reads that server name, exports it as `SERVER_NAMES`, and Gluetun starts with the right PIA WireGuard server for port forwarding.
+
+With recovery enabled, Privateerr reuses valid saved files at startup, checks recovery write access, and monitors Gluetun's status and health. After a sustained outage it generates and applies replacement settings, then saves them after confirmation. Containers keep running. The supplied Compose example enables recovery after you configure a shared API key; custom image-only deployments retain recovery-disabled defaults.
+
+Logs identify storage failures and the selected VPN region without adding credentials or keys to the supervisor's summaries. Privateerr remains UID 0 because upstream scripts require it; the supplied Compose drops all Linux capabilities and enables `no-new-privileges`. See the [recovery and diagnostics guide](https://github.com/scottgigawatt/privateerr/blob/main/docs/automatic-recovery.md).
 
 ## Continue with the full documentation 🔗
 
