@@ -8,120 +8,79 @@
 
 # AGENTS.md
 
-## Project Purpose
+## Purpose and repository map
 
-Privateerr packages the official, unmodified [PIA manual connection scripts](https://github.com/pia-foss/manual-connections) into a small Docker image that generates a WireGuard config file and Gluetun metadata.
+Privateerr packages the official, unmodified [PIA manual connection scripts](https://github.com/pia-foss/manual-connections) into a small Docker image that generates WireGuard configuration and Gluetun metadata. Privateerr is not a VPN client: Gluetun owns the tunnel and port lease. The optional standard-library Python supervisor renews stale PIA registrations through Gluetun's authenticated API without restarting containers.
 
-Privateerr is not a VPN client. Gluetun owns the tunnel and port lease; the optional Python supervisor renews stale PIA registrations through Gluetun's authenticated API without restarting containers. Privateerr generates `config/gluetun/wireguard/wg0.conf` and `config/gluetun/wireguard/privateerr.env` so Gluetun or another WireGuard-capable VPN client can use them.
+The default Compose example includes Privateerr, Gluetun, qBittorrent, and the test-only Buccaneerr service without application profiles. Buccaneerr verifies forwarding, application settings, and recovery through a temporary firewall fault inside the shared VPN namespace. Web UI ports and API endpoints remain driven by environment settings.
 
-Keep lint, formatting, unit tests, and runtime test drivers in the test-only Buccaneerr image. Production Python uses only the standard library; do not add test packages to Privateerr. Keep Privateerr deployments unprivileged with all Linux capabilities dropped and `no-new-privileges`; UID 0 remains necessary for the unmodified upstream scripts. Docker owns initial namespace IPv6 settings, and the adapter skips only redundant writes while retaining legacy image-only behavior. `ruff.toml` defines shared Python rules.
+| Path | Responsibility |
+| --- | --- |
+| `docker/` | Production image context, shell adapters, and health checks |
+| `docker/privateerr/` | Standard-library Python supervisor, API client, validation, and persistence |
+| `docker/pia-manual-connections/` | Licensed upstream PIA git submodule; leave its contents unmodified |
+| `test/` | Buccaneerr image and test tooling using the restricted repository-root build context |
+| `test/policy/` | Static repository policy and spelling checks |
+| `test/unit/` | Supervisor, client, generation, and forwarding-hook unit tests |
+| `test/runtime/` | Real Gluetun and qBittorrent tests, including explicitly selected live PIA tests |
+| `test/helpers/`, `test/stubs/` | Isolated automation tests and deterministic command stubs |
+| `test/examples/` | Checked-in example VPN files for test restoration |
+| `scripts/compose/`, `scripts/awk/` | Host-side preflight, lifecycle, backup, and configuration helpers |
+| `scripts/docs/`, `docs/`, `mkdocs.yml` | Documentation build driver, guides, and Material site configuration |
+| `config/` | Service configuration, persistent bind mounts, and generated VPN state |
+| `.github/` | Workflows, workflow helpers, templates, Renovate policy, and CODEOWNERS |
+| `docker-compose.yml`, `example.env` | One-file deployment stack and its ordered example settings |
 
-The companion Buccaneerr image is test-only. The default Compose example includes Privateerr, Gluetun, qBittorrent, and Buccaneerr without application profiles. Buccaneerr verifies PIA forwarding, application settings, and automatic recovery through a temporary firewall fault inside the shared VPN namespace. Keep the Web UI port and API endpoints driven by environment settings.
+This file supplies repository-wide guidance. Before editing a directory, inspect any applicable nested `AGENTS.md` and relevant `.agents/skills/` instructions if present. Nested guidance may refine local work; report conflicts with the requested scope instead of silently changing unrelated guidance. Keep these instructions self-sufficient, with no dependency on another repository's style or workflow policy.
 
-## Repository Layout
+## Scope and working tree
 
-- `docker/`: Privateerr image build context, Python supervisor, and shell integration helpers.
-- `docker/privateerr/`: Standard-library Python supervisor, API client, configuration validation, and persistence.
-- `docker/pia-manual-connections/`: PIA upstream scripts as a git submodule. Treat this as third-party code.
-- `test/`: Buccaneerr Dockerfile and organized test support files; builds use the restricted repository-root context.
-- `test/policy/`: Static repository policy checks used by Make and pre-commit.
-- `test/unit/`: Python supervisor, client, generation, and forwarding-hook tests.
-- `test/runtime/`: Real Gluetun and qBittorrent integration tests, including optional live PIA recovery.
-- `test/helpers/`: Isolated Make and workflow helper tests.
-- `test/stubs/`: Deterministic command stubs used by the helper tests.
-- `test/examples/`: Checked-in example reset files restored after live tests.
-- `scripts/compose/`: Host-side credential preflight and Compose status helpers.
-- `config/`: Checked-in service config directories used by Docker Compose.
-- `config/gluetun/wireguard/`: Generated WireGuard config and metadata location.
-- `docs/`: Supporting project documentation.
-- `.github/`: Workflows, reusable workflow helpers, issue templates, PR template, Renovate policy, and CODEOWNERS.
-- `docker-compose.yml`: Single Compose stack used for local development, Synology-style one-file deployments, and e2e validation.
-- `example.env`: Complete example environment file. Keep ordering aligned with `docker-compose.yml`.
+Inspect the current branch, status, diff, and relevant source before editing. Use a fresh base and an isolated branch or checkout when needed; preserve unrelated edits, untracked files, and user work. Do not reset, clean, stash, or reformat unrelated work to make validation pass. Stage explicit paths and review the complete diff before committing.
 
-## Code Ownership Boundaries
+Make the smallest coherent change that satisfies the task. Consolidate duplicate guidance while retaining meaningful local constraints. Report contradictory linked guidance rather than expanding a narrowly scoped task to rewrite it. Prefer simple, maintainable automation over clever abstractions.
 
-Do not edit `docker/pia-manual-connections/` unless the explicit task is to update or manage the upstream submodule.
+Repository edits do not authorize production operations. Starting stacks, registering with PIA, changing a running VPN, restoring configuration, deleting Docker resources, publishing packages, deploying Pages, merging, or releasing requires authorization for that action. Honor requested draft-PR and manual-review checkpoints; do not approve, merge, enable auto-merge, tag, or release on the user's behalf without authorization.
 
-Privateerr-owned code wraps the upstream scripts but should keep transparency clear:
+## Source, generated state, and secrets
 
-- PIA scripts should remain visibly upstream and unmodified.
-- Privateerr scripts should clearly show where they invoke PIA scripts.
-- Logs from wrapper scripts should identify which script produced each line.
+Keep production Python standard-library-only. Lint, formatting, typing, documentation, unit-test, and runtime-test dependencies belong in Buccaneerr, never the production Privateerr image or another deployed service. Documentation packages use Buccaneerr's optional `docs` target. Keep build-context allowlists restrictive, source mounts read-only where supported, and generated `site/` output ignored.
 
-## Documentation Voice
+Do not edit `docker/pia-manual-connections/` unless the task explicitly requests upstream submodule management. Preserve its pinned revision, license, and attribution. Privateerr-owned wrappers must visibly identify upstream invocations; logs should identify the originating script. Privateerr-owned files are Apache-2.0; the upstream submodule retains its own license and is not relicensed by Privateerr.
 
-Public-facing Markdown uses the project voice: funny, lightly pirate-themed, readable, and useful. Put the operational meaning first and use pirate language mainly in short introductions, transitions, and sign-offs.
+Live runs overwrite these secret-bearing files:
 
-Use pirate humor in:
+- `config/gluetun/wireguard/wg0.conf`
+- `config/gluetun/wireguard/privateerr.env`
 
-- `README.md`
-- files under `docs/`
-- config-directory README files
-- GitHub issue templates
-- GitHub PR templates
-- user-facing Makefile `echo` output when appropriate
+Never print or commit real credentials, private keys, API tokens, generated VPN state, private logs, backups, or operator-specific environment values. Use secret-free examples and inspect the diff for accidental disclosure. When explicitly editing a local environment file, preserve all assignment values and operator overrides except the requested change.
 
-Do not let jokes obscure operational meaning. Commands, paths, user-interface labels, warnings, security guidance, destructive actions, examples, and troubleshooting details must remain literal and precise.
+After authorized live tests in a disposable checkout, restore the checked-in example files from `test/examples/example-wg0.conf` and `test/examples/example-privateerr.env`:
 
-Follow `docs/documentation-style.md` for audience, structure, sentence-case headings, filenames, links, code blocks, alerts, advanced Markdown, and rendered review. Use searchable words before decorative emoji in headings. Emoji must not carry meaning by itself.
+```sh
+make restore-test-config
+```
 
-Reserve GitHub alerts for information readers must notice while scanning:
+This overwrites both destination files; never run it against an operator's active VPN configuration. Use the term "example files" rather than "dummy files". Verify restoration and working-tree status before handoff.
 
-- `[!NOTE]`
-- `[!TIP]`
-- `[!IMPORTANT]`
-- `[!WARNING]`
-- `[!CAUTION]`
+## Formatting and comments
 
-Most pages should need no more than one or two alerts. Do not wrap routine commands in alerts or place alerts back to back. Put routine copyable commands in `sh` fences without prompt characters or comments. Use `console` for terminal transcripts and `text` for non-executable output.
+`.editorconfig` is the portable source of truth; editor settings, formatters, and automation must agree. Use UTF-8, LF endings, and final newlines. Use four spaces for shell, Python, JSON, and JSON with Comments; two spaces for Markdown, YAML, TOML, AWK, jq, CSS, and JavaScript; literal tabs for Make recipes and the established Git submodule declarations. Preserve intentional Markdown hard breaks.
 
-Write each ordinary Markdown prose paragraph on one physical source line and let editors apply visual word wrapping. Preserve semantic blank lines, lists, tables, code fences, deliberate hard breaks, and other structures that require their own lines.
+Comments use plain English and explain intent, constraints, or non-obvious behavior. Do not narrate assignments or obvious syntax, add repetitive step labels, or use pirate language in code comments. Separate logical blocks with blank lines where useful; let the configured formatter decide layout.
 
-Keep `README.md`, `AGENTS.md`, `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`, `SECURITY.md`, and `SUPPORT.md` in their established form. Name ordinary documentation pages with lowercase kebab-case.
+Project-owned scripts and config-style files start with copyright, Apache-2.0 notice, and a short filename summary; add usage bullets only when useful. Put one blank line after a shell shebang before that block. Align inline Compose comments within each logical group with at least two spaces before `#`.
 
-## Code Comment Style
+Fix the cause of lint, typing, spelling, or security findings. Any necessary exception must be narrow, justified beside the affected code, and tied to a real runtime or test constraint. Do not weaken strict modes, exclude whole code areas, or add blanket suppressions to hide findings.
 
-Inline code comments must be plain English, not pirate-themed.
+## Shell and Python quality
 
-Comments should explain intent, constraints, and non-obvious behavior. Avoid narrating obvious assignments or shell syntax.
+Keep implementation and tests consistent with the repository-owned checker configurations.
 
-Top-of-file comments for project-owned scripts and config-style files should include:
+### Shell
 
-- copyright line
-- Apache-2.0 license note
-- short filename summary
-- short bullet list when usage or behavior needs context
+Host scripts prefer `#!/bin/sh`, POSIX syntax, and four-space indentation. Container-only scripts may use Bash when the image deliberately installs it and the entrypoint expects it. Quote expansions and paths, preserve failure status, and make cleanup explicit. Use direct diagnostic errors even when status messages use the project voice. `.shellcheckrc` supplies source resolution; use targeted ShellCheck suppressions only when a documented constraint prevents a correct fix.
 
-Shell scripts with a shebang should have one blank line after the shebang before the top-of-file comment.
-
-Inline Compose comments use two spaces before `#`. Align the `#` characters for
-logically grouped lines. Use two-space indentation in YAML, TOML, AWK, and jq;
-use four-space indentation in shell and JSON-with-comments workspace files.
-
-## Shell Script Rules
-
-Project-owned host scripts should prefer:
-
-- `#!/bin/sh`
-- POSIX-compatible syntax
-- four-space indentation
-
-Container-only scripts may use Bash when the container image intentionally installs Bash and the Dockerfile/Compose entrypoint expects it.
-
-Keep shell error messages clear enough to diagnose failures quickly. User-facing status logs may use the project voice, but actual diagnostic errors should be direct.
-
-Document each shell function immediately above its declaration with its
-purpose, parameters, and return behavior. Use `Parameters: None.` when a
-function accepts nothing, keep one parameter per comment line, and use one
-space after `Returns:`.
-
-## Shared shell and Python style
-
-Keep these conventions aligned between Privateerr and Plundarr while preserving each repository's architecture and test tooling.
-
-Use four spaces in shell and Python, two spaces in YAML, TOML, AWK, and jq, and four spaces in JSON and JSON with Comments. `.editorconfig` is the portable source of truth; VS Code settings must agree. Put a blank line before and after logical control-flow blocks, and place a concise explanatory comment above non-obvious checks, loops, and operations. Do not add comments that merely repeat the code.
-
-Shell functions use this exact documentation shape:
+Document each shell function immediately above its declaration using this shape, with one parameter per comment line, one space after `Returns:`, and `Parameters: None.` when appropriate:
 
 ```sh
 #
@@ -134,95 +93,46 @@ Shell functions use this exact documentation shape:
 #
 ```
 
-Use `Parameters: None.` when appropriate. Keep each short explanatory sentence on one comment line. Use targeted ShellCheck suppressions only when a documented runtime constraint prevents a correct code fix; never disable a diagnostic across the repository to hide individual findings. `.shellcheckrc` supplies shared source resolution for editors and checks.
+Keep each short explanatory sentence on one comment line. Test shell helpers with isolated fixtures and stubs; do not turn a helper test into a real deployment mutation.
 
-Python modules and tests start with the copyright, Apache-2.0, and filename summary block, followed by a useful module docstring. Prefer small functions, explicit types at application boundaries, standard-library facilities, and concise docstrings for public classes and non-obvious helpers. `ruff.toml` owns lint and formatting rules, including import order, four-space indentation, and Unix line endings. Run both Ruff lint and format checks during pull-request validation; editors and pre-commit must use the same configuration. Keep lint and test dependencies out of published production images.
+### Python
 
-Explain the scenario and intent of Python tests with concise docstrings and comments around controlled fixtures, injected failures, cleanup, and meaningful assertion groups. Use blank lines to separate setup, actions, and verification where it improves readability. Explain why a boundary matters rather than narrating obvious assignments or adding repetitive step labels.
+Python modules and tests start with the license and filename-summary block followed by a useful module docstring. Prefer small functions, explicit types at application boundaries, validated dynamic input, narrowed optional values, and explicit collection and callback contracts. Avoid blanket `Any` annotations or broad exceptions that conceal errors.
 
-`pyrightconfig.json` owns strict Python checking for both editors and automation. Keep every project-owned Python module and test in scope, including optional fuzz harnesses. Use `make test-types` for the pinned containerized checker; `make test`, pre-commit, and PR/main/release validation must enforce it. Validate dynamic data at its boundary, annotate collection and callback contracts, and narrow optional values explicitly. Do not weaken strict mode or add blanket `Any` annotations to hide findings. Document any targeted diagnostic exception beside the intentional test or optional dependency. Keep checker packages in test images, never production images.
+`ruff.toml` owns lint, import order, and formatting. Run both Ruff lint and format checks through `make lint`; that target also runs strict Pyright and ShellCheck. `pyrightconfig.json` covers all project-owned Python modules and tests, including optional fuzz harnesses. `make test-types` runs the containerized checker; preserve enforcement in Make, pre-commit, and PR/main/release validation.
 
-Run CSpell across project-owned files after changes. Correct misspellings; add genuine project vocabulary to `.vscode/settings.json` under `cSpell.words`. Do not add secrets or whole arbitrary strings to silence spelling diagnostics.
+Public modules, classes, methods, and functions use concise Google-style docstrings when useful. Describe meaning, side effects, invariants, and failure behavior; types remain in signatures. Use `Args`, `Returns`, `Raises`, `Attributes`, and `Note` sections only when applicable. Document non-obvious private helpers even though mkdocstrings filters names beginning with `_`. Do not duplicate generated API reference by hand.
 
-## Docker Rules
+Tests explain the scenario and boundary they protect. Add concise comments for controlled fixtures, injected failures, cleanup, and meaningful assertion groups; separate setup, action, and verification when it improves readability. Keep test tools out of published production images.
 
-Dockerfiles should be professional and registry-friendly:
+Run `make spellcheck` across project-owned files. Correct misspellings; genuine project vocabulary belongs in `.vscode/settings.json` under `cSpell.words`. Never add secrets or arbitrary whole strings to silence spelling diagnostics.
 
-- include OCI labels
-- keep images small
-- avoid unused packages
-- explain required packages with concise plain-English comments
-- keep PIA scripts unmodified
-- use Alpine unless there is a strong reason to change
+## Containers and deployment constraints
 
-Use architecture-neutral base images. Do not hardcode arch-specific image names such as `arm64v8/alpine`.
+Primary deployment target: Synology DSM Container Manager. Secondary development target: macOS with Docker Desktop. Preserve one main `docker-compose.yml`; avoid runtime designs requiring multiple Compose files or application profiles.
 
-Multi-architecture support is handled by GitHub Actions and Docker Buildx. Current supported platforms are:
+Keep Privateerr deployments unprivileged with all Linux capabilities dropped and `no-new-privileges`. UID 0 remains necessary for the unmodified upstream scripts; do not equate UID 0 with permission to add privileged mode or capabilities. Docker owns initial namespace IPv6 settings; the adapter skips redundant writes while preserving legacy image-only behavior.
 
-- `linux/amd64`
-- `linux/arm64`
-- `linux/arm/v7`
-
-For multi-arch images, GHCR package descriptions require index-level OCI annotations in workflow build steps, not only Dockerfile labels.
-
-## Docker Compose Rules
-
-This project intentionally uses one main `docker-compose.yml` file. Synology DSM Container Manager compatibility is a core constraint.
+Dockerfiles use architecture-neutral base images, concise package explanations, OCI labels, and minimal required packages. Prefer Alpine unless a specific need justifies changing it. Do not hardcode architecture-specific image names. Preserve Buildx support for `linux/amd64`, `linux/arm64`, and `linux/arm/v7`. Multi-architecture registry descriptions need index-level OCI annotations as well as Dockerfile labels. Attestation manifests may appear as `unknown/unknown`; they are metadata, not runnable images.
 
 Compose conventions:
 
-- keep service image names fixed when possible
-- keep image tags configurable through `.env`
-- define deployment defaults only in `.env` / `example.env`, never in Compose interpolation
-- enable recovery in public deployment examples; retain the image-only compatibility default when no setting is supplied
-- use YAML anchors for reusable labels or healthcheck settings
-- mount directories, not individual generated config files
-- group environment variables by owner/purpose
-- list PIA script variables before Privateerr-specific wrapper variables
-- keep `example.env` ordered to match the Compose service environment blocks
+- Keep image names fixed where possible and image tags configurable through environment files.
+- Put deployment defaults in `.env` / `example.env`, never interpolation fallbacks in Compose.
+- Enable recovery in public deployment examples; preserve the recovery-disabled image-only default when no setting is supplied.
+- Use YAML anchors for reusable labels and health checks; mount directories rather than individual generated files.
+- Keep Privateerr and Gluetun mounting `./config/gluetun` for the generated-file handoff.
+- Group environment settings by owner and purpose, list PIA variables before Privateerr wrapper variables, and keep `example.env` ordering aligned with Compose.
 
-Privateerr and Gluetun both mount `./config/gluetun` because Privateerr writes files that Gluetun consumes.
+Keep environment files focused on values. Their end-of-line comments should flag operator actions: credentials, host paths, user/group IDs, time zones, or host-port conflicts. Use short prompts such as `Edit before launch:` or `Edit for your host:`. Generated secrets requiring no manual action need no inline comment. Keep useful section headings.
 
-## Environment and Compose comments
+Explain behavior, accepted values, units, limits, dependencies, and numeric/boolean meanings beside the corresponding Compose entries in aligned comments. For example, `1 disables IPv6; 0 enables IPv6`. Do not move routine per-variable explanations into standalone environment comments to bypass this division.
 
-Keep `.env`, `example.env`, named environment examples, and service `environment.env` fragments focused on values. Reserve their end-of-line comments for settings operators must review or commonly customize: credentials, host paths, user/group IDs, time zones, and host-port conflicts. Use short action-oriented prompts such as `Edit before launch:`, `Edit for your host:`, or `Change only for a host-port conflict`. A generated secret that needs no manual action does not need an inline environment comment.
+## Make and operational safety
 
-Put behavior explanations, accepted values, units, limits, dependencies between settings, and implementation details in aligned end-of-line comments beside the corresponding Compose entries. Explain numeric and boolean meanings where they are not obvious; for example, `1 disables IPv6; 0 enables IPv6`. Keep useful environment section headings, but do not move routine per-variable explanations into standalone environment comments to bypass this rule. Defaults belong in environment files, never Compose interpolation fallbacks.
+Use `make help` and read the actual recipes before selecting a target. Keep reusable target names, service names, commands, options, and generated paths centralized near the top of the Makefile. Declare operational targets phony, preserve literal recipe tabs, quote path and value arguments, use `$$` for shell variables, and propagate failures rather than masking them. Test dependency ordering and cleanup with isolated helper fixtures. A dry run is a preview, not proof of safety or successful execution.
 
-Align inline comments within each logical group with at least two spaces before `#`. When updating a local environment file, preserve every assignment value exactly, including credentials and operator overrides. Never print or commit real environment values.
-
-## Generated Files And Secrets
-
-Live runs overwrite:
-
-- `config/gluetun/wireguard/wg0.conf`
-- `config/gluetun/wireguard/privateerr.env`
-
-Never commit real generated secrets. Restore checked-in examples with:
-
-```sh
-make restore-test-config
-```
-
-The source example files live in:
-
-- `test/examples/example-wg0.conf`
-- `test/examples/example-privateerr.env`
-
-Use "example files" terminology. Do not call these dummy files.
-
-## Makefile Rules
-
-Keep Makefile variables centralized near the top. Prefer variables for:
-
-- target names
-- service names
-- Docker Compose options
-- Docker Buildx options
-- reusable commands
-- generated paths
-
-Target comments should include dependencies using this format:
+Document targets and dependencies in the established form:
 
 ```make
 #
@@ -233,120 +143,99 @@ Target comments should include dependencies using this format:
 #
 ```
 
-User-facing Makefile output may be pirate-themed, but should still explain what is happening.
+User-facing Make output may be lightly pirate-themed while clearly describing the action. Preserve these actual boundaries:
 
-Important commands:
+| Target | Effect and caution |
+| --- | --- |
+| `make help` | Prints the command chart without starting the stack |
+| `make config`, `make env`, `make print-config`, `make print-env` | Print configuration or environment content that can expose secrets; keep output private |
+| `make build`, `make build-buccaneerr`, `make build-platforms` | Build images or check architectures; can fetch dependencies and create Buildx resources |
+| `make up`, `make all`, `make run-privateerr` | Start services or generate real VPN state; require PIA credentials and operational authorization |
+| `make down` | Stops the selected Compose project; preserves volumes and images |
+| `make backup` | Archives the full config directory, potentially including secrets; protect and verify the archive |
+| `make restore-test-config` | Overwrites generated VPN files with checked-in examples |
+| `make clean-test` | Stops the selected stack and restores examples; use after authorized disposable e2e runs |
+| `make clean` | Removes disposable developer artifacts only; must preserve deployment state, examples, containers, volumes, images, and `.env` |
+| `make nuke` | Removes selected project Docker resources, repository-owned Buildx cache, and transient runtime state; restores examples and preserves `.env`, `backups/`, and persistent bind-mounted config |
 
-```sh
-make help
-make build
-make build-buccaneerr
-make build-platforms
-make run-privateerr
-make test
-make test-workflows
-make test-e2e
-make clean-test
-make restore-test-config
-make clean
-make nuke
-make config
-make env
-make print-config
-make print-env
+Destructive targets require an explicitly disposable project, verified ownership boundaries, and authorization. Back up needed data first and understand the recovery path. Never use global Docker prune or delete unrelated resources. The `clean-test` recipe expresses stopping and restoration as prerequisites; do not assume parallel Make execution enforces a safe sequence. Confirm services are stopped before restoring files.
+
+## Documentation standards
+
+Write for the intended reader and verify the result in each renderer that serves the page.
+
+### Content and source conventions
+
+Public Markdown is readable, useful, and lightly pirate-themed. Put operational meaning first; humor belongs in short introductions, transitions, sign-offs, templates, and suitable status output. Commands, paths, UI labels, warnings, security guidance, destructive actions, and troubleshooting remain literal and precise.
+
+Identify the audience and outcome. Put prerequisites before numbered procedures, follow execution order, verify the result, and cover likely failures. Keep concepts, quickstart guides, how-to guides, reference, and troubleshooting focused on their distinct purpose. State required versions, permissions, credentials, and platform constraints without including actual secrets.
+
+Use one page title and a logical sentence-case heading hierarchy without skipped levels; introduce a section before its subsections. Put searchable words before decorative emoji. Emoji must never carry meaning alone. Use numbered lists for procedures, bullets for unordered choices, and simple readable tables for comparisons. Keep blank lines around structural blocks and check narrow-screen layout.
+
+Use descriptive relative links for repository-owned files and valid heading anchors; verify targets after heading or filename changes. Keep established convention filenames such as `README.md`, `AGENTS.md`, `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`, `SECURITY.md`, and `SUPPORT.md`; ordinary articles use lowercase kebab-case. Update inbound links and affected configuration paths with authorized renames.
+
+Every fenced block has an appropriate language label. Put copyable commands in `sh` fences without prompts or inline explanatory comments; use `console` for transcripts and `text` for non-executable output. Explain uppercase kebab-case placeholders before use, quote paths correctly, and keep examples secret-free. Warn before commands that overwrite data, stop services, or delete resources, with scope, prerequisites, backup, and recovery caveats. Never hide risks or required steps in `<details>`.
+
+Check documented commands, defaults, supported platforms, and behavior against source and the relevant release. Distinguish current stable behavior from unreleased changes on `main`; do not advertise pending capabilities as released. Architecture and migration guidance must explain component ownership, compatibility, persistent data, downtime, backups, and rollback limitations where relevant. Verify backup and restoration claims rather than promising unsupported recovery.
+
+Give meaningful images descriptive alt text; decorative images may have empty alt text. Mermaid diagrams need adjacent prose explaining the same relationship. Use footnotes only for tangential context and task lists mainly in issue/PR templates. Write each ordinary prose paragraph on one physical source line; preserve blank lines, lists, tables, fences, intentional hard breaks, and other structured content.
+
+### GitHub and Material rendering
+
+Repository-facing Markdown uses GitHub-flavored Markdown. Reserve native blockquote alerts for information readers must notice: `NOTE`, `TIP`, `IMPORTANT`, `WARNING`, or `CAUTION`. Most pages need at most one or two; avoid consecutive alerts and routine commands wrapped as alerts. Put the first quoted prose line directly after the marker. Keep an empty quoted line only where needed to delimit a list, fence, or paragraph.
+
+```text
+> [!WARNING]
+> Explain the risk and required action before the command.
 ```
 
-Run `make clean-test` after live e2e tests to stop containers and restore example files.
-`make clean` removes only disposable developer artifacts; it must never touch
-containers, volumes, images, `.env`, generated VPN state, or checked-in examples.
-`make down` preserves volumes and images. `make nuke` removes only this Compose
-project's Docker resources and repository-owned Buildx cache, restores examples,
-and preserves `.env`, `backups/`, and persistent bind-mounted config.
+The MkDocs Material site enables `pymdownx.quotes` with callout processing to render the same GitHub alert source as Material admonitions. Do not duplicate alerts using Material-only `!!!` syntax in shared pages, or introduce Material tabs, attributes, or directives into GitHub-facing pages that cannot render them. Use site-only syntax only where `mkdocs.yml` supports it and rendered review confirms it works.
 
-## GitHub Workflow Rules
+Preserve Material navigation, system fonts, source-generated mkdocstrings reference, the midnight navy/sapphire palette with icy blue accents, and accessible component behavior. Keep exact, SHA-256-verified `requirements-docs.txt` dependencies and separate read-only build and Pages deployment jobs. PR documentation jobs must have no deployment permissions. Pages publishes `main` and release tags whose commits belong to `main`.
 
-Workflow step names should be pirate-themed and include tasteful emoji.
-All project-owned YAML, including GitHub Actions workflows, uses two-space indentation.
+### Documentation validation
 
-Use current major versions of GitHub Actions where practical.
+For Markdown changes run `make test-precommit` and `git diff --check`. Run `make docs` after changing guides, API signatures, or docstrings; it performs a strict site build with warnings treated as errors. Use `make docs-serve` for site preview when needed. Inspect GitHub-rendered Markdown and affected site pages, including tables, alerts, code, images, diagrams, anchors, and mobile layout.
 
-Build/publish behavior:
+Check changed local links and anchors explicitly. A Markdown lint or strict MkDocs build does not prove every external link works or every GitHub-only page renders correctly. Validate relevant external destinations when network access permits; report unavailable link/render checks rather than claiming coverage. The local documentation-style guide offers additional examples; report any contradiction with this file instead of importing external repository policy.
 
-- PR validation should build images and validate Compose without requiring PIA credentials.
-- Full live e2e should only run when credentials are available.
-- Main/tag publishing builds multi-arch images.
-- Release tags use git tags like `v0.1.0`.
-- Docker image semver tags omit the leading `v`, e.g. `0.1.0`.
-- Stable releases publish exact, minor, major, and `latest` aliases from one build.
-- Prereleases publish only their exact version and `sha-*` tag, never movable aliases.
-- Successful `main` builds publish `edge` and `sha-*` tags.
-- Major version zero publishes its exact and minor aliases but not a `0` alias.
+## Dependencies and workflows
 
-Security/scanning:
+Keep updates scoped to the authorized task. Use supported Action versions pinned to immutable full commit SHAs, with readable version comments; keep reusable workflow references pinned as well. Pin container bases by digest and retain exact dependency locks, integrity hashes, and hash-verified Python installs where supported. Do not describe package version floors or mutable tags as immutable pins. Keep synchronized Dockerfile and workflow pins aligned, and use the existing policy checks to verify them.
 
-- keep Trivy scanning in workflows
-- keep Renovate configuration current; do not add a competing Dependabot configuration
-- keep OpenSSF / best-practice metadata current where present
-- keep provenance/SBOM enabled unless there is a specific reason not to
+Grant minimum workflow permissions at the narrowest practical scope. Keep ordinary PR validation read-only and credential-free; isolate publishing, attestations, and Pages permissions to the jobs that need them. Do not expose secrets to untrusted PR code or weaken checks to make a build pass. Repository maintenance does not itself authorize workflow, security-setting, or deployment changes.
 
-Expect GHCR to show `unknown/unknown` entries for attestation manifests. Those are metadata artifacts, not runnable OS images.
+Workflow YAML uses two-space indentation; step names may use tasteful pirate-themed wording and emoji. Preserve Trivy scanning, Renovate rather than a competing Dependabot configuration, existing OpenSSF/best-practice metadata, and provenance/SBOM generation unless the task explicitly authorizes a justified change.
 
-## Validation Expectations
+Preserve publishing policy: PRs validate without PIA credentials; live e2e is separately credentialed. Main/tag publishing builds all supported architectures. Git release tags use `v0.1.0`, while image semver tags omit `v`. Stable releases publish exact, minor, major, and `latest` aliases from one build; major zero omits a `0` alias. Prereleases publish only the exact version and `sha-*`, never movable aliases. Successful `main` builds publish `edge` and `sha-*`. These rules describe authorized publishing, not permission to trigger it.
 
-For small documentation-only changes, run:
+## Validation
 
-```sh
-make test-precommit
-```
+Select checks from the actual changed behavior and recipes. Report exact commands, results, and limits; do not replace a real test with a dry run. Tool-image builds and hook installation may require network access even when the subsequent suite runs offline.
 
-For Docker or workflow changes, run as applicable:
+| Change or check | Actual command | Boundary |
+| --- | --- | --- |
+| Target inventory | `make help` | No service startup |
+| Markdown | `scripts/compose/test.sh markdown` | Buccaneerr; offline, read-only source after image build |
+| All repository hooks | `make test-precommit` | Network, writable checkout, nested Docker access; hooks may fix files |
+| Spelling | `make spellcheck` | Buccaneerr CSpell using project vocabulary |
+| Guides, signatures, docstrings | `make docs` | Strict Material and API build; writes ignored `site/` output |
+| Python and shell quality | `make lint` | Ruff lint/format, strict Pyright, ShellCheck |
+| Strict Python types | `make test-types` | Pyright, not runtime validation |
+| Full offline suite | `make test` | Lint/types, helpers, policies, actionlint, and unit tests; no PIA credentials |
+| Make and Compose helpers | `make test-make-helpers` | Stubbed automation and cleanup boundaries |
+| Workflow helpers and policy | `make test-workflows` | Fixture tests, pin/tag policy checks, actionlint |
+| Recovery and generation units | `make test-recovery` | Python unit tests without PIA credentials |
+| Real Gluetun API | `make test-recovery-api` | Docker socket and built `PRIVATEERR_TEST_IMAGE`; isolated real containers, no PIA credentials |
+| Live PIA recovery | `make test-recovery-live` | Credentials and live VPN; explicit authorization required |
+| Full application e2e | `make test-e2e` | Starts all four services, generates secrets, and injects a recovery fault by default |
 
-```sh
-make help
-make config
-make build
-make build-buccaneerr
-make build-platforms
-make test
-make test-workflows
-make test-precommit
-```
+Docker or workflow changes additionally require applicable image builds, Compose validation with a secret-free test environment, and architecture checks when affected. `make config` prints the rendered model and requires an environment file; do not capture real secrets in validation output.
 
-For behavior changes touching Privateerr, Gluetun handoff, WireGuard config generation, or port forwarding, run:
+Behavior changes affecting generation, Gluetun handoff, or forwarding warrant authorized live e2e coverage plus safe cleanup with `make clean-test` and verification of restored examples. If live testing is outside scope or credentials are unavailable, report the gap; never obtain or use production credentials merely to satisfy a checklist. Do not leave generated VPN config or metadata in the working tree.
 
-```sh
-make test-e2e
-make clean-test
-```
+## Handoff and review
 
-Do not leave live generated VPN config or metadata in the working tree.
+Use a descriptive, lightly pirate-themed branch name; do not prefix it with `codex-` unless requested. Commit messages may use the project voice but must explain the change. PR descriptions lead with the concrete problem and resulting behavior, then give relevant validation and limitations.
 
-## Branch And PR Conventions
-
-Use funny pirate-themed branch names when creating feature branches. Do not prefix branch names with `codex-` unless explicitly requested.
-
-Commit messages may be funny and pirate-themed, with emoji, but they should still describe the change.
-
-PR descriptions should lead with the main functional change, then summarize quality-of-repo improvements concisely.
-
-## Licensing
-
-Privateerr project-owned files are Apache-2.0.
-
-The upstream PIA scripts are third-party code under their own license. Keep license boundaries clear and do not imply Privateerr relicenses the upstream submodule.
-
-## Operational Priorities
-
-Primary deployment target: Synology DSM Container Manager.
-
-Secondary development target: macOS with Docker Desktop.
-
-Preserve one-file Compose compatibility for Synology. Avoid modular Compose designs that require multiple Compose files at runtime.
-
-Prefer simple, maintainable automation over clever abstractions.
-
-## Developer documentation site
-
-Keep Privateerr's MkDocs site closely aligned with the Plundarr repository's developer site: Material navigation, system fonts, Google-style Python docstrings, source-generated mkdocstrings reference, GitHub-alert rendering, strict builds, exact SHA-256-verified `requirements-docs.txt`, and separate read-only build and Pages deployment jobs. Privateerr uses a midnight navy and sapphire blue with icy blue accents palette; preserve the shared component styling and accessibility behavior.
-
-Run `make docs` after changing guides, signatures, or docstrings and use `make docs-serve` for rendered review. Documentation tools belong in Buccaneerr's optional `docs` target, never the production image or another deployed service. The restricted repository-root build context admits only test sources and the docs lockfile. Keep source mounts read-only, generated `site/` output ignored, and PR documentation jobs free of deployment permissions. Pages publishes `main` and release tags whose commits belong to `main`.
+Before handoff, review the complete diff and status, confirm only intended files are staged, check license and generated-file boundaries, and run `git diff --check`. Summarize changed files, checks passed/failed/not run, residual risks, and scope decisions truthfully. Provide the commit SHA and PR URL when created. Leave draft PRs for manual review when requested and clearly distinguish local validation from CI, rendered checks, and live credentialed coverage.
