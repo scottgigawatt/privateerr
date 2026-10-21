@@ -21,15 +21,21 @@ class FileOperationError(OSError):
 
     Raw exception messages and filenames are intentionally not retained in the
     diagnostic: they can contain configuration data or untrusted subprocess text.
+
+    Args:
+        operation: Fixed description authored by Privateerr, never external error text.
+        path: Configured file or directory involved in the failed operation.
+        error: Original failure; only its numeric error code is retained.
     """
 
-    def __init__(self, operation: str, path: Path, error: OSError):
+    def __init__(self, operation: str, path: Path, error: OSError) -> None:
         super().__init__(error.errno, "Filesystem operation failed")
         self.operation = operation
         self.path = path
 
     def diagnostic(self) -> str:
         """Return bounded path, identity, mode, and an actionable error category."""
+
         reasons = {
             errno.EACCES: "permission denied; check host directory ownership and ACL access",
             errno.EPERM: "operation not permitted; check host permissions and filesystem policy",
@@ -69,9 +75,13 @@ def filesystem_operation(operation: str, path: Path) -> Generator[None]:
         operation: Fixed description of the attempted filesystem operation.
         path: Known configured file or directory involved in the operation.
 
+    Yields:
+        Control to the filesystem operation being diagnosed.
+
     Raises:
         FileOperationError: If the operation raises an operating-system error.
     """
+
     try:
         yield
     except FileOperationError:
@@ -90,6 +100,7 @@ def check_recovery_directory(directory: Path) -> None:
         FileOperationError: If any probe operation fails. Existing configuration,
             ownership, modes, and ACLs are never modified.
     """
+
     with filesystem_operation("check recovery write access", directory):
         with tempfile.TemporaryDirectory(prefix=".privateerr-check.", dir=directory) as temporary:
             probe = Path(temporary)

@@ -160,7 +160,14 @@ def region_description(metadata: Path) -> str:
 
     This is the provider's advertised VPN region, not the operator's location or
     proof of the physical server location. Old metadata may have no region fields.
+
+    Args:
+        metadata: Saved or staged metadata whose optional region labels are inspected.
+
+    Returns:
+        A bounded region name and ID, an available single label, or "unknown".
     """
+
     try:
         fields = assignments(metadata)
     except OSError, InvalidSettings, UnicodeError:

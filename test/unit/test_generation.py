@@ -110,6 +110,7 @@ printf 'WG_HOSTNAME=example-one\\nPIA_TOKEN=test-token-redact\\n'  # pragma: all
 
     def test_log_open_failure_is_visible_in_container_output(self):
         """An unusable persistent log must explain itself even before file logging starts."""
+
         result = self.run_supervisor(PRIVATEERR_LOG_PATH=str(self.root))
         self.assertNotEqual(result.returncode, 0)
         output = result.stderr.decode()

@@ -30,19 +30,22 @@ class DiagnosticsTests(unittest.TestCase):
 
     def setUp(self):
         """Keep every probe and metadata fixture in disposable test storage."""
+
         self.temporary = tempfile.TemporaryDirectory()
         self.addCleanup(self.temporary.cleanup)
         self.root = Path(self.temporary.name)
 
     def test_probe_preserves_existing_files_and_permissions(self):
         """A successful probe must not alter the saved pair or directory permissions."""
+
         saved = self.root / "wg0.conf"
         saved.write_bytes(b"private configuration")
         saved.chmod(0o600)
         before = self.root.stat()
-        check_recovery_directory(self.root)
-        after = self.root.stat()
 
+        check_recovery_directory(self.root)
+
+        after = self.root.stat()
         self.assertEqual(saved.read_bytes(), b"private configuration")
         self.assertEqual(saved.stat().st_mode & 0o777, 0o600)
         self.assertEqual(
@@ -53,6 +56,7 @@ class DiagnosticsTests(unittest.TestCase):
 
     def test_errors_have_safe_context_and_actionable_categories(self):
         """Report known paths and numeric identity without exposing the original exception."""
+
         for code, expected in (
             (errno.EACCES, "permission denied"),
             (errno.EROFS, "read-only filesystem"),
@@ -73,6 +77,7 @@ class DiagnosticsTests(unittest.TestCase):
 
     def test_probe_reports_replacement_failure_and_cleans_up(self):
         """Creation alone is insufficient when the filesystem refuses replacement."""
+
         with patch.object(Path, "replace", side_effect=OSError(errno.EROFS, "secret")):
             with self.assertRaises(FileOperationError) as caught:
                 check_recovery_directory(self.root)
@@ -82,9 +87,11 @@ class DiagnosticsTests(unittest.TestCase):
 
     def test_region_is_optional_bounded_and_has_no_other_metadata(self):
         """Old files and unsafe labels must not break startup or reveal unrelated fields."""
+
         path = self.root / "privateerr.env"
         self.assertEqual(region_description(path), "unknown")
 
+        # Saved metadata is untrusted data; reject control sequences and oversized labels.
         for region, name, expected in (
             ("ca_toronto", '"CA Toronto"', "CA Toronto (ca_toronto)"),
             ("ca", "unknown", "ca"),
@@ -107,11 +114,12 @@ class DiagnosticsTests(unittest.TestCase):
     )
     def test_root_without_capabilities_cannot_write_another_users_directory(self):
         """Reproduce the NAS failure with real kernel permissions, retaining root UID."""
+
         directory = self.root / "wireguard"
         directory.mkdir(mode=0o755)
         os.chown(directory, 65534, 65534)
 
-        # Drop all capability sets only in the disposable child; the parent retains cleanup access.
+        # Clear process capabilities only in the disposable child; the parent retains cleanup access.
         child = """
 import ctypes
 import os
@@ -130,6 +138,7 @@ try:
 except FileOperationError as error:
     print(error.diagnostic())
     sys.exit(0 if error.errno == 13 else 2)
+
 sys.exit(3)
 """
         result = subprocess.run(
@@ -138,6 +147,7 @@ sys.exit(3)
             text=True,
             timeout=10,
         )
+
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIn("permission denied", result.stdout)
         self.assertIn("(EACCES)", result.stdout)

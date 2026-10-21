@@ -17,7 +17,7 @@ The wrapper script also lives here:
 config/gluetun/scripts/gluetun-entrypoint-wrapper.sh
 ```
 
-The wrapper waits for `privateerr.env` and any active publication to finish, exports `PIA_WG_SERVER_NAME` as `SERVER_NAMES`, and then hands control to Gluetun's original entrypoint. When recovery is enabled, it also configures the shared health listener and narrowly scoped API authentication unless an operator-supplied authentication file already exists, and disables Gluetun's competing health-triggered restart policy.
+The wrapper waits for `privateerr.env` and any active publication to finish, exports `PIA_WG_SERVER_NAME` as `SERVER_NAMES`, and then hands control to Gluetun's original entrypoint. When recovery is enabled, it also configures the shared health listener and disables Gluetun's competing health-triggered restart policy. It preserves operator-supplied API authentication; otherwise it creates a narrowly scoped recovery role.
 
 Mount the directory rather than individual generated files. Privateerr's UID 0 needs write and traverse access to `wireguard/` for staging and atomic replacement. A `:rw` mount does not override host permissions. Startup checks use disposable `.privateerr-check.*` directories; failed checks warn without blocking reuse of a valid saved pair. See [diagnostics](../../docs/automatic-recovery.md#read-diagnostics-and-check-storage).
 

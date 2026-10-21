@@ -3,7 +3,6 @@
 Privateerr is a tiny Docker wrapper that packages the original, unmodified [pia-foss/manual-connections](https://github.com/pia-foss/manual-connections) scripts from Private Internet Access (PIA).
 
 > [!IMPORTANT]
->
 > Privateerr is not a VPN client. It generates a PIA WireGuard configuration file and server metadata. Its Python supervisor can also monitor Gluetun and recover sustained tunnel failures through the authenticated API. Gluetun owns the VPN tunnel.
 
 ## Pull an image 📦

@@ -457,6 +457,7 @@ class RecoveryTests(unittest.TestCase):
 
     def test_unwritable_reused_pair_warns_without_blocking_readiness(self):
         """Existing deployments can start Gluetun while reporting degraded recovery."""
+
         before = self.config.config_path.read_bytes(), self.config.metadata_path.read_bytes()
         error = FileOperationError(
             "check recovery write access",
@@ -485,7 +486,11 @@ class RecoveryTests(unittest.TestCase):
 
     def test_first_generation_fails_with_specific_storage_error(self):
         """An unusable output directory must fail before contacting PIA on first generation."""
-        config = replace(self.config, recover=False, keepalive=False)
+
+        # A fresh recovery-enabled deployment has neither half of the saved pair.
+        config = self.config
+        config.config_path.unlink()
+        config.metadata_path.unlink()
         error = FileOperationError(
             "check recovery write access",
             config.config_path.parent,
@@ -503,6 +508,7 @@ class RecoveryTests(unittest.TestCase):
 
     def test_recovery_permission_error_reports_retry_and_preserves_pair(self):
         """A staged-write failure identifies storage and leaves published files untouched."""
+
         self.generator.generate.side_effect = FileOperationError(
             "generate replacement files",
             self.config.config_path.parent,
@@ -523,17 +529,14 @@ class RecoveryTests(unittest.TestCase):
 
     def test_pending_publication_error_is_not_reported_as_api_failure(self):
         """Preserve pending state after an applied update whose local publication fails."""
+
         self.supervisor.recover()
         self.active = self.candidate
         self.client.healthy.return_value = True
-        error = FileOperationError(
-            "publish configuration",
-            self.config.config_path.parent,
-            OSError(errno.ENOSPC, "secret-detail"),
-        )
 
+        # Fail the real publication boundary after retention and API acceptance succeed.
         with (
-            patch.object(self.store, "publish", side_effect=error),
+            patch.object(Path, "replace", side_effect=OSError(errno.ENOSPC, "secret-detail")),
             self.assertLogs("privateerr", level="WARNING") as logged,
         ):
             self.assertEqual(self.supervisor.resolve_pending(), Pending.UNAVAILABLE)
@@ -541,12 +544,22 @@ class RecoveryTests(unittest.TestCase):
 
         self.assertEqual(len(logged.output), 1)
         self.assertIn("no space left", logged.output[0])
+        self.assertIn("Cannot publish configuration", logged.output[0])
+        self.assertNotIn("secret-detail", logged.output[0])
         self.assertNotIn("API connectivity", logged.output[0])
         self.assertTrue(self.store.pending.exists())
         self.assertEqual(self.store.saved_settings(), self.original)
 
+        # Once storage is writable again, reconcile the retained update without generating anew.
+        self.assertEqual(self.supervisor.resolve_pending(), Pending.RESOLVED)
+        self.assertEqual(self.store.saved_settings(), self.candidate)
+        self.assertFalse(self.store.pending.exists())
+        self.generator.generate.assert_called_once()
+        self.client.apply.assert_called_once()
+
     def test_region_logs_distinguish_candidate_from_confirmed_recovery(self):
         """Log the saved candidate region, never a requested region or unconfirmed success."""
+
         path = self.root / "candidate/privateerr.env"
         path.write_text(path.read_text().replace("PIA_REGION_ID=ca", "PIA_REGION_ID=ca_toronto"))
 
@@ -558,6 +571,8 @@ class RecoveryTests(unittest.TestCase):
         self.assertNotIn("tunnel recovered", output)
         self.assertNotIn("198.51.100", output)
         self.assertNotIn(self.candidate["wireguard"]["private_key"], output)
+
+        # Only readback plus a healthy tunnel permits the confirmed-region message.
         self.active = self.candidate
         self.client.healthy.return_value = True
 

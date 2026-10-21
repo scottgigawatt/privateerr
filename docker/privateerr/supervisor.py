@@ -307,7 +307,13 @@ class Supervisor:
         self.last_message = ""
 
     def failure(self, operation: str, error: Exception) -> None:
-        """Log an actionable category without serializing arbitrary exception contents."""
+        """Log an actionable category without serializing arbitrary exception contents.
+
+        Args:
+            operation: Fixed description of the failed recovery phase.
+            error: Failure to classify; only recognized diagnostic fields are logged.
+        """
+
         if isinstance(error, FileOperationError):
             detail = error.diagnostic()
         elif isinstance(error, APIUnavailable):
@@ -334,6 +340,7 @@ class Supervisor:
 
     def status(self, message: str, level: int = logging.INFO) -> None:
         """Log state changes without repeating the same message on every health probe."""
+
         if message != self.last_message:
             LOG.log(level, message)
             self.last_message = message

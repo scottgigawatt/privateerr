@@ -47,7 +47,7 @@ All paths below except the startup marker are relative to the shared configurati
 
 | Directory or file | Meaning | Lifetime |
 | :--- | :--- | :--- |
-| `.privateerr-check.*` | Disposable startup filesystem probe | Removed on completion or ordinary failure; abrupt termination can leave a probe behind |
+| `.privateerr-check.*` | Disposable startup filesystem probe | Normally removed on completion or failure; cleanup failure or abrupt termination can leave a probe behind |
 | `.privateerr-stage.*` | Temporary output from one PIA generation | Removed when generation completes, fails, or is interrupted |
 | `.privateerr-pending/` | Candidate awaiting API and health confirmation | Retained across uncertain updates and process restarts; removed after acceptance or rejection |
 | `.privateerr-commit/` | Complete source copies for interrupted publication | Removed after both saved files have been replaced |

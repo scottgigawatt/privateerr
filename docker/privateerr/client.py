@@ -29,15 +29,21 @@ from .data import object_fields
 
 
 class APIUnavailable(Exception):
-    """Keep retry semantics while carrying a safe failure category and HTTP status."""
+    """Keep retry semantics while carrying a safe failure category and HTTP status.
 
-    def __init__(self, reason: str = "request failed", status: int | None = None):
+    Args:
+        reason: Internal category; unrecognized values are never included in diagnostics.
+        status: HTTP response status when the server rejected the request.
+    """
+
+    def __init__(self, reason: str = "request failed", status: int | None = None) -> None:
         super().__init__("API request failed")
         self.reason = reason
         self.status = status
 
     def diagnostic(self) -> str:
         """Report only approved categories, never URLs, headers, bodies, or raw exceptions."""
+
         allowed = {
             "request failed",
             "HTTP response rejected",
@@ -148,7 +154,15 @@ class Client:
             raise APIUnavailable("HTTP response rejected", error.code) from None
         except TimeoutError:
             raise APIUnavailable("request timed out") from None
-        except OSError, URLError:
+        except URLError as error:
+            # urllib wraps connection-stage timeouts, unlike timeouts while reading a response.
+            reason = (
+                "request timed out"
+                if isinstance(error.reason, TimeoutError)
+                else "connection failed"
+            )
+            raise APIUnavailable(reason) from None
+        except OSError:
             raise APIUnavailable("connection failed") from None
         except HTTPException, ValueError:
             raise APIUnavailable("invalid response") from None
