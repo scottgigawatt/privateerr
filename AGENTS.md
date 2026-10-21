@@ -43,7 +43,7 @@ Repository edits do not authorize production operations. Starting stacks, regist
 
 ## Source, generated state, and secrets
 
-Keep production Python standard-library-only. Lint, formatting, typing, documentation, unit-test, and runtime-test dependencies belong in Buccaneerr, never the production Privateerr image or another deployed service. Documentation packages use Buccaneerr's optional `docs` target. Keep build-context allowlists restrictive, source mounts read-only where supported, and generated `site/` output ignored.
+Keep production Python standard-library-only. Lint, formatting, typing, documentation, unit-test, and runtime-test dependencies belong in Buccaneerr, never the production Privateerr image or another deployed service. Documentation packages use Buccaneerr's optional `docs` target. The restricted repository-root build context admits only test sources and the docs lockfile. Keep documentation source mounts read-only and generated `site/` output ignored.
 
 Do not edit `docker/pia-manual-connections/` unless the task explicitly requests upstream submodule management. Preserve its pinned revision, license, and attribution. Privateerr-owned wrappers must visibly identify upstream invocations; logs should identify the originating script. Privateerr-owned files are Apache-2.0; the upstream submodule retains its own license and is not relicensed by Privateerr.
 
@@ -64,23 +64,23 @@ This overwrites both destination files; never run it against an operator's activ
 
 ## Formatting and comments
 
-`.editorconfig` is the portable source of truth; editor settings, formatters, and automation must agree. Use UTF-8, LF endings, and final newlines. Use four spaces for shell, Python, JSON, and JSON with Comments; two spaces for Markdown, YAML, TOML, AWK, jq, CSS, and JavaScript; literal tabs for Make recipes and the established Git submodule declarations. Preserve intentional Markdown hard breaks.
+`.editorconfig` is the portable source of truth; VS Code settings, other editor settings, formatters, and automation must agree. Use UTF-8, LF endings, and final newlines. Use four spaces for shell, Python, JSON, and JSON with Comments; two spaces for Markdown, YAML, TOML, AWK, jq, CSS, and JavaScript; literal tabs for Make recipes and the established Git submodule declarations. Preserve intentional Markdown hard breaks.
 
-Comments use plain English and explain intent, constraints, or non-obvious behavior. Do not narrate assignments or obvious syntax, add repetitive step labels, or use pirate language in code comments. Separate logical blocks with blank lines where useful; let the configured formatter decide layout.
+Comments use plain English and explain intent, constraints, or non-obvious behavior. Do not narrate assignments or obvious syntax, add repetitive step labels, or use pirate language in code comments.
 
-Project-owned scripts and config-style files start with copyright, Apache-2.0 notice, and a short filename summary; add usage bullets only when useful. Put one blank line after a shell shebang before that block. Align inline Compose comments within each logical group with at least two spaces before `#`.
+Project-owned scripts and config-style files start with a copyright line, Apache-2.0 license note, a short filename summary, and a short bullet list when usage or behavior needs context. Put one blank line after a shell shebang before that block. Align inline Compose comments within each logical group with at least two spaces before `#`.
 
 Fix the cause of lint, typing, spelling, or security findings. Any necessary exception must be narrow, justified beside the affected code, and tied to a real runtime or test constraint. Do not weaken strict modes, exclude whole code areas, or add blanket suppressions to hide findings.
 
 ## Shell and Python quality
 
-Keep implementation and tests consistent with the repository-owned checker configurations.
+Keep implementation and tests consistent with the repository-owned checker configurations. Put a blank line before and after logical control-flow blocks, and place a concise explanatory comment above non-obvious checks, loops, and operations. Do not add comments that merely repeat the code.
 
 ### Shell
 
-Host scripts prefer `#!/bin/sh`, POSIX syntax, and four-space indentation. Container-only scripts may use Bash when the image deliberately installs it and the entrypoint expects it. Quote expansions and paths, preserve failure status, and make cleanup explicit. Use direct diagnostic errors even when status messages use the project voice. `.shellcheckrc` supplies source resolution; use targeted ShellCheck suppressions only when a documented constraint prevents a correct fix.
+Host scripts prefer `#!/bin/sh`, POSIX syntax, and four-space indentation. Container-only scripts may use Bash when the image deliberately installs it and the entrypoint expects it. Quote expansions and paths, preserve failure status, and make cleanup explicit. Use direct diagnostic errors even when status messages use the project voice. `.shellcheckrc` supplies source resolution; use targeted ShellCheck suppressions only when a documented runtime constraint prevents a correct code fix.
 
-Document each shell function immediately above its declaration using this shape, with one parameter per comment line, one space after `Returns:`, and `Parameters: None.` when appropriate:
+Document each shell function immediately above its declaration using this exact documentation shape, with one parameter per comment line, one space after `Returns:`, and `Parameters: None.` when appropriate:
 
 ```sh
 #
@@ -97,13 +97,13 @@ Keep each short explanatory sentence on one comment line. Test shell helpers wit
 
 ### Python
 
-Python modules and tests start with the license and filename-summary block followed by a useful module docstring. Prefer small functions, explicit types at application boundaries, validated dynamic input, narrowed optional values, and explicit collection and callback contracts. Avoid blanket `Any` annotations or broad exceptions that conceal errors.
+Python modules and tests start with the copyright, Apache-2.0, and filename summary block, followed by a useful module docstring. Prefer small functions, explicit types at application boundaries, standard-library facilities, validated dynamic input, narrowed optional values, and explicit collection and callback contracts. Avoid blanket `Any` annotations or broad exceptions that conceal errors.
 
-`ruff.toml` owns lint, import order, and formatting. Run both Ruff lint and format checks through `make lint`; that target also runs strict Pyright and ShellCheck. `pyrightconfig.json` covers all project-owned Python modules and tests, including optional fuzz harnesses. `make test-types` runs the containerized checker; preserve enforcement in Make, pre-commit, and PR/main/release validation.
+`ruff.toml` owns lint and formatting rules, including import order, four-space indentation, and Unix line endings. Run both Ruff lint and format checks through `make lint`; that target also runs strict Pyright and ShellCheck. `pyrightconfig.json` covers all project-owned Python modules and tests, including optional fuzz harnesses. `make test-types` runs the pinned containerized checker; `make test`, pre-commit, and PR/main/release validation must enforce strict Python checking. Document any targeted diagnostic exception beside the intentional test or optional dependency.
 
-Public modules, classes, methods, and functions use concise Google-style docstrings when useful. Describe meaning, side effects, invariants, and failure behavior; types remain in signatures. Use `Args`, `Returns`, `Raises`, `Attributes`, and `Note` sections only when applicable. Document non-obvious private helpers even though mkdocstrings filters names beginning with `_`. Do not duplicate generated API reference by hand.
+Public modules, classes, methods, and functions use concise Google-style docstrings when useful. Explain contracts and intent without duplicating the implementation. Describe meaning, side effects, invariants, and failure behavior; type annotations remain the source of truth for types. Use `Args`, `Returns`, `Raises`, `Attributes`, and `Note` sections only when applicable. Do not add empty sections, restate a parameter name as its description, or repeat a type already expressed by the signature. Document non-obvious private helpers even though mkdocstrings filters names beginning with `_`. Do not duplicate generated API reference by hand.
 
-Tests explain the scenario and boundary they protect. Add concise comments for controlled fixtures, injected failures, cleanup, and meaningful assertion groups; separate setup, action, and verification when it improves readability. Keep test tools out of published production images.
+Explain the scenario and intent of Python tests with concise docstrings and comments around controlled fixtures, injected failures, cleanup, and meaningful assertion groups. Use blank lines to separate setup, actions, and verification where it improves readability. Explain why a boundary matters rather than narrating obvious assignments or adding repetitive step labels. Keep test tools out of published production images.
 
 Run `make spellcheck` across project-owned files. Correct misspellings; genuine project vocabulary belongs in `.vscode/settings.json` under `cSpell.words`. Never add secrets or arbitrary whole strings to silence spelling diagnostics.
 
@@ -124,9 +124,9 @@ Compose conventions:
 - Keep Privateerr and Gluetun mounting `./config/gluetun` for the generated-file handoff.
 - Group environment settings by owner and purpose, list PIA variables before Privateerr wrapper variables, and keep `example.env` ordering aligned with Compose.
 
-Keep environment files focused on values. Their end-of-line comments should flag operator actions: credentials, host paths, user/group IDs, time zones, or host-port conflicts. Use short prompts such as `Edit before launch:` or `Edit for your host:`. Generated secrets requiring no manual action need no inline comment. Keep useful section headings.
+Keep `.env`, `example.env`, named environment examples, and service `environment.env` fragments focused on values. Reserve their end-of-line comments for settings operators must review or commonly customize: credentials, host paths, user/group IDs, time zones, and host-port conflicts. Use short prompts such as `Edit before launch:` or `Edit for your host:`. Generated secrets requiring no manual action need no inline comment. Keep useful section headings.
 
-Explain behavior, accepted values, units, limits, dependencies, and numeric/boolean meanings beside the corresponding Compose entries in aligned comments. For example, `1 disables IPv6; 0 enables IPv6`. Do not move routine per-variable explanations into standalone environment comments to bypass this division.
+Put behavior explanations, accepted values, units, limits, dependencies between settings, and implementation details in aligned end-of-line comments beside the corresponding Compose entries. Explain numeric and boolean meanings where they are not obvious. For example, `1 disables IPv6; 0 enables IPv6`. Do not move routine per-variable explanations into standalone environment comments to bypass this division.
 
 ## Make and operational safety
 
@@ -166,23 +166,25 @@ Write for the intended reader and verify the result in each renderer that serves
 
 ### Content and source conventions
 
-Public Markdown is readable, useful, and lightly pirate-themed. Put operational meaning first; humor belongs in short introductions, transitions, sign-offs, templates, and suitable status output. Commands, paths, UI labels, warnings, security guidance, destructive actions, and troubleshooting remain literal and precise.
+Public Markdown is readable, useful, and lightly pirate-themed. Put operational meaning first; humor belongs in short introductions, transitions, sign-offs, templates, and suitable status output. Commands, paths, UI labels, warnings, security guidance, destructive actions, and troubleshooting remain literal and precise. Apply this voice to `README.md`, files under `docs/`, config-directory README files, GitHub issue and PR templates, and user-facing Makefile `echo` output when appropriate.
 
-Identify the audience and outcome. Put prerequisites before numbered procedures, follow execution order, verify the result, and cover likely failures. Keep concepts, quickstart guides, how-to guides, reference, and troubleshooting focused on their distinct purpose. State required versions, permissions, credentials, and platform constraints without including actual secrets.
+Identify the audience and the one or two outcomes the page must deliver. Put prerequisites before numbered procedures, follow execution order, move optional detail after the main path, verify the result, and cover likely failures. Concepts explain what something is, why it exists, and when it matters; quickstart guides give the shortest safe route to a useful result; how-to guides give prerequisites, numbered steps, verification, and likely failures; references present facts for lookup with consistent structure; troubleshooting names the symptom, explains the known cause, and gives a verifiable recovery path. State required versions, permissions, credentials, and platform constraints without including actual secrets.
+
+Use active voice and address the reader as **you** in procedures. Put one main idea in each sentence and paragraph. Lead with the conclusion or required action, then explain why. Use the exact names shown in commands, files, services, and user interfaces. Spell out unfamiliar abbreviations on first use.
 
 Use one page title and a logical sentence-case heading hierarchy without skipped levels; introduce a section before its subsections. Put searchable words before decorative emoji. Emoji must never carry meaning alone. Use numbered lists for procedures, bullets for unordered choices, and simple readable tables for comparisons. Keep blank lines around structural blocks and check narrow-screen layout.
 
-Use descriptive relative links for repository-owned files and valid heading anchors; verify targets after heading or filename changes. Keep established convention filenames such as `README.md`, `AGENTS.md`, `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`, `SECURITY.md`, and `SUPPORT.md`; ordinary articles use lowercase kebab-case. Update inbound links and affected configuration paths with authorized renames.
+Use descriptive relative links for repository-owned files and valid heading anchors; verify targets after heading or filename changes. Link to the most specific useful upstream page instead of a generic home page. Keep established convention filenames such as `README.md`, `AGENTS.md`, `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`, `SECURITY.md`, and `SUPPORT.md`; ordinary articles use lowercase kebab-case. Update inbound Markdown links, workflow paths, scripts, and published descriptions in the same authorized rename change.
 
-Every fenced block has an appropriate language label. Put copyable commands in `sh` fences without prompts or inline explanatory comments; use `console` for transcripts and `text` for non-executable output. Explain uppercase kebab-case placeholders before use, quote paths correctly, and keep examples secret-free. Warn before commands that overwrite data, stop services, or delete resources, with scope, prerequisites, backup, and recovery caveats. Never hide risks or required steps in `<details>`.
+Every fenced block has an appropriate language label. Put copyable commands in `sh` fences without prompts or inline explanatory comments; use `console` for transcripts and `text` for non-executable output. Explain uppercase kebab-case placeholders before use, quote paths correctly, and keep examples secret-free. Warn before commands that overwrite data, stop services, or delete resources, with scope, prerequisites, backup, and recovery caveats. Use `<details>` only for optional sample output or lengthy diagnostics; never hide prerequisites, primary steps, or risks there.
 
 Check documented commands, defaults, supported platforms, and behavior against source and the relevant release. Distinguish current stable behavior from unreleased changes on `main`; do not advertise pending capabilities as released. Architecture and migration guidance must explain component ownership, compatibility, persistent data, downtime, backups, and rollback limitations where relevant. Verify backup and restoration claims rather than promising unsupported recovery.
 
-Give meaningful images descriptive alt text; decorative images may have empty alt text. Mermaid diagrams need adjacent prose explaining the same relationship. Use footnotes only for tangential context and task lists mainly in issue/PR templates. Write each ordinary prose paragraph on one physical source line; preserve blank lines, lists, tables, fences, intentional hard breaks, and other structured content.
+Give meaningful images descriptive alt text; decorative images may have empty alt text. Mermaid diagrams need adjacent prose explaining the same relationship. Use footnotes only for tangential provenance or context; essential information stays inline. Keep task lists in issue and PR templates; static procedures use numbered steps. Write each ordinary prose paragraph on one physical source line; preserve blank lines, lists, tables, fences, intentional hard breaks, and other structured content.
 
 ### GitHub and Material rendering
 
-Repository-facing Markdown uses GitHub-flavored Markdown. Reserve native blockquote alerts for information readers must notice: `NOTE`, `TIP`, `IMPORTANT`, `WARNING`, or `CAUTION`. Most pages need at most one or two; avoid consecutive alerts and routine commands wrapped as alerts. Put the first quoted prose line directly after the marker. Keep an empty quoted line only where needed to delimit a list, fence, or paragraph.
+Repository-facing Markdown uses GitHub-flavored Markdown. Reserve native blockquote alerts for information readers must notice while scanning: `NOTE` adds useful context, `TIP` makes a task easier, `IMPORTANT` states information required for success, `WARNING` calls for immediate attention, and `CAUTION` describes a risk or destructive outcome. Other labels render as ordinary blockquotes rather than GitHub alerts. Keep required actions and risk descriptions in the alert itself. Most pages need at most one or two; avoid consecutive alerts and routine commands wrapped as alerts. Put the first quoted prose line directly after the marker. Keep an empty quoted line only where needed to delimit a list, fence, or paragraph.
 
 ```text
 > [!WARNING]
@@ -197,15 +199,15 @@ Preserve Material navigation, system fonts, source-generated mkdocstrings refere
 
 For Markdown changes run `make test-precommit` and `git diff --check`. Run `make docs` after changing guides, API signatures, or docstrings; it performs a strict site build with warnings treated as errors. Use `make docs-serve` for site preview when needed. Inspect GitHub-rendered Markdown and affected site pages, including tables, alerts, code, images, diagrams, anchors, and mobile layout.
 
-Check changed local links and anchors explicitly. A Markdown lint or strict MkDocs build does not prove every external link works or every GitHub-only page renders correctly. Validate relevant external destinations when network access permits; report unavailable link/render checks rather than claiming coverage. The local documentation-style guide offers additional examples; report any contradiction with this file instead of importing external repository policy.
+Check changed local links and anchors explicitly. A Markdown lint or strict MkDocs build does not prove every external link works or every GitHub-only page renders correctly. Validate relevant external destinations when network access permits; report unavailable link/render checks rather than claiming coverage. Follow the [local documentation-style guide](docs/documentation-style.md) and [Python documentation conventions](docs/development/privateerr/documentation.md) where consistent with these self-contained requirements. This AGENTS.md governs any conflict; report contradictions and do not import another repository's policy through a local guide.
 
 ## Dependencies and workflows
 
-Keep updates scoped to the authorized task. Use supported Action versions pinned to immutable full commit SHAs, with readable version comments; keep reusable workflow references pinned as well. Pin container bases by digest and retain exact dependency locks, integrity hashes, and hash-verified Python installs where supported. Do not describe package version floors or mutable tags as immutable pins. Keep synchronized Dockerfile and workflow pins aligned, and use the existing policy checks to verify them.
+Keep updates scoped to the authorized task. Use current major versions of GitHub Actions where practical, pinned to immutable full commit SHAs with readable version comments; keep reusable workflow references pinned as well. Pin container bases by digest and retain exact dependency locks, integrity hashes, and hash-verified Python installs where supported. Do not describe package version floors or mutable tags as immutable pins. Keep synchronized Dockerfile and workflow pins aligned, and use the existing policy checks to verify them.
 
 Grant minimum workflow permissions at the narrowest practical scope. Keep ordinary PR validation read-only and credential-free; isolate publishing, attestations, and Pages permissions to the jobs that need them. Do not expose secrets to untrusted PR code or weaken checks to make a build pass. Repository maintenance does not itself authorize workflow, security-setting, or deployment changes.
 
-Workflow YAML uses two-space indentation; step names may use tasteful pirate-themed wording and emoji. Preserve Trivy scanning, Renovate rather than a competing Dependabot configuration, existing OpenSSF/best-practice metadata, and provenance/SBOM generation unless the task explicitly authorizes a justified change.
+All project-owned YAML, including GitHub Actions workflows, uses two-space indentation. Workflow step names should be pirate-themed and include tasteful emoji. Preserve Trivy scanning, Renovate rather than a competing Dependabot configuration, existing OpenSSF/best-practice metadata, and provenance/SBOM generation unless the task explicitly authorizes a justified change.
 
 Preserve publishing policy: PRs validate without PIA credentials; live e2e is separately credentialed. Main/tag publishing builds all supported architectures. Git release tags use `v0.1.0`, while image semver tags omit `v`. Stable releases publish exact, minor, major, and `latest` aliases from one build; major zero omits a `0` alias. Prereleases publish only the exact version and `sha-*`, never movable aliases. Successful `main` builds publish `edge` and `sha-*`. These rules describe authorized publishing, not permission to trigger it.
 
@@ -236,6 +238,6 @@ Behavior changes affecting generation, Gluetun handoff, or forwarding warrant au
 
 ## Handoff and review
 
-Use a descriptive, lightly pirate-themed branch name; do not prefix it with `codex-` unless requested. Commit messages may use the project voice but must explain the change. PR descriptions lead with the concrete problem and resulting behavior, then give relevant validation and limitations.
+Use funny pirate-themed branch names that describe the change; do not prefix them with `codex-` unless explicitly requested. Commit messages may use the project voice but must explain the change. PR descriptions lead with the concrete problem and resulting behavior, then summarize repository-quality improvements concisely and give relevant validation and limitations.
 
 Before handoff, review the complete diff and status, confirm only intended files are staged, check license and generated-file boundaries, and run `git diff --check`. Summarize changed files, checks passed/failed/not run, residual risks, and scope decisions truthfully. Provide the commit SHA and PR URL when created. Leave draft PRs for manual review when requested and clearly distinguish local validation from CI, rendered checks, and live credentialed coverage.
