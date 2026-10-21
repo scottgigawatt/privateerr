@@ -72,14 +72,14 @@ Build it directly with:
 make build-buccaneerr
 ```
 
+> [!WARNING]
+> The end-to-end voyage uses real PIA credentials from `.env` and deliberately interrupts the active VPN endpoint. Use a disposable checkout and preserve any needed configuration before starting. Do not commit live credentials, generated VPN configuration, or logs.
+
 Run the full end-to-end voyage with:
 
 ```sh
 make test-e2e
 ```
-
-> [!WARNING]
-> The end-to-end voyage uses real PIA credentials from `.env`. Do not commit live credentials, generated VPN configuration, or logs.
 
 ## Follow the end-to-end voyage 🧭
 

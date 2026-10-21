@@ -83,15 +83,15 @@ PIA_PREFERRED_REGION=ca
 
 `PIA_PREFERRED_REGION` defaults to `ca` in `example.env`. Choose another PIA region ID to use that region instead. `PIA_AUTOCONNECT=true` takes precedence and ignores the preferred region.
 
-Recovery-enabled startup reuses a valid saved pair, so changing the environment and recreating containers alone does not immediately replace a healthy connection. To apply an intentional region or forwarding-selection change, stop the example services, generate a fresh pair, then recreate the stack:
+Recovery-enabled startup reuses a valid saved pair, so changing the environment and recreating containers alone does not immediately replace a healthy connection. To apply an intentional region or forwarding-selection change, stop the application services, generate a fresh pair, then recreate them. This interrupts application traffic and replaces the saved VPN files; preserve any configuration you need before proceeding. Run each command only after the previous command succeeds:
 
 ```sh
 docker compose stop privateerr gluetun qbittorrent
 make run-privateerr
-make up
+docker compose up --detach --force-recreate privateerr gluetun qbittorrent
 ```
 
-The one-shot command disables recovery and keepalive only for that run. Stopping the existing supervisor prevents two writers from replacing the same files. `make up` also starts the example's Buccaneerr fault-injection test; for a lasting application deployment, use `docker compose up --detach --force-recreate privateerr gluetun qbittorrent` instead. A plain restart does not reload environment changes.
+The one-shot command disables recovery and keepalive only for that run. Stopping the existing supervisor prevents two writers from replacing the same files. The recreation command starts the three application services; use `make up` only when you intend to include Buccaneerr's deliberate fault-injection test. A plain restart does not reload environment changes.
 
 Recovery tries another advertised endpoint in the selected region. A pinned region never falls back to another region. Automatic selection prefers other endpoints in the current region, then other eligible regions in the server catalog; recovery does not rerun a full latency benchmark. With `PIA_PF=true`, only regions advertising port forwarding are eligible. If no unused endpoint remains, Privateerr attempts fresh registration against the current permitted endpoint. Dedicated IPs retain their dedicated endpoint through upstream setup.
 
@@ -214,7 +214,13 @@ The supplied VPN services carry labels disabling unattended Watchtower updates. 
 
 ## Disable recovery
 
-Set `PRIVATEERR_AUTO_RECOVER=false` in `.env` and recreate both containers with `make up`. Gluetun resumes its configured health-restart policy. Privateerr returns to ordinary startup behavior and generates a fresh configuration pair.
+Set `PRIVATEERR_AUTO_RECOVER=false` in `.env`. Recreating the application services interrupts traffic and causes Privateerr to replace the saved configuration pair; preserve any configuration you need before proceeding:
+
+```sh
+docker compose up --detach --force-recreate privateerr gluetun qbittorrent
+```
+
+Gluetun resumes its configured health-restart policy. Privateerr returns to ordinary startup behavior and generates a fresh configuration pair. The command leaves Buccaneerr's deliberate fault-injection test out of the application startup.
 
 ## Compare with the discussion's watchdog setup
 
