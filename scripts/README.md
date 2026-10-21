@@ -6,14 +6,14 @@ These documented AWK programs and host helpers support the Privateerr Compose pr
 
 | Hold       | Script                                                                                                                               | Purpose                                                            |
 | ---------- | ------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------ |
-| 🧮 AWK     | [`awk/collect-dockerfile-base-images.awk`](https://github.com/scottgigawatt/privateerr/blob/main/scripts/awk/collect-dockerfile-base-images.awk) | Resolve Dockerfile build arguments into base image references      |
-| 🧮 AWK     | [`awk/format-compose-status.awk`](https://github.com/scottgigawatt/privateerr/blob/main/scripts/awk/format-compose-status.awk)       | Align Compose status rows and stack distinct published ports       |
-| 🧮 AWK     | [`awk/order-environment.awk`](https://github.com/scottgigawatt/privateerr/blob/main/scripts/awk/order-environment.awk)               | Order resolved values like the checked-in environment file         |
-| 🧮 AWK     | [`awk/strip-comments.awk`](https://github.com/scottgigawatt/privateerr/blob/main/scripts/awk/strip-comments.awk)                     | Remove comments and blank lines from raw configuration output      |
-| 🐳 Compose | [`compose/backup.sh`](https://github.com/scottgigawatt/privateerr/blob/main/scripts/compose/backup.sh)                               | Archive Privateerr config without replacing an existing backup     |
-| 🐳 Compose | [`compose/check-pia-credentials.sh`](https://github.com/scottgigawatt/privateerr/blob/main/scripts/compose/check-pia-credentials.sh) | Report missing or example PIA credentials before Privateerr starts |
-| 🐳 Compose | [`compose/nuke.sh`](https://github.com/scottgigawatt/privateerr/blob/main/scripts/compose/nuke.sh)                               | Remove resources owned by one explicit Compose project             |
-| 🐳 Compose | [`compose/ps.sh`](https://github.com/scottgigawatt/privateerr/blob/main/scripts/compose/ps.sh)                                       | Print a compact status table for the Privateerr Compose project    |
+| 🧮 AWK     | [`awk/collect-dockerfile-base-images.awk`](awk/collect-dockerfile-base-images.awk) | Resolve Dockerfile build arguments into base image references      |
+| 🧮 AWK     | [`awk/format-compose-status.awk`](awk/format-compose-status.awk)       | Align Compose status rows and stack distinct published ports       |
+| 🧮 AWK     | [`awk/order-environment.awk`](awk/order-environment.awk)               | Order resolved values like the checked-in environment file         |
+| 🧮 AWK     | [`awk/strip-comments.awk`](awk/strip-comments.awk)                     | Remove comments and blank lines from raw configuration output      |
+| 🐳 Compose | [`compose/backup.sh`](compose/backup.sh)                               | Archive Privateerr config without replacing an existing backup     |
+| 🐳 Compose | [`compose/check-pia-credentials.sh`](compose/check-pia-credentials.sh) | Report missing or example PIA credentials before Privateerr starts |
+| 🐳 Compose | [`compose/nuke.sh`](compose/nuke.sh)                               | Remove resources owned by one explicit Compose project             |
+| 🐳 Compose | [`compose/ps.sh`](compose/ps.sh)                                       | Print a compact status table for the Privateerr Compose project    |
 
 ## AWK programs 🧮
 
@@ -53,12 +53,14 @@ The helper never deletes repository files, `.env`, config, or backups. Make owns
 
 Resolves the Privateerr Compose project and prints only its containers in a terminal-friendly status table. Equivalent IPv4 and IPv6 wildcard bindings are collapsed, and each distinct published port receives an aligned continuation line. `make ps` is the normal entry point.
 
+For status inspection and isolated helper validation:
+
 ```sh
-make backup
-make run-privateerr
 make ps
 make test-make-helpers
 ```
+
+`make backup` archives secret-bearing `config/` data without stopping writers; preserve `.env` and any Docker-managed volumes separately when needed. `make run-privateerr` generates fresh VPN files and requires real PIA credentials; stop any supervisor that owns the destination first. See [generation](../README.md#generate-a-wireguard-configuration-) and [backup and restoration cautions](../docs/advanced-usage.md#maintenance-reference).
 
 > [!IMPORTANT]
 > Keep credentials in the ignored `.env` file. Do not pass them as command-line arguments, paste them into issues, or commit generated WireGuard state.

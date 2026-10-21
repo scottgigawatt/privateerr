@@ -27,6 +27,8 @@ Questionable cargo includes:
 - Changes to upstream PIA scripts inside `docker/pia-manual-connections`.
 - Anything that requires committing secrets, live `wg0.conf`, or real `privateerr.env` data.
 
+<a id="development-checkout"></a>
+
 ## Set up a development checkout 🛠️
 
 ```sh
@@ -35,22 +37,29 @@ cd privateerr
 cp example.env .env
 ```
 
-Edit `.env` with yer own values. Keep that file private.
+Keep `.env` private. Offline checks and documentation builds need no real PIA credentials; configure yer own account and deployment values only before an intentional live test.
 
 The public PIA submodule uses HTTPS and needs no GitHub SSH key. If an earlier clone left that directory empty, follow [Recover a missing PIA submodule](SUPPORT.md#recover-a-missing-pia-submodule) before building.
 
-Useful commands:
+Run repository and documentation checks without starting the VPN stack. Tool-image builds can download dependencies. `make test-precommit` can also download hook environments, modify the checkout, and use the local Docker socket for nested checks; inspect its diff afterward:
 
 ```sh
 make test
 make test-workflows
+make test-precommit
+make spellcheck
+make docs
+```
+
+Image-only build checks also leave the application stack stopped:
+
+```sh
 make build
 make build-buccaneerr
 make build-platforms
-make test-e2e
-make clean-test
-make test-precommit
 ```
+
+A live `make test-e2e` run requires real PIA credentials and deliberately interrupts the test tunnel. Use a disposable checkout and protect any configuration you need first. Afterward, stop that test stack before [restoring its example files](advanced-usage.md#restore-vpn-examples).
 
 `make down` preserves volumes and images. `make clean` never touches Docker, `.env`, generated WireGuard state, config, or backups. Use `make nuke` only for an intentionally destructive reset of this repository's Docker resources and scoped Buildx cache; it still preserves `.env`, `backups/`, and persistent config before restoring the checked-in examples.
 
@@ -84,7 +93,7 @@ Run `make test-types` to check application code and tests with the pinned Pyrigh
 
 ## Build the developer documentation
 
-Run `make docs` after changing guides, Python signatures, or docstrings. Buccaneerr installs the same exact, hash-verified MkDocs toolchain used by the Plundarr developer site and builds Privateerr's generated Python reference in strict mode. Use `make docs-serve` to preview the deep blue theme locally.
+Run `make docs` after changing guides, Python signatures, or docstrings. Buccaneerr installs Privateerr's exact, hash-verified MkDocs toolchain from `requirements-docs.txt` and builds the generated Python reference in strict mode. Use `make docs-serve` to preview the deep blue theme locally.
 
 Follow the [Python documentation conventions](development/privateerr/documentation.md) and [testing guide](development/privateerr/testing.md). The Pages workflow publishes merged documentation from `main`; pull requests build the site without deployment permissions.
 
@@ -107,7 +116,7 @@ Before opening a pull request:
 - Run `make test-workflows` for workflow, release, build-pin, or image-tag changes.
 - Run `make test-precommit`.
 - Let Renovate handle routine dependency bumps when possible.
-- After a live test, restore checked-in VPN examples with `make restore-test-config`; do not use a destructive cleanup command just to prepare a commit.
+- After a live test in a disposable checkout, stop its supervisor before restoring checked-in VPN examples with `make restore-test-config`. Never overwrite an active deployment's VPN files to prepare a commit; keep live deployments separate from contribution checkouts.
 - Confirm no secrets, live VPN configs, or logs slipped into the hold.
 - Explain what changed and why.
 

@@ -41,8 +41,10 @@ Use sentence case and put the useful keyword first. Emoji may follow a heading a
 - Keep commands in `sh` fences without prompt characters or comments.
 - Put terminal transcripts in `console` fences and non-executable output in `text` fences.
 - Use uppercase kebab-case placeholders such as `YOUR-REGION` and explain what replaces them.
-- Use descriptive link text and relative links for repository-owned pages.
+- Use descriptive link text and relative links for repository-owned pages. Verify anchors in both GitHub and Material when a page serves both readers. If generated heading anchors differ, add a unique explicit HTML anchor and link to it; avoid duplicating a generated heading ID.
 - Link to the most specific useful upstream page instead of a generic home page.
+- Give meaningful images descriptive alt text; decorative images may have empty alt text.
+- Before commands that overwrite files, stop services, or delete resources, state prerequisites, scope, backup needs, and the recovery limits. Keep destructive reset commands separate from routine checks and example restoration.
 
 ## Reserve alerts for critical information
 
@@ -73,15 +75,19 @@ When renaming a page, update inbound Markdown links, workflow paths, scripts, an
 
 Before publishing documentation:
 
-1. Check commands, paths, defaults, and examples against the current source.
+1. Check commands, paths, defaults, and examples against the current source and the documented image or release. Distinguish unreleased `main` behavior from stable releases.
 2. Read the page in rendered GitHub Markdown.
-3. Verify diagrams, tables, alerts, anchors, and narrow-screen readability.
+3. Verify diagrams, tables, alerts, anchors, and narrow-screen readability. Check changed relative-link targets and anchors, and test relevant external destinations when access permits; lint and a strict build are not full external-link checks.
 4. Run `make docs` and `make test-precommit`, then inspect `git diff --check`.
 5. Confirm no credentials, generated WireGuard state, private logs, or deployment-specific values entered the change.
 
 ## Keep the developer site consistent
 
-The developer site shares Plundarr's Material layout, navigation, system fonts, API rendering, and GitHub-alert support. Keep those conventions aligned; Privateerr uses midnight navy and sapphire blue with icy blue accents for its distinct palette. Public Python contracts use the [shared docstring conventions](development/privateerr/documentation.md).
+Preserve Privateerr's local Material layout, navigation, system fonts, generated Python reference, and accessible component styling defined by `mkdocs.yml` and `docs/assets/stylesheets/extra.css`. The palette uses midnight navy and sapphire blue with icy blue accents. Public Python contracts follow the [Python documentation conventions](development/privateerr/documentation.md).
+
+Keep the exact, SHA-256-verified toolchain in `requirements-docs.txt`, installed only in Buccaneerr's optional `docs` target. Documentation source mounts stay read-only; generated `site/` output stays ignored. PR builds use read permissions and never deploy; Pages builds and deployment retain separate jobs with deployment permissions limited to the latter.
+
+Repository-facing pages use GitHub-flavored Markdown. Write native blockquote alerts once; the site's configured `pymdownx.quotes` callout processing renders the same source as Material admonitions. Keep Material-only tabs, attributes, and directives out of pages that must also render on GitHub, and review any site-only syntax in the configured renderer.
 
 ## Read the source guidance
 

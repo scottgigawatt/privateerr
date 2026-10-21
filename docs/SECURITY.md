@@ -14,7 +14,6 @@ Privateerr sails by the stable `latest` image and the `edge` image built from `m
 | Forked or modified PIA scripts      | ❌        |
 
 > [!IMPORTANT]
->
 > 🧭 Privateerr uses the official PIA manual connection scripts as a submodule. Security issues in those upstream scripts should also be reported to the PIA project, because Privateerr keeps those scrolls untouched.
 
 ## Report a vulnerability 🦜
@@ -42,7 +41,6 @@ Helpful reports include:
 - Any safe logs with secrets removed.
 
 > [!WARNING]
->
 > 💣 Never include real PIA usernames, passwords, WireGuard private keys, generated `wg0.conf` files, or live `privateerr.env` metadata in a public report.
 
 ## Understand response expectations 🕰️
@@ -75,10 +73,9 @@ The protected build path then:
 
 Rebuilding the same commit keeps the pinned base image, but uncached APK installation can pick up newer packages from Alpine. Renovate updates base and tool pins separately. Pull the resulting `edge` image or publish a stable release to deliver fixes to `latest`.
 
-See the [container scan review](container-scan-review.md) for the September 2026 dependency fixes and the upstream evidence behind remaining package-level alerts.
+See the [dated container scan review](container-scan-review.md) for the reviewed image identities, dependency-fix scope, and upstream evidence behind remaining package-level alerts. Its scan dates and image revisions matter; results for an `edge` image do not describe every stable release.
 
 > [!TIP]
->
 > 🏴‍☠️ Pull `latest` for the newest stable patched hull. Pull `edge` only when ye intentionally want the newest successful `main` build.
 
 Use the [support guide](SUPPORT.md) for non-sensitive setup questions and reproducible bugs.

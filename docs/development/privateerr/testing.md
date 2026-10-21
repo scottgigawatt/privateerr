@@ -7,7 +7,6 @@ Choose the smallest check that proves the changed boundary, then broaden for gen
 ```sh
 make test
 make test-types
-make test-precommit
 make spellcheck
 ```
 
@@ -15,10 +14,23 @@ make spellcheck
 
 Python tests exercise environment validation, endpoint selection, bounded HTTP behavior, candidate publication, recovery timing, uncertain updates, and shutdown. They use controlled clocks and temporary state rather than real credentials. Filesystem regressions cover readable saved files with blocked writes, first-generation failure, failed publication after API acceptance, probe cleanup, safe region summaries, and credential-free error diagnostics. A Linux root-only test drops all capabilities in a disposable child process and verifies that UID 0 cannot write another user's directory; the parent retains cleanup access.
 
-## Check the integration
+## Run repository hooks
+
+Pre-commit can download pinned hook environments, modify the checkout, and access the local Docker socket for nested checks; inspect its diff afterward. Run it separately from the offline, read-only suites:
 
 ```sh
-make test-recovery-api
+make test-precommit
+```
+
+The offline suites above run with networking disabled and read-only source after their tool image is built; that initial image build can still download dependencies.
+
+## Check the integration
+
+The credential-free runtime suite requires a local Unix Docker socket and a built Privateerr test image. Initialize the pinned PIA submodule before building; the [contributor setup](../../CONTRIBUTING.md#development-checkout) uses a recursive clone. Build the image explicitly, then name that same image when running the suite:
+
+```sh
+docker build --tag privateerr:recovery-review --file docker/Dockerfile docker
+PRIVATEERR_TEST_IMAGE=privateerr:recovery-review make test-recovery-api
 ```
 
 This suite runs the real Gluetun API and qBittorrent in isolated, labeled containers with disposable state. It checks authentication, settings updates, application port synchronization, and shutdown without needing PIA credentials.
@@ -33,12 +45,13 @@ The live suite verifies VPN egress, matching saved settings, recovery after a de
 
 ## Validate the complete example
 
+This test needs real PIA credentials and deliberately interrupts the active endpoint. Use a disposable checkout and preserve any configuration you need before starting:
+
 ```sh
 make test-e2e
-make clean-test
 ```
 
-The example starts Privateerr, Gluetun, qBittorrent, and Buccaneerr. Its default test deliberately interrupts the active endpoint to exercise automatic recovery. `make clean-test` stops the example and restores checked-in VPN examples; preserve any configuration you need before running a live test.
+The example starts Privateerr, Gluetun, qBittorrent, and Buccaneerr. After the voyage, [stop the test stack and restore example files sequentially](../../advanced-usage.md#restore-vpn-examples). Do not overwrite an active deployment's VPN files or run `make clean-test` with parallel Make execution.
 
 ## Build the images
 

@@ -65,7 +65,6 @@ That writes:
 | `config/gluetun/wireguard/privateerr.env` | Selected PIA endpoint and Gluetun port forwarding metadata. |
 
 > [!WARNING]
->
 > Keep live `wg0.conf` and `privateerr.env` files private. They can contain VPN connection material and deployment-specific metadata.
 
 ## Pair Privateerr with Gluetun 🧭
@@ -78,7 +77,7 @@ The powerful use case is: run Privateerr and Gluetun together in Docker Compose.
 
 With recovery enabled, Privateerr reuses valid saved files at startup, checks recovery write access, and monitors Gluetun's status and health. After a sustained outage it generates and applies replacement settings, then saves them after confirmation. Containers keep running. The supplied Compose example enables recovery after you configure a shared API key; custom image-only deployments retain recovery-disabled defaults.
 
-Logs identify storage failures and the selected VPN region without adding credentials or keys to the supervisor's summaries. Privateerr remains UID 0 because upstream scripts require it; the supplied Compose drops all Linux capabilities and enables `no-new-privileges`. See the [recovery and diagnostics guide](https://github.com/scottgigawatt/privateerr/blob/main/docs/automatic-recovery.md).
+The startup write probe, categorized storage diagnostics, and VPN region summaries described here were added after v2.1.7; they require an image containing the [diagnostics update](https://github.com/scottgigawatt/privateerr/pull/135). They are not features of the v2.1.7 stable image. Logs from updated images identify storage failures and the selected VPN region without adding credentials or keys to the supervisor's summaries. Privateerr remains UID 0 because upstream scripts require it; the supplied Compose drops all Linux capabilities and enables `no-new-privileges`. See the [recovery and diagnostics guide](https://github.com/scottgigawatt/privateerr/blob/main/docs/automatic-recovery.md).
 
 ## Continue with the full documentation 🔗
 

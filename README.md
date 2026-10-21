@@ -56,6 +56,10 @@ Use Privateerr when you want `wg0.conf` for Gluetun, WireGuard, or another compa
 
 The upstream PIA scripts remain visible as the `docker/pia-manual-connections` submodule. Privateerr adds repeatable container execution, safe defaults, health reporting, and a small metadata handoff without modifying those scripts.
 
+## Match the documentation to your image 🧭
+
+These source documents follow `main`. The startup storage probe, categorized diagnostics, and VPN region summaries added after [v2.1.7](https://github.com/scottgigawatt/privateerr/releases/tag/v2.1.7) are not features of that release. Saved-file reuse and the distinction between restart and regeneration are already included in v2.1.7. Check the [guide's version boundary](docs/automatic-recovery.md#match-the-guide-to-your-image) before comparing an older image's logs with these examples.
+
 ## Understand the data flow 🧭
 
 Privateerr's Python supervisor prepares a matching `wg0.conf` and `privateerr.env` pair before Gluetun starts. With recovery enabled, it reuses valid saved files, checks recovery storage access, and remains running to monitor Gluetun. Gluetun owns the tunnel and the network namespace shared by applications.
@@ -117,7 +121,7 @@ Privateerr writes:
 | 🧭 PIA server metadata | `config/gluetun/wireguard/privateerr.env` | Compose automation that needs the selected endpoint, region, or port-forwarding details |
 
 > [!WARNING]
-> Keep live `wg0.conf` and `privateerr.env` files private. They can contain VPN connection material and deployment-specific metadata. Run `make restore-test-config` before committing after a live voyage.
+> Keep live `wg0.conf` and `privateerr.env` files private. They can contain VPN connection material and deployment-specific metadata. Restore checked-in examples only in a disposable test checkout after stopping its supervisor; restoration overwrites both files and must not target an active deployment. See [safe example restoration](docs/advanced-usage.md#restore-vpn-examples).
 
 ## Select a PIA region 🧭
 
@@ -147,9 +151,9 @@ Use `make ps` to inspect service status and `make logs` to read output. For a la
 
 ## Find commands and image channels ⚙️
 
-Run `make` or `make help` for the command menu. The [maintenance reference](docs/advanced-usage.md#use-maintenance-commands) covers inspection, backups, cleanup, and generated files. [Buccaneerr's testing guide](test/README.md) explains offline checks and live PIA validation.
+Run `make` or `make help` for the command menu. The [maintenance reference](docs/advanced-usage.md#maintenance-reference) covers inspection, backups, cleanup, and generated files. [Buccaneerr's testing guide](test/README.md) explains offline checks and live PIA validation.
 
-Privateerr and Buccaneerr support `linux/amd64`, `linux/arm64`, and `linux/arm/v7`; individual applications can support fewer architectures. Use `latest` for stable releases, `edge` to preview successful `main` builds, or an exact version to select a release. See [registry publishing and image channels](docs/advanced-usage.md#understand-registry-publishing) for tags, registries, and supply-chain controls.
+Privateerr and Buccaneerr support `linux/amd64`, `linux/arm64`, and `linux/arm/v7`; individual applications can support fewer architectures. Use `latest` for stable releases, `edge` to preview successful `main` builds, or an exact version to select a release. See [registry publishing and image channels](docs/advanced-usage.md#registry-publishing) for tags, registries, and supply-chain controls.
 
 ## Read more and get help 📚
 

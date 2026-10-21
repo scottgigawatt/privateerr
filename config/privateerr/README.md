@@ -14,4 +14,4 @@ config/gluetun/wireguard/privateerr.env
 ```
 
 > [!CAUTION]
-> Live `wg0.conf` and `privateerr.env` can contain sensitive connection details. Run `make restore-test-config` before committing.
+> Live `wg0.conf` and `privateerr.env` can contain sensitive connection details. Example restoration overwrites both files. Stop the supervisor first and restore examples only in a disposable test checkout, never in an active deployment. Follow [safe example restoration](../../docs/advanced-usage.md#restore-vpn-examples).
