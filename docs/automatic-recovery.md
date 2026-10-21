@@ -21,33 +21,33 @@ Follow these steps from the repository root:
 
 1. Generate an API key:
 
-   ```sh
-   openssl rand -hex 24
-   ```
+    ```sh
+    openssl rand -hex 24
+    ```
 
 2. Add the following settings to `.env`, replacing `YOUR-GENERATED-KEY` with that value:
 
-   ```dotenv
-   PRIVATEERR_AUTO_RECOVER=true
-   PRIVATEERR_KEEPALIVE=true
-   PRIVATEERR_GLUETUN_API_KEY=YOUR-GENERATED-KEY
-   ```
+    ```dotenv
+    PRIVATEERR_AUTO_RECOVER=true
+    PRIVATEERR_KEEPALIVE=true
+    PRIVATEERR_GLUETUN_API_KEY=YOUR-GENERATED-KEY
+    ```
 
 3. Recreate the application services so both VPN containers receive the new environment. This restarts the selected services and can interrupt application traffic. For a lasting deployment, leave Buccaneerr's deliberate fault injection out of the startup command:
 
-   ```sh
-   docker compose up --detach --force-recreate privateerr gluetun qbittorrent
-   ```
+    ```sh
+    docker compose up --detach --force-recreate privateerr gluetun qbittorrent
+    ```
 
-   Use `make up` only when you intend to run the complete validation example, including Buccaneerr.
+    Use `make up` only when you intend to run the complete validation example, including Buccaneerr.
 
 4. Read Privateerr's logs:
 
-   ```sh
-   docker compose logs privateerr
-   ```
+    ```sh
+    docker compose logs privateerr
+    ```
 
-   Confirm that you see `Automatic recovery enabled`, followed by `Gluetun tunnel is healthy` after startup.
+    Confirm that you see `Automatic recovery enabled`, followed by `Gluetun tunnel is healthy` after startup.
 
 ## Configure a custom deployment
 
