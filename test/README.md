@@ -72,14 +72,14 @@ Build it directly with:
 make build-buccaneerr
 ```
 
+> [!WARNING]
+> The end-to-end voyage uses real PIA credentials from `.env` and deliberately interrupts the active VPN endpoint. Use a disposable checkout and preserve any needed configuration before starting. Do not commit live credentials, generated VPN configuration, or logs.
+
 Run the full end-to-end voyage with:
 
 ```sh
 make test-e2e
 ```
-
-> [!WARNING]
-> The end-to-end voyage uses real PIA credentials from `.env`. Do not commit live credentials, generated VPN configuration, or logs.
 
 ## Follow the end-to-end voyage 🧭
 
@@ -101,13 +101,19 @@ The [examples](examples/) directory stores example files used to reset the repo 
 
 These files contain fake pirate-flavored data. Cleanup targets copy them back into `config/gluetun/wireguard/` so live secrets do not accidentally sneak into Git.
 
-Useful cleanup commands:
+Example restoration overwrites live VPN files. In the disposable test checkout, preserve any needed configuration and stop the test stack first:
 
 ```sh
-make clean-test
-make restore-test-config
-make nuke
+make down
 ```
+
+After shutdown succeeds, restore the examples:
+
+```sh
+make restore-test-config
+```
+
+Run those steps sequentially. Do not use parallel Make execution for `make clean-test`, whose stopping and restoration prerequisites can otherwise race. `make nuke` is a separate destructive reset, not a prerequisite for committing or restoring examples.
 
 `clean-test` uses the volume-preserving `down` path and restores the examples. `nuke` additionally removes project containers, networks, volumes, images, and the `privateerr-local` Buildx cache, but it leaves `.env`, `backups/`, and the persistent config directory intact. Shared or in-use base images are retained.
 

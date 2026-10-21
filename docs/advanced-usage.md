@@ -23,11 +23,7 @@ make test-e2e
 
 Before Privateerr starts, Make asks Docker Compose for the resolved environment and checks only `PIA_USER` and `PIA_PASS`. The preflight never sources `.env` or prints either value, and it rejects the documented examples before a live run.
 
-If the test stack is running and you want to clear it:
-
-```sh
-make clean-test
-```
+After the live test, stop the disposable stack and restore checked-in examples. This overwrites generated VPN files, so preserve any configuration you need first and follow [the sequential shutdown and restoration procedure](#restore-vpn-examples). Never use example restoration on an active deployment.
 
 ## Build multiple architectures 🏗️
 
@@ -56,6 +52,8 @@ Override it for one-off checks:
 ```sh
 make build-platforms BUILDX_PLATFORM_OPTIONS="--platform linux/amd64,linux/arm64"
 ```
+
+<a id="registry-publishing"></a>
 
 ## Understand registry publishing 📦
 
@@ -127,14 +125,15 @@ Pull requests also run CodeQL and container vulnerability checks. Published imag
 
 ## Inspect configuration and environment values 🔎
 
-Use `make print-config` to inspect the Compose source without comments, or `make config` to resolve its variables. `make env` prints all resolved environment values; filter it when investigating one integration:
+Use `make print-config` to inspect the Compose source without comments, or `make config` to resolve its variables. Resolved configuration and environment output can include credentials; inspect it locally and never paste full output into a support report. A broad `PIA` filter also matches the account credentials. To inspect only these named non-secret selection settings:
 
 ```sh
-make env | grep '^PIA'
-make env | grep '^GLUETUN'
+make env | grep -E '^(PIA_AUTOCONNECT|PIA_PREFERRED_REGION|PIA_PF)='
 ```
 
-Resolved configuration and environment output can include credentials. Inspect it locally and redact private values before sharing diagnostics. `example.env` supplies defaults and operator editing prompts; aligned Compose comments explain behavior, accepted values, and units.
+Region preferences are still operational information; review even filtered output before sharing diagnostics. `example.env` supplies defaults and operator editing prompts; aligned Compose comments explain behavior, accepted values, and units.
+
+<a id="maintenance-reference"></a>
 
 ## Use maintenance commands 🛠️
 
@@ -157,7 +156,11 @@ Resolved configuration and environment output can include credentials. Inspect i
 | `make clean-test`       | Stop the live test stack and restore checked-in examples.              |
 | `make nuke`             | Remove project Docker resources/cache and reset transient test state.  |
 
-`make nuke` removes this project's containers, networks, volumes, eligible images, and scoped build cache. It preserves `.env`, `backups/`, and persistent bind-mounted config, then restores the checked-in WireGuard examples. Base-image removal is best effort when another container or project still uses the same image.
+`make backup` archives `config/` without stopping writers. Stop the relevant services first when you need a consistent backup, protect the archive as secret-bearing data, and verify that it contains the files you need. The archive does not include `.env` or Docker-managed volumes; preserve those separately when your recovery plan requires them.
+
+Use `make nuke` only for an intentionally destructive reset of a disposable project. It removes this project's containers, networks, volumes, eligible images, and scoped build cache. It preserves `.env`, `backups/`, and persistent bind-mounted config, then restores the checked-in WireGuard examples. Base-image removal is best effort when another container or project still uses the same image.
+
+<a id="restore-vpn-examples"></a>
 
 ## Restore generated files 📄
 
@@ -168,11 +171,19 @@ Privateerr generates or reuses these files at startup. Automatic recovery replac
 | `config/gluetun/wireguard/wg0.conf`       | Contains WireGuard connection material. Do not commit a live file.     |
 | `config/gluetun/wireguard/privateerr.env` | Contains endpoint and region metadata consumed by the Gluetun wrapper. |
 
-Run this to restore checked-in examples:
+Example restoration overwrites both generated VPN files; it is not a backup restore or a recovery procedure for an active deployment. Use it only in a disposable test checkout after preserving any needed state. From that checkout, stop its services first:
+
+```sh
+make down
+```
+
+Wait for `make down` to finish successfully, then restore the examples:
 
 ```sh
 make restore-test-config
 ```
+
+Run the commands sequentially. `make clean-test` combines stopping and restoration as prerequisites, so do not invoke it with parallel Make execution or assume restoration will wait for shutdown. Verify that only example files remain before committing; leave an operator's live configuration untouched.
 
 ## Inspect example output 📦
 

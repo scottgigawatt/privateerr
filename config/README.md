@@ -11,7 +11,7 @@ config/gluetun/wireguard/privateerr.env
 
 The checked-in files contain example data. `privateerr.env` supplies `PIA_WG_SERVER_NAME`; the Gluetun wrapper exports that value as `SERVER_NAMES` before it starts Gluetun.
 
-Use `make run-privateerr` to generate fresh files, `make test-e2e` to validate the complete voyage, and `make restore-test-config` before committing.
+Use `make run-privateerr` to generate fresh files only after stopping any supervisor that owns this directory. `make test-e2e` validates the complete voyage with live PIA credentials in a disposable checkout. Before committing from that test checkout, stop its services and follow [safe example restoration](../docs/advanced-usage.md#restore-vpn-examples); never replace an active deployment's files with examples.
 
 > [!WARNING]
 > Live WireGuard configuration, port-forwarding metadata, and logs can expose VPN details. Keep them out of Git and redact them from issues or chat.
