@@ -29,7 +29,32 @@ from .data import object_fields
 
 
 class APIUnavailable(Exception):
-    """Represent transport, authorization, and malformed-response failures uniformly."""
+    """Keep retry semantics while carrying a safe failure category and HTTP status.
+
+    Args:
+        reason: Internal category; unrecognized values are never included in diagnostics.
+        status: HTTP response status when the server rejected the request.
+    """
+
+    def __init__(self, reason: str = "request failed", status: int | None = None) -> None:
+        super().__init__("API request failed")
+        self.reason = reason
+        self.status = status
+
+    def diagnostic(self) -> str:
+        """Report only approved categories, never URLs, headers, bodies, or raw exceptions."""
+
+        allowed = {
+            "request failed",
+            "HTTP response rejected",
+            "request timed out",
+            "connection failed",
+            "invalid response",
+            "response too large",
+        }
+        reason = self.reason if self.reason in allowed else "request failed"
+        suffix = f" (HTTP {self.status})" if self.status is not None else ""
+        return reason + suffix
 
 
 class NoRedirects(HTTPRedirectHandler):
@@ -114,21 +139,33 @@ class Client:
         try:
             with deadline(timeout), self.opener.open(request, timeout=5) as response:
                 if response.status != 200:
-                    raise APIUnavailable
+                    raise APIUnavailable("HTTP response rejected", response.status)
 
                 # Bound retained data even if a server sends an unexpectedly large response.
                 payload = response.read(4 * 1024 * 1024 + 1)
 
                 if len(payload) > 4 * 1024 * 1024:
-                    raise APIUnavailable
+                    raise APIUnavailable("response too large")
 
                 return payload
         except HTTPError as error:
             # Release the error response without including its potentially sensitive body.
             error.close()
-            raise APIUnavailable from None
-        except (OSError, URLError, HTTPException, ValueError) as error:
-            raise APIUnavailable from error
+            raise APIUnavailable("HTTP response rejected", error.code) from None
+        except TimeoutError:
+            raise APIUnavailable("request timed out") from None
+        except URLError as error:
+            # urllib wraps connection-stage timeouts, unlike timeouts while reading a response.
+            reason = (
+                "request timed out"
+                if isinstance(error.reason, TimeoutError)
+                else "connection failed"
+            )
+            raise APIUnavailable(reason) from None
+        except OSError:
+            raise APIUnavailable("connection failed") from None
+        except HTTPException, ValueError:
+            raise APIUnavailable("invalid response") from None
 
     def get(self, route: str) -> dict[str, object]:
         """Read a control API object, rejecting responses the supervisor cannot interpret."""
@@ -139,7 +176,7 @@ class Client:
 
             return object_fields(result)
         except (ValueError, UnicodeError) as error:
-            raise APIUnavailable from error
+            raise APIUnavailable("invalid response") from error
 
     def apply(self, settings: Mapping[str, object]) -> None:
         """Submit connection fields; the supervisor separately verifies settings and health.
@@ -181,4 +218,4 @@ class Client:
 
             return result
         except (ValueError, IndexError, UnicodeError) as error:
-            raise APIUnavailable from error
+            raise APIUnavailable("invalid response") from error

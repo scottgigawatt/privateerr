@@ -40,7 +40,8 @@ from types import FrameType
 from .client import APIUnavailable, Client
 from .config import Config, ConfigurationError
 from .data import is_list, is_object, object_fields
-from .settings import InvalidSettings, Store, assignments, contains_settings
+from .diagnostics import FileOperationError, check_recovery_directory, filesystem_operation
+from .settings import InvalidSettings, Store, assignments, contains_settings, region_description
 
 LOG = logging.getLogger("privateerr")
 
@@ -223,9 +224,12 @@ class Generator:
         """
 
         # Generate beside the saved files without overwriting the last usable configuration.
-        with tempfile.TemporaryDirectory(
-            prefix=".privateerr-stage.", dir=self.config.config_path.parent
-        ) as temporary:
+        with (
+            filesystem_operation("generate replacement files", self.config.config_path.parent),
+            tempfile.TemporaryDirectory(
+                prefix=".privateerr-stage.", dir=self.config.config_path.parent
+            ) as temporary,
+        ):
             stage = Path(temporary)
 
             # Redirect adapter output into the private staging directory for this attempt.
@@ -247,12 +251,13 @@ class Generator:
                 )
 
             # A separate process group lets shutdown stop every upstream child, not just Bash.
-            process = subprocess.Popen(
-                ["bash", str(self.config.bin_home / "privateerr-generate.sh")],
-                env=env,
-                stdin=subprocess.DEVNULL,
-                start_new_session=True,
-            )
+            with filesystem_operation("launch generation adapter", self.config.bin_home):
+                process = subprocess.Popen(
+                    ["bash", str(self.config.bin_home / "privateerr-generate.sh")],
+                    env=env,
+                    stdin=subprocess.DEVNULL,
+                    start_new_session=True,
+                )
 
             # A failed or timed-out attempt leaves the previously published pair untouched.
             try:
@@ -301,10 +306,43 @@ class Supervisor:
         self.failed_ips: set[str] = set()
         self.last_message = ""
 
-    def status(self, message: str) -> None:
+    def failure(self, operation: str, error: Exception) -> None:
+        """Log an actionable category without serializing arbitrary exception contents.
+
+        Args:
+            operation: Fixed description of the failed recovery phase.
+            error: Failure to classify; only recognized diagnostic fields are logged.
+        """
+
+        if isinstance(error, FileOperationError):
+            detail = error.diagnostic()
+        elif isinstance(error, APIUnavailable):
+            detail = f"API {error.diagnostic()}; check connectivity and route authorization."
+        elif isinstance(error, GenerationFailed):
+            # Only messages authored here may be surfaced; subprocess output has its own redaction.
+            reasons = {
+                "PIA generation exceeded its deadline.",
+                "PIA generation failed; retained saved configuration.",
+                "Recovery requires Gluetun's custom WireGuard provider.",
+                "No valid region catalog is available.",
+                "No permitted endpoint is available.",
+                "Gluetun returned an invalid endpoint address.",
+            }
+            detail = str(error) if str(error) in reasons else "PIA generation failed."
+        elif isinstance(error, InvalidSettings):
+            detail = "Configuration validation failed; check the matching configuration pair."
+        elif isinstance(error, OSError):
+            detail = "Filesystem operation failed; check configured storage access."
+        else:
+            detail = "Unexpected response or configuration structure; check version compatibility."
+
+        self.status(f"{operation}: {detail}", logging.WARNING)
+
+    def status(self, message: str, level: int = logging.INFO) -> None:
         """Log state changes without repeating the same message on every health probe."""
+
         if message != self.last_message:
-            LOG.info(message)
+            LOG.log(level, message)
             self.last_message = message
 
     def resolve_pending(self) -> Pending:
@@ -341,13 +379,16 @@ class Supervisor:
             # Publish only the pair now verified against the running tunnel.
             self.store.publish(self.store.pending)
             shutil.rmtree(self.store.pending)
-        except APIUnavailable, InvalidSettings, OSError:
-            # Preserve uncertain state so the next probe can retry reconciliation safely.
+        except (APIUnavailable, InvalidSettings, OSError) as error:
+            # A disk failure after API submission must not be mistaken for an unapplied update.
+            self.failure("Cannot reconcile or persist pending settings", error)
             return Pending.UNAVAILABLE
 
         self.failed_ips.clear()
         LOG.info(
-            "Gluetun tunnel recovered; saved the matching WireGuard configuration and PIA metadata."
+            "Gluetun tunnel recovered; saved the matching WireGuard configuration and PIA metadata. "
+            "VPN region: %s.",
+            region_description(self.config.metadata_path),
         )
 
         # Port leasing belongs to Gluetun; a missing lease does not invalidate a healthy tunnel.
@@ -408,6 +449,11 @@ class Supervisor:
         LOG.info("Sustained tunnel failure; generating a fresh PIA registration.")
 
         with self.generator.generate(endpoint) as stage:
+            LOG.info(
+                "Generated candidate VPN region: %s; not yet applied.",
+                region_description(stage / "privateerr.env"),
+            )
+
             # Recheck after generation because the operator or tunnel may have changed state.
             if self.client.get("/v1/vpn/status").get("status") not in ("running", "crashed"):
                 return
@@ -423,8 +469,9 @@ class Supervisor:
 
             try:
                 self.client.apply(self.store.candidate_settings(stage))
-            except APIUnavailable:
-                LOG.info("Settings update was not confirmed; checking Gluetun before retrying.")
+            except APIUnavailable as error:
+                self.failure("Settings update was not confirmed", error)
+                LOG.info("Retained the pending candidate; checking Gluetun before retrying.")
 
     def step(self) -> None:
         """Observe once; API failures never trigger blind regeneration."""
@@ -434,10 +481,8 @@ class Supervisor:
 
         try:
             status = self.client.get("/v1/vpn/status").get("status")
-        except APIUnavailable:
-            self.status(
-                "Cannot access Gluetun control API; check its address, API key and route permissions."
-            )
+        except APIUnavailable as error:
+            self.failure("Cannot access Gluetun control API", error)
             self.failed_since = None
             return
 
@@ -460,9 +505,6 @@ class Supervisor:
 
         # Defer new work if settings cannot be checked; a known unhealthy tunnel may need a retry.
         if self.resolve_pending() is Pending.UNAVAILABLE:
-            self.status(
-                "Cannot reconcile pending settings; check Gluetun API connectivity and permissions."
-            )
             return
 
         # Successful health probes reset the outage history and the growing retry delay.
@@ -496,9 +538,10 @@ class Supervisor:
             KeyError,
             TypeError,
             ValueError,
-        ):
-            LOG.info(
-                "Recovery preparation failed; retained saved configuration and will retry after cooldown."
+        ) as error:
+            self.failure("Recovery preparation failed", error)
+            LOG.warning(
+                "Saved configuration retained; next recovery attempt in %s seconds.", self.delay
             )
 
         # Bound retries after submission or failure; a healthy tunnel resets the retry delay.
@@ -523,14 +566,40 @@ class Supervisor:
 
         if reuse:
             LOG.info(
-                "Reusing validated configuration; Gluetun health will determine whether refresh is needed."
+                "Reusing validated configuration; VPN region: %s. "
+                "Gluetun health will determine whether refresh is needed.",
+                region_description(self.config.metadata_path),
+            )
+
+        # Existing readable files can start Gluetun even if later recovery cannot write replacements.
+        # Keep that compatibility while making degraded recovery visible before the first outage.
+        try:
+            check_recovery_directory(self.config.config_path.parent)
+        except FileOperationError as error:
+            if not reuse:
+                raise
+
+            self.failure("Automatic recovery storage check failed", error)
+            LOG.warning(
+                "Continuing with saved configuration; recovery may fail until storage access is fixed. "
+                "No ownership or permissions were changed."
             )
         else:
+            LOG.info("Recovery filesystem check passed.")
+
+        if not reuse:
             with self.generator.generate() as stage:
                 self.store.publish(stage)
 
+            LOG.info(
+                "Saved generated VPN region: %s; awaiting Gluetun health.",
+                region_description(self.config.metadata_path),
+            )
+
         # Readiness means valid files exist, allowing Gluetun to start without a dependency cycle.
-        self.config.marker.touch()
+        with filesystem_operation("write readiness marker", self.config.marker):
+            self.config.marker.touch()
+
         LOG.info("Configuration is ready for Gluetun.")
 
         # Allow Gluetun time to start before health probes begin.
@@ -566,21 +635,29 @@ def main() -> int:
     # Signal-driven unwinding interrupts sleeps and requests while still running cleanup blocks.
     signal.signal(signal.SIGTERM, shutdown)
     signal.signal(signal.SIGINT, shutdown)
-    logging.basicConfig(level=logging.INFO, format="[privateerr] %(asctime)s %(message)s")
+    logging.basicConfig(
+        level=logging.INFO, format="[privateerr] %(asctime)s %(levelname)s %(message)s"
+    )
 
     try:
         config = Config.from_environment(dict(os.environ))
 
         # Create writable parent directories before any generator or logging operation needs them.
         for path in (config.config_path, config.metadata_path, config.marker, config.log_path):
-            path.parent.mkdir(parents=True, exist_ok=True)
+            with filesystem_operation("prepare output directory", path.parent):
+                path.parent.mkdir(parents=True, exist_ok=True)
 
         # A previous run's marker must not report healthy until this startup validates its files.
-        config.marker.unlink(missing_ok=True)
+        with filesystem_operation("clear readiness marker", config.marker):
+            config.marker.unlink(missing_ok=True)
 
         # Keep supervisor messages in the persistent log as well as Docker's console output.
-        handler = logging.FileHandler(config.log_path)
-        handler.setFormatter(logging.Formatter("[privateerr] %(asctime)s %(message)s"))
+        with filesystem_operation("open persistent log", config.log_path):
+            handler = logging.FileHandler(config.log_path)
+
+        handler.setFormatter(
+            logging.Formatter("[privateerr] %(asctime)s %(levelname)s %(message)s")
+        )
         LOG.addHandler(handler)
 
         # Share one store across generation and recovery so a single process owns publication.
@@ -592,6 +669,9 @@ def main() -> int:
         return 0
     except (ConfigurationError, GenerationFailed, InvalidSettings) as error:
         LOG.error("%s", error)
+        return 1
+    except FileOperationError as error:
+        LOG.error("%s", error.diagnostic())
         return 1
     except OSError:
         # Low-level exceptions may contain private paths or values; report a fixed diagnostic.

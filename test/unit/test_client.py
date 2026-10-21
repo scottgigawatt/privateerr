@@ -14,6 +14,8 @@ import time
 import unittest
 from dataclasses import replace
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from unittest.mock import patch
+from urllib.error import URLError
 
 from privateerr.client import APIUnavailable, Client
 from privateerr.config import Config
@@ -139,3 +141,39 @@ class ClientTests(unittest.TestCase):
 
         # The client must finish well before the server completes its two-second stream.
         self.assertLess(time.monotonic() - started, 1)
+
+    def test_error_diagnostics_exclude_credentials_and_response_contents(self):
+        """Retain HTTP status without reporting URLs, authentication, or arbitrary reasons."""
+
+        with self.assertRaises(APIUnavailable) as caught:
+            self.client.get("/denied")
+
+        self.assertEqual(caught.exception.diagnostic(), "HTTP response rejected (HTTP 401)")
+        self.assertNotIn(self.client.config.api_key, caught.exception.diagnostic())
+        self.assertEqual(APIUnavailable("secret-value").diagnostic(), "request failed")
+
+    def test_timeout_has_a_distinct_safe_diagnostic(self):
+        """A request deadline should be distinguishable from an authentication failure."""
+
+        with self.assertRaises(APIUnavailable) as caught:
+            self.client.request(self.client.config.api_url + "/slow", timeout=0.2)
+
+        self.assertEqual(caught.exception.diagnostic(), "request timed out")
+
+    def test_wrapped_connection_errors_keep_safe_categories(self):
+        """Preserve connection-stage timeouts without logging urllib's private reason."""
+
+        for reason, expected in (
+            (TimeoutError("private-timeout-detail"), "request timed out"),
+            (ConnectionRefusedError("private-connection-detail"), "connection failed"),
+        ):
+            # Inject the transport wrapper used before urllib receives an HTTP response.
+            with (
+                self.subTest(expected=expected),
+                patch.object(self.client.opener, "open", side_effect=URLError(reason)),
+                self.assertRaises(APIUnavailable) as caught,
+            ):
+                self.client.get("/status")
+
+            self.assertEqual(caught.exception.diagnostic(), expected)
+            self.assertNotIn("private-", caught.exception.diagnostic())

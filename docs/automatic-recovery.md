@@ -144,6 +144,32 @@ Privateerr submits the new WireGuard keys, address, endpoint, and PIA server nam
 
 Privateerr reports port-forwarding status separately. Gluetun continues obtaining and renewing the forwarded port; a forwarding-only failure does not cause Privateerr to rotate otherwise healthy tunnels. Existing application port-update hooks remain Gluetun's responsibility.
 
+## Read diagnostics and check storage
+
+Use Dockge's Privateerr service logs, Synology Container Manager's container log view, or the repository command below. Diagnostics appear in container output and, when available, the configured `PRIVATEERR_LOG_PATH` file.
+
+```sh
+docker compose logs --tail 100 privateerr
+```
+
+Supervisor messages include severity and the failed operation. Filesystem errors report the affected container path, error category, process UID/GID, and available path ownership and mode. They distinguish permission denial, a read-only filesystem, missing paths, disk exhaustion, and quota limits. The logged path identifies the location inside the container; find its corresponding host path in your Compose volume mapping. Permission denial alone does not prove an ACL problem.
+
+At startup, Privateerr tests creating a temporary directory, writing and replacing disposable files, and removing them beside the saved pair. It does not modify existing configuration, ownership, modes, or ACLs. A successful check does not guarantee future writes or access to every pre-existing recovery file; actual operations retain their own diagnostics. Cleanup failure or abrupt termination can leave a `.privateerr-check.*` probe directory behind.
+
+If a valid saved pair is reusable but the check fails, Privateerr warns that recovery storage is unavailable and still reports startup readiness so Gluetun can start. If new configuration is required, the storage failure stops startup with a specific error. Docker's Privateerr healthcheck continues to mean valid startup files exist; it does not certify current VPN health or future recovery capability.
+
+For a permission error, give the container's UID 0 write and traverse access to the intended host output directory, accounting for any runtime UID remapping. The `:rw` mount option does not override host permissions. Keep `cap_drop: ALL` and `no-new-privileges`; do not broadly apply `chmod 777` or strip ACLs. For a read-only mount or disk/quota failure, correct that specific condition. Privateerr retries recovery using its existing cooldown and logs the next attempt's delay. Restarting only Privateerr resets that delay but does not repair storage permissions.
+
+API failures report a safe category and HTTP status when available. A `401` or `403` points to API authentication or authorization; a timeout or connection failure needs connectivity investigation. An unconfirmed settings update retains its candidate for readback. If local publication fails after Gluetun accepted the update, the log identifies persistence/reconciliation failure rather than claiming that the API update never happened.
+
+### Understand VPN region messages
+
+Privateerr logs the provider-advertised region from saved metadata when reusing configuration, the candidate region after generation, and the saved region after confirmed recovery. Missing or malformed optional region labels appear as `unknown` and do not invalidate an otherwise usable pair. A reused or generated configuration is not proof of a healthy connection.
+
+Region labels describe the selected VPN destination, not the operator's location, measured latency, or proof of the physical server location. Automatic recovery prefers eligible endpoints without rerunning the full startup latency benchmark. These summaries omit keys, tokens, credentials, endpoint addresses, and full API responses. Region choice and diagnostic paths are still operational information; review logs before sharing them publicly.
+
+The diagnostics update needs no new environment variables, Compose edits, UID changes, or permission migration for a working deployment. Existing write restrictions still need correction if recovery is blocked. It does not enable recovery in deployments that previously omitted `PRIVATEERR_AUTO_RECOVER`.
+
 ## Configure timing
 
 The table lists defaults from `example.env`. When upgrading the repository Compose deployment, add missing variables to your existing `.env`; Compose deliberately supplies no fallback values. Custom deployments that omit these settings use the image defaults, with recovery disabled unless explicitly enabled.

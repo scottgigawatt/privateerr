@@ -58,22 +58,24 @@ The upstream PIA scripts remain visible as the `docker/pia-manual-connections` s
 
 ## Understand the data flow 🧭
 
-Privateerr runs before the VPN client and writes two files. Gluetun—a separate VPN client container—uses `wg0.conf` to establish the tunnel and reads `PIA_WG_SERVER_NAME` from `privateerr.env` when PIA port forwarding is enabled. Other Compose services can then share Gluetun's protected network connection.
+Privateerr's Python supervisor prepares a matching `wg0.conf` and `privateerr.env` pair before Gluetun starts. With recovery enabled, it reuses valid saved files, checks recovery storage access, and remains running to monitor Gluetun. Gluetun owns the tunnel and the network namespace shared by applications.
 
 ```mermaid
 flowchart TB
-  accTitle: Privateerr configuration handoff
-  accDescr: Privateerr runs the unmodified PIA scripts and writes a WireGuard configuration plus server metadata. Gluetun uses those files to start the VPN tunnel, and other Compose services share Gluetun's protected network connection.
+  accTitle: Privateerr startup and automatic recovery
+  accDescr: Inside Privateerr, a Python supervisor checks storage and reuses or generates configuration through unmodified PIA scripts. Gluetun loads the saved files at startup. With recovery enabled, the supervisor monitors Gluetun status and health, generates a candidate after a sustained outage, applies it through the authenticated API, and saves it only after confirmation. Applications retain Gluetun's network namespace.
 
-  PIA["📜 PIA manual-connection scripts"]
-  Privateerr["🏴‍☠️ Privateerr generates<br/>PIA WireGuard configuration"]
-  Files["📦 wg0.conf + privateerr.env"]
-  Gluetun["🛡️ Gluetun starts<br/>the VPN tunnel"]
-  Services["🚢 Compose services use<br/>Gluetun networking"]
+  Supervisor["🏴‍☠️ Privateerr Python supervisor<br/>Check storage; reuse or generate"]
+  PIA["📜 Unmodified PIA scripts<br/>Invoked through shell adapter"]
+  Files["📦 Saved wg0.conf<br/>and privateerr.env"]
+  Gluetun["🛡️ Gluetun owns<br/>the VPN tunnel"]
+  Services["🚢 Applications share<br/>Gluetun networking"]
 
-  PIA -->|"Unmodified scripts"| Privateerr
-  Privateerr -->|"Writes configuration and metadata"| Files
-  Files -->|"VPN configuration and PIA server name"| Gluetun
+  Supervisor <-->|"Generate and validate<br/>candidate configuration"| PIA
+  Supervisor <-->|"Read saved pair;<br/>publish confirmed replacement"| Files
+  Files -->|"Load at startup"| Gluetun
+  Gluetun -.->|"Status and health"| Supervisor
+  Supervisor -.->|"Recovery API:<br/>apply and read back settings"| Gluetun
   Gluetun -->|"Protected network namespace"| Services
 
   classDef upstream fill:#fef3c7,stroke:#d97706,color:#451a03,stroke-width:2px
@@ -82,10 +84,12 @@ flowchart TB
   classDef connected fill:#dcfce7,stroke:#16a34a,color:#14532d,stroke-width:2px
 
   class PIA upstream
-  class Privateerr generation
+  class Supervisor generation
   class Files handoff
   class Gluetun,Services connected
 ```
+
+The dashed arrows are the optional recovery loop. Privateerr updates Gluetun through its API; changing a saved file alone does not refresh a running tunnel. It verifies applied settings and tunnel health before publishing recovered configuration, without restarting the containers. Privateerr's own healthcheck reports startup readiness, not current tunnel health or guaranteed recovery write access. See [diagnostics and filesystem checks](docs/automatic-recovery.md#read-diagnostics-and-check-storage) for warnings and region messages.
 
 ## Generate a WireGuard configuration ⚡
 

@@ -108,6 +108,18 @@ printf 'WG_HOSTNAME=example-one\\nPIA_TOKEN=test-token-redact\\n'  # pragma: all
         self.assertEqual(list((self.root / "wireguard").glob(".privateerr-stage.*")), [])
         self.assertEqual(Path(self.env["PIA_CONF_PATH"]).stat().st_mode & 0o777, 0o600)
 
+    def test_log_open_failure_is_visible_in_container_output(self):
+        """An unusable persistent log must explain itself even before file logging starts."""
+
+        result = self.run_supervisor(PRIVATEERR_LOG_PATH=str(self.root))
+        self.assertNotEqual(result.returncode, 0)
+        output = result.stderr.decode()
+        self.assertIn("ERROR Cannot open persistent log", output)
+        self.assertIn("expected a file", output)
+        self.assertIn("(EISDIR)", output)
+        self.assertNotIn("Traceback", output)
+        self.assertFalse((self.root / "ready").exists())
+
     def test_timeout_stops_generation_and_preserves_configuration(self):
         """Cancel a hung generation without replacing the saved configuration."""
 

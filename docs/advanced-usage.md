@@ -161,7 +161,7 @@ Resolved configuration and environment output can include credentials. Inspect i
 
 ## Restore generated files 📄
 
-Privateerr overwrites these files when it runs:
+Privateerr generates or reuses these files at startup. Automatic recovery replaces them only after confirming the applied settings and tunnel health; explicit one-shot generation creates a fresh pair:
 
 | 📍 File                                   | 🧠 Notes                                                               |
 | ----------------------------------------- | ---------------------------------------------------------------------- |
