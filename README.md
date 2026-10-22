@@ -60,7 +60,12 @@ The upstream PIA scripts remain visible as the `docker/pia-manual-connections` s
 
 For one-shot generation, you need an active PIA subscription and Docker. Replace `YOUR_PIA_USERNAME` and `YOUR_PIA_PASSWORD` with your account credentials.
 
-The command below pulls the published image and writes `wireguard/wg0.conf` and `wireguard/privateerr.env` under your current directory. Keep these files private. Docker creates `wireguard` if it does not exist. Existing directories must allow container UID 0 to traverse the path and write files with all Linux capabilities dropped. Preserve any files you need and stop other writers before running it; generation replaces saved files.
+### Standalone Docker example
+
+This command pulls the published image and writes `wireguard/wg0.conf` and `wireguard/privateerr.env` under your current directory. Docker creates `wireguard` if it does not exist. Existing directories must allow container UID 0 to traverse the path and write files with all Linux capabilities dropped. Preserve any files you need and stop other writers before running it; generation replaces saved files.
+
+> [!WARNING]
+> Keep live `wg0.conf` and `privateerr.env` files private. They contain VPN connection material and deployment-specific metadata.
 
 ```sh
 docker run --rm --pull always \
@@ -80,9 +85,11 @@ docker run --rm --pull always \
   ghcr.io/scottgigawatt/privateerr:latest
 ```
 
-This one-shot container uses recovery-disabled defaults, leaves IPv6 settings unchanged, and exits after generation. Your VPN client owns the tunnel.
+This one-shot container uses recovery-disabled defaults, leaves IPv6 settings unchanged, and exits after generation.
 
-For the repository workflow, use Git, Make, and Docker with Compose and Buildx. Clone the repository with its PIA submodule and create the private environment file:
+### Repository workflow using Make
+
+Use Git, Make, and Docker with Compose and Buildx. Clone the repository with its PIA submodule and create your private environment file:
 
 ```sh
 git clone --recurse-submodules https://github.com/scottgigawatt/privateerr.git
@@ -92,7 +99,9 @@ cp example.env .env
 
 The public PIA submodule needs no GitHub SSH key. If cloning reports a submodule error or building reports a missing `pia-manual-connections/LICENSE`, follow [Recover a missing PIA submodule](docs/SUPPORT.md#recover-a-missing-pia-submodule).
 
-Set `PIA_USER` and `PIA_PASS` in `.env` and keep the file private. Keep `PIA_VPN_PROTOCOL=wireguard` and `PIA_CONNECT=false` for configuration generation. The example selects a port-forwarding-capable region with `PIA_PF=true`. The Make command builds the checked-out source, disables recovery and keepalive for the disposable run, and exits after generation. It replaces saved VPN files, so preserve any files you need and stop a supervisor using that directory before running it:
+Set `PIA_USER` and `PIA_PASS` in `.env` and keep the file private. Keep `PIA_VPN_PROTOCOL=wireguard` and `PIA_CONNECT=false` for configuration generation. The example selects a port-forwarding-capable region with `PIA_PF=true`.
+
+The command below builds the checked-out source, disables recovery and keepalive for the disposable run, and exits after generation. Preserve any files you need and stop a supervisor using that directory first; generation replaces saved files.
 
 ```sh
 make run-privateerr
@@ -100,13 +109,10 @@ make run-privateerr
 
 The repository workflow writes:
 
-| 📦 Output | 📍 Path | 🎯 Used by |
-| --- | --- | --- |
-| 🛡️ WireGuard configuration | `config/gluetun/wireguard/wg0.conf` | Gluetun, WireGuard, or another compatible VPN client |
-| 🧭 PIA server metadata | `config/gluetun/wireguard/privateerr.env` | Compose automation that needs the selected endpoint, region, or port-forwarding details |
+- `config/gluetun/wireguard/wg0.conf` — WireGuard configuration for Gluetun or another compatible VPN client.
+- `config/gluetun/wireguard/privateerr.env` — PIA server metadata used by Gluetun and related automation.
 
-> [!WARNING]
-> Keep live `wg0.conf` and `privateerr.env` files private. They contain VPN connection material and deployment-specific metadata. Use [example restoration](docs/advanced-usage.md#restore-vpn-examples) only in a stopped, disposable test checkout.
+### Repository workflow using Docker Compose
 
 If you do not have Make, complete the same checkout and `.env` setup above, then use Compose directly. It reads your credentials and paths from `.env`. The same overwrite and single-writer precautions apply. Generate from the published image with:
 
@@ -133,6 +139,13 @@ docker compose --env-file .env run --rm --no-deps --build --pull never \
 ## Start Privateerr with Gluetun 🐳
 
 The supplied Compose file runs Privateerr, Gluetun, and qBittorrent together. qBittorrent shares Gluetun's VPN namespace and receives its forwarded port. This application example requires amd64 or arm64; Privateerr itself also supports arm/v7.
+
+The stack also needs two scripts from your checkout:
+
+- [gluetun-entrypoint-wrapper.sh](config/gluetun/scripts/gluetun-entrypoint-wrapper.sh) loads Privateerr's server metadata and prepares recovery access before starting Gluetun.
+- [qbittorrent-port-forwarding.sh](config/gluetun/scripts/qbittorrent-port-forwarding.sh) keeps qBittorrent's listening port and VPN interface synchronized with Gluetun's forwarded-port lease.
+
+The supplied Compose file mounts both scripts automatically. Keep them at the configured paths and readable inside Gluetun; the port-forwarding script must remain executable. If you change configuration locations, keep the script files and `.env` mount settings aligned.
 
 After completing the repository checkout and `.env` setup above:
 
