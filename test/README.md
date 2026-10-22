@@ -137,22 +137,22 @@ make spellcheck
 Build the production image and verify authenticated settings replacement against Gluetun v3.41.3:
 
 ```sh
-docker build -t privateerr:recovery-review docker
-make test-recovery-api
+docker build --tag privateerr:recovery-review --file docker/Dockerfile docker
+PRIVATEERR_TEST_IMAGE=privateerr:recovery-review make test-recovery-api
 ```
 
 The API test runs in Buccaneerr with Docker socket access. It creates uniquely named, labeled containers and a network, verifies their labels before cleanup, and uses temporary generated keys. It checks connection-field replacement, preservation of unrelated settings, invalid-update rejection, and unchanged container and network identity. Without credentials, it does not establish a real PIA tunnel. Ordinary offline suites have no Docker socket access.
 
-To test a real tunnel, put your PIA credentials in `.env` and run:
+The live suite needs real PIA credentials in `.env` and deliberately interrupts its test endpoint. Use a disposable checkout and protect any needed configuration before running it:
 
 ```sh
 make test-recovery-live
 ```
 
-Run `scripts/compose/test.sh smoke` to validate an image-only upgrade using the legacy privileged container options, `PIA_DISABLE_IPV6=yes`, and no `PRIVATEERR_AUTO_RECOVER` variable. The new image must retain recovery-disabled behavior and produce clean IPv6 and permission diagnostics while Buccaneerr verifies real PIA forwarding. `make test-recovery-live` exercises the hardened configuration with all capabilities dropped, Docker-applied IPv6 settings, and `no-new-privileges`, including clean logs after recovery.
+`make test-recovery-live` checks recovery with all capabilities dropped, Docker-applied IPv6 settings, and `no-new-privileges`. The separate `scripts/compose/test.sh smoke` check tests generation without recovery using a disposable privileged fixture and `PIA_DISABLE_IPV6=yes`. That fixture is only a compatibility test; normal Privateerr deployment drops all capabilities. Both live checks verify clean IPv6 and permission diagnostics and real PIA forwarding.
 
 Override `PRIVATEERR_TEST_IMAGE` to select another locally built production image, or `PRIVATEERR_TEST_ENV_FILE` to use another credential file. The live test checks endpoint failure, automatic recovery, saved configuration, port forwarding, dependent-client connectivity, and traffic blocking outside the VPN.
 
-Runtime checks require a local Unix Docker socket. A shared temporary directory lets the test driver and Docker daemon see the same isolated files. The live test reads only the required credentials from Compose's resolved environment, blocks the current endpoint only inside the test Gluetun container, and cleans up its labeled resources on exit. It does not modify existing deployments or the supplied environment file. The complete demo test is `make test-e2e`; it starts all four services and includes the controlled recovery fault by default. Run `make clean-test` afterward. Set `BUCCANEERR_TEST_RECOVERY=false` for a connectivity-only run.
+Runtime checks require a local Unix Docker socket. A shared temporary directory lets the test driver and Docker daemon see the same isolated files. The live test reads only the required credentials from Compose's resolved environment, blocks the current endpoint only inside the test Gluetun container, and cleans up its labeled resources on exit. It does not modify existing deployments or the supplied environment file. The complete demo test is `make test-e2e`; it starts all four services and includes the controlled recovery fault by default. Afterward, [stop the test stack and restore examples sequentially](../docs/advanced-usage.md#restore-vpn-examples). Set `BUCCANEERR_TEST_RECOVERY=false` for a connectivity-only run.
 
 The real API suite also starts qBittorrent and checks both forwarding hooks against its Web API without requiring PIA credentials. The live suite keeps that application running during endpoint failure, verifies its restored port and VPN binding, and connects to the forwarded TCP port from outside the VPN. UDP reachability and torrent throughput are not measured. All test containers have unique ownership labels and disposable configuration.

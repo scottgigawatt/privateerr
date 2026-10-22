@@ -71,7 +71,7 @@ The supervisor measures outage and retry intervals with a **monotonic clock**: a
 
 The supervisor adds severity and next-attempt delay to recovery failure messages. Repeated identical status failures are suppressed. Optional region names and IDs are read from metadata, bounded, and filtered before logging; unknown or malformed labels do not prevent reuse or publication. Candidate logs precede API application and cannot imply a healthy tunnel. Confirmed region logs follow settings readback, health verification, and successful publication.
 
-The root identity, restrictive umask, environment defaults, mount paths, and readiness-marker contract remain unchanged. Permission diagnosis does not automatically change ownership or ACLs. A passed probe is only an early check; actual operations can still fail later.
+Privateerr runs as UID 0 with a restrictive umask. Permission diagnosis does not change ownership or ACLs. A passed probe is only an early check; actual operations can still fail later.
 
 ## Respect recovery limits
 

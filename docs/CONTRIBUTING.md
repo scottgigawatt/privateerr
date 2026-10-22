@@ -39,7 +39,7 @@ cp example.env .env
 
 Keep `.env` private. Offline checks and documentation builds need no real PIA credentials; configure yer own account and deployment values only before an intentional live test.
 
-The public PIA submodule uses HTTPS and needs no GitHub SSH key. If an earlier clone left that directory empty, follow [Recover a missing PIA submodule](SUPPORT.md#recover-a-missing-pia-submodule) before building.
+The public PIA submodule uses HTTPS and needs no GitHub SSH key. If its directory is empty, follow [Recover a missing PIA submodule](SUPPORT.md#recover-a-missing-pia-submodule) before building.
 
 Run repository and documentation checks without starting the VPN stack. Tool-image builds can download dependencies. `make test-precommit` can also download hook environments, modify the checkout, and use the local Docker socket for nested checks; inspect its diff afterward:
 
@@ -62,9 +62,6 @@ make build-platforms
 A live `make test-e2e` run requires real PIA credentials and deliberately interrupts the test tunnel. Use a disposable checkout and protect any configuration you need first. Afterward, stop that test stack before [restoring its example files](advanced-usage.md#restore-vpn-examples).
 
 `make down` preserves volumes and images. `make clean` never touches Docker, `.env`, generated WireGuard state, config, or backups. Use `make nuke` only for an intentionally destructive reset of this repository's Docker resources and scoped Buildx cache; it still preserves `.env`, `backups/`, and persistent config before restoring the checked-in examples.
-
-> [!IMPORTANT]
-> 🧪 `make test-e2e` uses real PIA credentials from `.env`. That voyage should happen locally, not with secrets flung into random public waters.
 
 ## Follow the project style 📜
 

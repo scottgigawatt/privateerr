@@ -36,6 +36,7 @@ ARG PRIVATEERR_BIN_HOME=/privateerr
 ARG EDGE_APK_REPOSITORY=https://dl-cdn.alpinelinux.org/alpine/edge/main
 ARG CURL_APK_MIN_VERSION=8.23.0-r0
 ARG LIBEXPAT_APK_MIN_VERSION=2.9.0-r0
+ARG MUSL_APK_MIN_VERSION=1.2.6-r3
 ARG ZLIB_APK_MIN_VERSION=1.3.2-r1
 ARG IMAGE_CREATED=unknown
 ARG IMAGE_REVISION=unknown
@@ -88,6 +89,7 @@ COPY privateerr-date.sh             /usr/local/bin/date
 # then install Python for the supervisor and the tools used by upstream PIA scripts.
 # Stable Alpine provides fixed jq, nghttp2, zlib, and libexpat.
 # Only curl uses edge until stable includes its 8.23.0 security fixes.
+# The musl floor requires the stable regex-overflow fix even with an older base.
 #
 RUN apk upgrade --no-cache libcrypto3 libssl3 && \
     apk add --no-cache \
@@ -97,6 +99,8 @@ RUN apk upgrade --no-cache libcrypto3 libssl3 && \
         openresolv \
         python3 \
         wireguard-tools \
+        "musl>=${MUSL_APK_MIN_VERSION}" \
+        "musl-utils>=${MUSL_APK_MIN_VERSION}" \
         "zlib>=${ZLIB_APK_MIN_VERSION}" \
         "libexpat>=${LIBEXPAT_APK_MIN_VERSION}" && \
     printf '%s\n' "@curlfix ${EDGE_APK_REPOSITORY}" >> /etc/apk/repositories && \

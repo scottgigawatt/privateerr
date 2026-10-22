@@ -4,22 +4,11 @@ The main README stays focused on the shortest path: generate `wg0.conf`, inspect
 
 ## Run full-stack validation 🧪
 
-Privateerr includes an end-to-end Compose test path:
-
-1. Build the Privateerr image.
-2. Generate `wg0.conf`.
-3. Generate `privateerr.env`.
-4. Start Gluetun after Privateerr reports healthy.
-5. Enable PIA port forwarding through Gluetun when configured.
-6. Start qBittorrent inside Gluetun's network namespace.
-7. Run Buccaneerr in the same namespace to check the application and exercise automatic recovery.
+The end-to-end Compose test starts Privateerr, Gluetun, qBittorrent, and Buccaneerr. It generates live VPN files and deliberately blocks the active endpoint to test recovery. Use real PIA credentials in a disposable checkout, and preserve any needed configuration before running it:
 
 ```sh
 make test-e2e
 ```
-
-> [!IMPORTANT]
-> The e2e test uses **real PIA credentials** from `.env`. Fake credentials should fail, and live generated VPN files should not be committed.
 
 Before Privateerr starts, Make asks Docker Compose for the resolved environment and checks only `PIA_USER` and `PIA_PASS`. The preflight never sources `.env` or prints either value, and it rejects the documented examples before a live run.
 

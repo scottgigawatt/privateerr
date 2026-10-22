@@ -56,9 +56,62 @@ Use Privateerr when you want `wg0.conf` for Gluetun, WireGuard, or another compa
 
 The upstream PIA scripts remain visible as the `docker/pia-manual-connections` submodule. Privateerr adds repeatable container execution, safe defaults, health reporting, and a small metadata handoff without modifying those scripts.
 
-## Match the documentation to your image 🧭
+## Generate a WireGuard configuration ⚡
 
-These source documents follow `main`. The startup storage probe, categorized diagnostics, and VPN region summaries added after [v2.1.7](https://github.com/scottgigawatt/privateerr/releases/tag/v2.1.7) are not features of that release. Saved-file reuse and the distinction between restart and regeneration are already included in v2.1.7. Check the [guide's version boundary](docs/automatic-recovery.md#match-the-guide-to-your-image) before comparing an older image's logs with these examples.
+Before you begin, you need an active PIA subscription plus Git, Docker with Docker Compose, and Make. Clone the repository with its PIA submodule, create the private environment file, and edit the PIA values before running Privateerr:
+
+```sh
+git clone --recurse-submodules https://github.com/scottgigawatt/privateerr.git
+cd privateerr
+cp example.env .env
+```
+
+The public PIA submodule needs no GitHub SSH key. If cloning reports a submodule error or building reports a missing `pia-manual-connections/LICENSE`, follow [Recover a missing PIA submodule](docs/SUPPORT.md#recover-a-missing-pia-submodule).
+
+Set `PIA_USER` and `PIA_PASS` in `.env` and keep the file private. The example selects a port-forwarding-capable region with `PIA_PF=true`. The following command generates configuration without starting a VPN or application. It disables recovery and keepalive only for that run. It replaces the saved VPN files, so preserve any files you need and stop a supervisor using that directory before running it:
+
+```sh
+make run-privateerr
+```
+
+Privateerr writes:
+
+| 📦 Output | 📍 Path | 🎯 Used by |
+| --- | --- | --- |
+| 🛡️ WireGuard configuration | `config/gluetun/wireguard/wg0.conf` | Gluetun, WireGuard, or another compatible VPN client |
+| 🧭 PIA server metadata | `config/gluetun/wireguard/privateerr.env` | Compose automation that needs the selected endpoint, region, or port-forwarding details |
+
+> [!WARNING]
+> Keep live `wg0.conf` and `privateerr.env` files private. They contain VPN connection material and deployment-specific metadata. Use [example restoration](docs/advanced-usage.md#restore-vpn-examples) only in a stopped, disposable test checkout.
+
+## Start Privateerr with Gluetun 🐳
+
+The supplied Compose file runs Privateerr, Gluetun, and qBittorrent together. qBittorrent shares Gluetun's VPN namespace and receives its forwarded port. This application example requires amd64 or arm64; Privateerr itself also supports arm/v7.
+
+After completing the environment setup above:
+
+1. Generate a recovery API key:
+
+    ```sh
+    openssl rand -hex 24
+    ```
+
+2. Set `PRIVATEERR_GLUETUN_API_KEY` in `.env` to that value. Review qBittorrent's user/group IDs, storage paths, and Web UI port in the same file.
+3. Build the checked-out source and start only the application services:
+
+    ```sh
+    docker compose up --detach --build privateerr gluetun qbittorrent
+    ```
+
+Use `make ps` to inspect service status and `make logs` to read output. The qBittorrent Web UI uses the configured host port, `8080` by default; follow the [application access instructions](docs/automatic-recovery.md#try-the-qbittorrent-example) to obtain and change its initial password.
+
+The example enables automatic recovery: Privateerr monitors Gluetun and refreshes stale PIA settings through its authenticated API. Configure the shared key before starting. See [automatic Gluetun recovery](docs/automatic-recovery.md) for timing, diagnostics, and custom deployments.
+
+Buccaneerr is a separate test-only service that deliberately interrupts the VPN to verify recovery. Bare `make up` starts it too; use the explicit three-service command above for normal startup. See [Buccaneerr's testing guide](test/README.md) when you intend to run live validation.
+
+## Select a PIA region 🧭
+
+Automatic selection is enabled by default. To pin a region, set `PIA_AUTOCONNECT=false` and `PIA_PREFERRED_REGION=ca` in `.env`. Replace `ca` with another PIA region ID when needed. See [region selection](docs/automatic-recovery.md#choose-a-region) for regeneration steps and recovery behavior.
 
 ## Understand the data flow 🧭
 
@@ -94,60 +147,6 @@ flowchart TB
 ```
 
 The dashed arrows are the optional recovery loop. Privateerr updates Gluetun through its API; changing a saved file alone does not refresh a running tunnel. It verifies applied settings and tunnel health before publishing recovered configuration, without restarting the containers. Privateerr's own healthcheck reports startup readiness, not current tunnel health or guaranteed recovery write access. See [diagnostics and filesystem checks](docs/automatic-recovery.md#read-diagnostics-and-check-storage) for warnings and region messages.
-
-## Generate a WireGuard configuration ⚡
-
-Before you begin, you need an active PIA subscription plus Git, Docker with Docker Compose, and Make. Clone the repository with its PIA submodule, create the private environment file, and edit the PIA values before running Privateerr:
-
-```sh
-git clone --recurse-submodules https://github.com/scottgigawatt/privateerr.git
-cd privateerr
-cp example.env .env
-```
-
-The public PIA submodule needs no GitHub SSH key. If cloning reports a submodule error or building reports a missing `pia-manual-connections/LICENSE`, follow [Recover a missing PIA submodule](docs/SUPPORT.md#recover-a-missing-pia-submodule).
-
-Set `PIA_USER` and `PIA_PASS` in `.env`. Keep the file private. The example selects a port-forwarding-capable region with `PIA_PF=true`. For configuration generation alone, run the command below; it disables recovery and keepalive for that disposable container without changing `.env`. Stop any running supervisor before generating into its configuration directory.
-
-```sh
-make run-privateerr
-```
-
-Privateerr writes:
-
-| 📦 Output | 📍 Path | 🎯 Used by |
-| --- | --- | --- |
-| 🛡️ WireGuard configuration | `config/gluetun/wireguard/wg0.conf` | Gluetun, WireGuard, or another compatible VPN client |
-| 🧭 PIA server metadata | `config/gluetun/wireguard/privateerr.env` | Compose automation that needs the selected endpoint, region, or port-forwarding details |
-
-> [!WARNING]
-> Keep live `wg0.conf` and `privateerr.env` files private. They can contain VPN connection material and deployment-specific metadata. Restore checked-in examples only in a disposable test checkout after stopping its supervisor; restoration overwrites both files and must not target an active deployment. See [safe example restoration](docs/advanced-usage.md#restore-vpn-examples).
-
-## Select a PIA region 🧭
-
-Automatic selection is enabled by default. To pin a region, set `PIA_AUTOCONNECT=false` and `PIA_PREFERRED_REGION=ca` in `.env`. Replace `ca` with another PIA region ID when needed. See [region selection](docs/automatic-recovery.md#choose-a-region) for regeneration steps and recovery behavior.
-
-## Recover stale VPN connections ⚓
-
-Privateerr can optionally monitor Gluetun and refresh stale PIA WireGuard settings through Gluetun's authenticated control API. It keeps Gluetun's container running and needs no extra service or Docker socket. The supplied environment example enables recovery by default. Set a private shared API key before starting; image-only deployments that omit the setting retain their existing behavior.
-
-See [automatic Gluetun recovery](docs/automatic-recovery.md) for setup, API authentication, timing, and limitations. Gluetun remains responsible for the VPN tunnel and port forwarding. The example runs Privateerr without privileged mode or Linux capabilities; see [container hardening and image-only upgrades](docs/automatic-recovery.md#run-without-privileged-mode).
-
-## Start Privateerr with Gluetun 🐳
-
-The repository includes a single `docker-compose.yml` for Privateerr, Gluetun, qBittorrent, and the Buccaneerr validator. qBittorrent shares Gluetun's VPN namespace and receives its forwarded port. Before starting:
-
-1. Generate a shared recovery API key with `openssl rand -hex 24` and set `PRIVATEERR_GLUETUN_API_KEY` in `.env`.
-2. Review qBittorrent's user/group IDs, storage paths, and Web UI port in `.env`.
-3. Follow the [complete qBittorrent example](docs/automatic-recovery.md#try-the-qbittorrent-example) for application access and validation.
-
-Buccaneerr deliberately interrupts the VPN briefly to verify automatic recovery. Start the full test example with:
-
-```sh
-make up
-```
-
-Use `make ps` to inspect service status and `make logs` to read output. For a lasting application deployment without fault injection, start only the three application services as described in the recovery guide.
 
 ## Find commands and image channels ⚙️
 

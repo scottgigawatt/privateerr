@@ -1,49 +1,13 @@
 # Privateerr ⚓
 
-Privateerr is a tiny Docker wrapper that packages the original, unmodified [pia-foss/manual-connections](https://github.com/pia-foss/manual-connections) scripts from Private Internet Access (PIA).
+Privateerr packages the original, unmodified [PIA manual-connection scripts](https://github.com/pia-foss/manual-connections) in a small Docker image.
 
 > [!IMPORTANT]
-> Privateerr is not a VPN client. It generates a PIA WireGuard configuration file and server metadata. Its Python supervisor can also monitor Gluetun and recover sustained tunnel failures through the authenticated API. Gluetun owns the VPN tunnel.
-
-## Pull an image 📦
-
-```sh
-docker pull scottgigawatt/privateerr:latest
-```
-
-`latest` is the newest stable release. To test the newest successful build from `main` before it becomes a release, opt in to `edge`:
-
-```sh
-docker pull scottgigawatt/privateerr:edge
-```
-
-| 🏷️ Tag        | 🧭 Purpose                                                          |
-| ------------- | ------------------------------------------------------------------- |
-| `latest`      | Newest stable semantic-version release; recommended for most users. |
-| `1.0.0`       | A specific stable release.                                          |
-| `1.0`         | Newest stable release in one minor-version line.                    |
-| `1`           | Newest stable release in one major-version line.                    |
-| `edge`        | Newest successful `main` build; may change before the next release. |
-| `sha-cfa2fb5` | Image built from a specific source commit.                          |
-
-Major version zero omits the broad `0` alias. Prerelease versions keep only their own version and commit tags, never replacing movable stable aliases.
-Release publication accepts only `v`-prefixed annotated SemVer tags whose commits already belong to `main`.
-
-Published tags are multi-architecture manifests for:
-
-| 🧱 Platform    | 🖥️ Typical use                |
-| -------------- | ----------------------------- |
-| `linux/amd64`  | Intel and AMD x86_64 systems. |
-| `linux/arm64`  | Modern ARM64 systems.         |
-| `linux/arm/v7` | 32-bit ARMv7 systems.         |
-
-Docker should pull the right image for your host automatically.
-
-Images are built from pinned Alpine digests and scanned before publishing. Dependency updates land through Renovate PRs first, so a rebuild of the same source commit does not silently drift to a new base image.
+> Privateerr is not a VPN client. It generates a PIA WireGuard configuration and server metadata. Its Python supervisor can monitor Gluetun and recover sustained tunnel failures through the authenticated API. Gluetun owns the VPN tunnel.
 
 ## Generate configuration ⚡
 
-Most users should use the GitHub repository because it includes the Compose file, Makefile, example environment file, and mounted config directories:
+You need an active Private Internet Access (PIA) subscription, Git, Docker with Compose, and Make. The repository supplies the Compose file and configuration directories:
 
 ```sh
 git clone --recurse-submodules https://github.com/scottgigawatt/privateerr.git
@@ -51,38 +15,48 @@ cd privateerr
 cp example.env .env
 ```
 
-Set `PIA_USER`, `PIA_PASS`, and `PIA_PF` in the ignored `.env` file, then generate the files:
+Set `PIA_USER` and `PIA_PASS` in the private `.env` file. The example enables port forwarding with `PIA_PF=true`.
+
+One-shot generation replaces saved VPN files. Preserve any files you need and stop a supervisor using the destination directory before running:
 
 ```sh
 make run-privateerr
 ```
 
-That writes:
+The command builds the checked-out source, disables recovery and keepalive for that disposable run, and exits after writing:
 
-| 📄 File                                   | 🎯 Purpose                                                  |
-| ----------------------------------------- | ----------------------------------------------------------- |
-| `config/gluetun/wireguard/wg0.conf`       | The PIA WireGuard configuration file.                       |
-| `config/gluetun/wireguard/privateerr.env` | Selected PIA endpoint and Gluetun port forwarding metadata. |
+| File | Purpose |
+| --- | --- |
+| `config/gluetun/wireguard/wg0.conf` | WireGuard configuration for Gluetun or another compatible client |
+| `config/gluetun/wireguard/privateerr.env` | Selected PIA endpoint and port-forwarding metadata |
 
 > [!WARNING]
-> Keep live `wg0.conf` and `privateerr.env` files private. They can contain VPN connection material and deployment-specific metadata.
+> Keep `.env` and generated VPN files private. They contain credentials, connection material, or deployment-specific metadata.
 
 ## Pair Privateerr with Gluetun 🧭
 
-Gluetun is a real VPN client. Privateerr generates PIA WireGuard configuration and server metadata for that client.
+The supplied Gluetun wrapper reads `PIA_WG_SERVER_NAME` from the generated metadata and sets `SERVER_NAMES` for PIA port forwarding. With recovery enabled, Privateerr reuses valid saved files, checks recovery write access, and monitors Gluetun. After a sustained outage, it applies replacement settings and saves them only after confirmation. Startup readiness is separate from tunnel health and future recovery write access.
 
-For one-shot generation, `make run-privateerr` disables recovery and keepalive for that disposable run, then exits. Stop a running supervisor before generating into the same directory.
+The Compose example enables recovery after you configure a shared API key. Custom deployments must explicitly set `PRIVATEERR_AUTO_RECOVER=true` to enable it. Privateerr runs as UID 0 because upstream scripts require it; the supplied Compose drops all Linux capabilities and enables `no-new-privileges`.
 
-The powerful use case is: run Privateerr and Gluetun together in Docker Compose. Privateerr writes the WireGuard config plus `PIA_WG_SERVER_NAME`; the included Gluetun wrapper reads that server name, exports it as `SERVER_NAMES`, and Gluetun starts with the right PIA WireGuard server for port forwarding.
+Follow the [normal startup instructions](https://github.com/scottgigawatt/privateerr#start-privateerr-with-gluetun-) to start only Privateerr, Gluetun, and qBittorrent. Buccaneerr is a separate test service that deliberately interrupts the VPN. The [recovery guide](https://github.com/scottgigawatt/privateerr/blob/main/docs/automatic-recovery.md) covers API authentication, storage diagnostics, region selection, and safe regeneration.
 
-With recovery enabled, Privateerr reuses valid saved files at startup, checks recovery write access, and monitors Gluetun's status and health. After a sustained outage it generates and applies replacement settings, then saves them after confirmation. Containers keep running. The supplied Compose example enables recovery after you configure a shared API key; custom image-only deployments retain recovery-disabled defaults.
+## Choose an image 📦
 
-The startup write probe, categorized storage diagnostics, and VPN region summaries described here were added after v2.1.7; they require an image containing the [diagnostics update](https://github.com/scottgigawatt/privateerr/pull/135). They are not features of the v2.1.7 stable image. Logs from updated images identify storage failures and the selected VPN region without adding credentials or keys to the supervisor's summaries. Privateerr remains UID 0 because upstream scripts require it; the supplied Compose drops all Linux capabilities and enables `no-new-privileges`. See the [recovery and diagnostics guide](https://github.com/scottgigawatt/privateerr/blob/main/docs/automatic-recovery.md).
+To pull the stable image directly:
 
-## Continue with the full documentation 🔗
+```sh
+docker pull scottgigawatt/privateerr:latest
+```
 
-| 📚 Resource | 🔎 Link                                                                       |
-| ----------- | ----------------------------------------------------------------------------- |
-| GitHub repository | [scottgigawatt/privateerr](https://github.com/scottgigawatt/privateerr)       |
-| PIA scripts | [pia-foss/manual-connections](https://github.com/pia-foss/manual-connections) |
-| Gluetun     | [qdm12/gluetun](https://github.com/qdm12/gluetun)                             |
+Use `latest` for the newest stable release or `edge` for successful `main` builds. Exact semantic-version and `sha-*` tags select a release or commit build; pin an image digest when you need its exact content. See [image channels and publishing](https://github.com/scottgigawatt/privateerr/blob/main/docs/advanced-usage.md#registry-publishing) for the complete tag policy.
+
+Privateerr supports `linux/amd64`, `linux/arm64`, and `linux/arm/v7`. Docker selects the host architecture automatically. The qBittorrent application example supports amd64 and arm64.
+
+Images use pinned Alpine bases and pass scan gates before publication. APK packages can change during an uncached rebuild; passing a scan gate is not a claim of zero findings. See the [security policy](https://github.com/scottgigawatt/privateerr/blob/main/docs/SECURITY.md) for the current process and dated scan evidence.
+
+## Read more 🔗
+
+- [Privateerr repository and quickstart](https://github.com/scottgigawatt/privateerr)
+- [Official PIA scripts](https://github.com/pia-foss/manual-connections)
+- [Gluetun documentation](https://github.com/qdm12/gluetun-wiki)

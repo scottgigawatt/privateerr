@@ -35,7 +35,7 @@ PRIVATEERR_TEST_IMAGE=privateerr:recovery-review make test-recovery-api
 
 This suite runs the real Gluetun API and qBittorrent in isolated, labeled containers with disposable state. It checks authentication, settings updates, application port synchronization, and shutdown without needing PIA credentials.
 
-For a real account and incoming-port validation, configure the ignored local `.env`, then run:
+The live suite needs real PIA credentials in the ignored local `.env` and deliberately interrupts its test endpoint. Use a disposable checkout and protect any needed configuration before running it:
 
 ```sh
 make test-recovery-live
