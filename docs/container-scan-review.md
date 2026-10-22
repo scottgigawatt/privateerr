@@ -122,3 +122,18 @@ docker scout cves registry://ghcr.io/scottgigawatt/buccaneerr@sha256:IMAGE-DIGES
 ```
 
 For Trivy, replace `IMAGE-DIGEST` with the published runtime manifest digest for the platform being reviewed. For Scout, use the image index digest with `--platform` so it can locate the matching published SPDX attestation. Repeat for every supported platform and retain scanner versions, database date, package versions, and scan date. A clean scan is evidence about that artifact and database snapshot.
+
+## October 22 stable musl fix
+
+Local OCI builds from `dc3b6df54d609b9d58660f20cceea2def403f3c8` require `musl` and `musl-utils` at least `1.2.6-r3`. Inspection of the installed APK databases confirms both packages at `1.2.6-r3` in Privateerr and Buccaneerr on amd64, arm64, and ARMv7. These are local candidate artifacts, not published release images.
+
+| Candidate image | OCI index digest |
+| --- | --- |
+| Privateerr | `sha256:843d74b2b8f333980eef2bfe7a5ec85a302ce8d4fa82b9bc4e0807a19460dd5e` |
+| Buccaneerr | `sha256:740dec2486d3a405083fa3d491da24f01ff6cbab8c161bd1adc34634e32ab7b6` |
+
+Comprehensive Trivy 0.75.0 scans of each runtime manifest, including unfixed findings and every severity without an ignore file, report zero Privateerr findings and nine Buccaneerr findings per platform. Raw Scout reports contain one Privateerr result and 34 Buccaneerr result instances representing 31 advisory IDs per platform. Existing actionlint, x/net, and other dependency reports remain visible; passing CI is not a zero-findings claim.
+
+Scout reports [CVE-2026-107891](https://www.openwall.com/lists/oss-security/2026/10/21/18) against the installed stable musl `1.2.6-r3` with a `<1.2.6-r6` threshold. Alpine's [stable package recipe](https://github.com/alpinelinux/aports/blob/3.24-stable/main/musl/APKBUILD) and [security database](https://secdb.alpinelinux.org/v3.24/main.json) record this fix in `1.2.6-r3`; `r6` is the edge revision. Fresh stable indexes and actual package downloads confirm `r3` for x86_64, aarch64, and ARMv7. Scout also reports the same mismatch on official patched Alpine bases. Preserve the raw report and the stable backport evidence; do not switch the C library to edge or add an exception to hide the discrepancy.
+
+The issue concerns compiling untrusted regex patterns, rather than matching untrusted text against a fixed pattern. Source review found fixed patterns in Privateerr's supported runtime and pinned PIA scripts; it did not establish a remotely controlled pattern path or prove every third-party tool non-exploitable. The package update removes the identified vulnerable stable revision. No scan exception was added, broadened, or extended; the retained x/net exception still expires October 23, 2026.
