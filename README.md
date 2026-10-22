@@ -58,7 +58,7 @@ The upstream PIA scripts remain visible as the `docker/pia-manual-connections` s
 
 ## Generate a WireGuard configuration ⚡
 
-Before you begin, you need an active PIA subscription plus Git, Docker with Docker Compose, and Make. Clone the repository with its PIA submodule, create the private environment file, and edit the PIA values before running Privateerr:
+Before you begin, you need an active PIA subscription plus Git and Docker with Docker Compose. Make is optional for the repository's helper commands. Clone the repository with its PIA submodule, create the private environment file, and edit the PIA values before running Privateerr:
 
 ```sh
 git clone --recurse-submodules https://github.com/scottgigawatt/privateerr.git
@@ -68,11 +68,29 @@ cp example.env .env
 
 The public PIA submodule needs no GitHub SSH key. If cloning reports a submodule error or building reports a missing `pia-manual-connections/LICENSE`, follow [Recover a missing PIA submodule](docs/SUPPORT.md#recover-a-missing-pia-submodule).
 
-Set `PIA_USER` and `PIA_PASS` in `.env` and keep the file private. The example selects a port-forwarding-capable region with `PIA_PF=true`. The following command generates configuration without starting a VPN or application. It disables recovery and keepalive only for that run. It replaces the saved VPN files, so preserve any files you need and stop a supervisor using that directory before running it:
+Set `PIA_USER` and `PIA_PASS` in `.env` and keep the file private. The example selects a port-forwarding-capable region with `PIA_PF=true`. Generate configuration from the published image without starting a VPN or application. This replaces the saved VPN files, so preserve any files you need and stop a supervisor using that directory before running it:
 
 ```sh
-make run-privateerr
+docker compose run --rm --no-deps --pull always \
+  --env PRIVATEERR_AUTO_RECOVER=false \
+  --env PRIVATEERR_KEEPALIVE=false \
+  --env PIA_CONNECT=false \
+  --env VPN_PROTOCOL=wireguard \
+  privateerr
 ```
+
+To build the checked-out source instead, use the initialized PIA submodule from the clone step above:
+
+```sh
+docker compose run --rm --no-deps --build --pull never \
+  --env PRIVATEERR_AUTO_RECOVER=false \
+  --env PRIVATEERR_KEEPALIVE=false \
+  --env PIA_CONNECT=false \
+  --env VPN_PROTOCOL=wireguard \
+  privateerr
+```
+
+Both commands disable recovery and keepalive for that disposable run. The optional `make run-privateerr` shortcut also builds the source and uses the generation settings from `.env`.
 
 Privateerr writes:
 
@@ -83,6 +101,37 @@ Privateerr writes:
 
 > [!WARNING]
 > Keep live `wg0.conf` and `privateerr.env` files private. They contain VPN connection material and deployment-specific metadata. Use [example restoration](docs/advanced-usage.md#restore-vpn-examples) only in a stopped, disposable test checkout.
+
+You can also generate configuration with plain Docker, without Compose or a repository checkout. In a Bash shell, enter your PIA credentials at the prompts so the password does not appear in command history:
+
+```bash
+read -r -p "PIA username: " PIA_USER
+read -r -s -p "PIA password: " PIA_PASS
+printf '\n'
+export PIA_USER PIA_PASS
+```
+
+The command below writes `wireguard/wg0.conf` and `wireguard/privateerr.env` under your current directory. Docker creates `wireguard` if it does not exist. Existing directories must allow container UID 0 to traverse the path and write files with all Linux capabilities dropped. Preserve any files you need and stop other writers before running it; generation replaces saved files.
+
+```sh
+docker run --rm --pull always \
+  --cap-drop ALL \
+  --security-opt no-new-privileges:true \
+  --env PIA_USER \
+  --env PIA_PASS \
+  --env VPN_PROTOCOL=wireguard \
+  --env PIA_CONNECT=false \
+  --env DISABLE_IPV6=no \
+  --env DIP_TOKEN=no \
+  --env AUTOCONNECT=true \
+  --env PIA_PF=true \
+  --env PIA_DNS=true \
+  --env PRIVATEERR_KEEPALIVE=false \
+  --volume "$(pwd)/wireguard:/gluetun/wireguard" \
+  ghcr.io/scottgigawatt/privateerr:latest
+```
+
+This one-shot container uses recovery-disabled defaults, leaves IPv6 settings unchanged, and exits after generation. Your VPN client owns the tunnel. Remove the credentials from your shell afterward with `unset PIA_USER PIA_PASS`.
 
 ## Start Privateerr with Gluetun 🐳
 
@@ -97,17 +146,24 @@ After completing the environment setup above:
     ```
 
 2. Set `PRIVATEERR_GLUETUN_API_KEY` in `.env` to that value. Review qBittorrent's user/group IDs, storage paths, and Web UI port in the same file.
-3. Build the checked-out source and start only the application services:
+3. Pull the published images and start only the application services:
 
     ```sh
-    docker compose up --detach --build privateerr gluetun qbittorrent
+    docker compose pull privateerr gluetun qbittorrent
+    docker compose up --detach --no-build privateerr gluetun qbittorrent
     ```
 
-Use `make ps` to inspect service status and `make logs` to read output. The qBittorrent Web UI uses the configured host port, `8080` by default; follow the [application access instructions](docs/automatic-recovery.md#try-the-qbittorrent-example) to obtain and change its initial password.
+To build the checked-out Privateerr source instead, keep the PIA submodule initialized and use:
+
+```sh
+docker compose up --detach --build privateerr gluetun qbittorrent
+```
+
+Use `docker compose ps` to inspect service status and `docker compose logs` to read output; `make ps` and `make logs` are optional shortcuts. The qBittorrent Web UI uses the configured host port, `8080` by default; follow the [application access instructions](docs/automatic-recovery.md#try-the-qbittorrent-example) to obtain and change its initial password.
 
 The example enables automatic recovery: Privateerr monitors Gluetun and refreshes stale PIA settings through its authenticated API. Configure the shared key before starting. See [automatic Gluetun recovery](docs/automatic-recovery.md) for timing, diagnostics, and custom deployments.
 
-Buccaneerr is a separate test-only service that deliberately interrupts the VPN to verify recovery. Bare `make up` starts it too; use the explicit three-service command above for normal startup. See [Buccaneerr's testing guide](test/README.md) when you intend to run live validation.
+Buccaneerr is a separate test-only service that deliberately interrupts the VPN to verify recovery. Bare `docker compose up` or `make up` starts it too; use an explicit three-service command above for normal startup. See [Buccaneerr's testing guide](test/README.md) when you intend to run live validation.
 
 ## Select a PIA region 🧭
 
