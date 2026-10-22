@@ -58,28 +58,16 @@ The upstream PIA scripts remain visible as the `docker/pia-manual-connections` s
 
 ## Generate a WireGuard configuration ⚡
 
-For one-shot generation, you need an active PIA subscription, Docker, Bash, and an interactive terminal. Paste this single command from Bash or zsh. It prompts for credentials without putting them in shell history and hides password input. Docker administrators can inspect the container environment while it runs.
+For one-shot generation, you need an active PIA subscription and Docker. Replace `YOUR_PIA_USERNAME` and `YOUR_PIA_PASSWORD` with your account credentials.
 
 The command below pulls the published image and writes `wireguard/wg0.conf` and `wireguard/privateerr.env` under your current directory. Keep these files private. Docker creates `wireguard` if it does not exist. Existing directories must allow container UID 0 to traverse the path and write files with all Linux capabilities dropped. Preserve any files you need and stop other writers before running it; generation replaces saved files.
 
-```bash
-bash -c '
-IFS= read -r -p "PIA username: " PIA_USER </dev/tty || exit 1
-IFS= read -r -s -p "PIA password: " PIA_PASS </dev/tty || exit 1
-printf "\n"
-
-if [[ -z "$PIA_USER" || -z "$PIA_PASS" ]]; then
-    printf "%s\n" "Username and password are required." >&2
-    exit 1
-fi
-
-export PIA_USER PIA_PASS
-
+```sh
 docker run --rm --pull always \
   --cap-drop ALL \
   --security-opt no-new-privileges:true \
-  --env PIA_USER \
-  --env PIA_PASS \
+  --env PIA_USER='YOUR_PIA_USERNAME' \
+  --env PIA_PASS='YOUR_PIA_PASSWORD' \
   --env VPN_PROTOCOL=wireguard \
   --env PIA_CONNECT=false \
   --env DISABLE_IPV6=no \
@@ -90,10 +78,9 @@ docker run --rm --pull always \
   --env PRIVATEERR_KEEPALIVE=false \
   --volume "$(pwd)/wireguard:/gluetun/wireguard" \
   ghcr.io/scottgigawatt/privateerr:latest
-'
 ```
 
-This one-shot container uses recovery-disabled defaults, leaves IPv6 settings unchanged, and exits after generation. Your VPN client owns the tunnel. The prompts leave your invoking shell's variables unchanged.
+This one-shot container uses recovery-disabled defaults, leaves IPv6 settings unchanged, and exits after generation. Your VPN client owns the tunnel.
 
 For the repository workflow, use Git, Make, and Docker with Compose and Buildx. Clone the repository with its PIA submodule and create the private environment file:
 
