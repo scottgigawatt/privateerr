@@ -231,7 +231,9 @@ services:
   # Configure the service that validates Gluetun and port forwarding.
   #
   buccaneerr:
-    profiles: [test]                                                       # Opt in to live validation and VPN fault injection
+    # Restrict this service to the test profile so it does not run in production
+    profiles: [test]  # Optionally run Buccaneerr only when the test profile is enabled
+
     # Docker image build and container information
     image: ghcr.io/scottgigawatt/buccaneerr:${BUCCANEERR_TAG}             # Buccaneerr image name and tag
     build:                                                                # Define build context and Dockerfile
