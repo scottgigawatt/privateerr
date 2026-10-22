@@ -22,6 +22,6 @@ Welcome aboard the developer documentation for **Privateerr** and its Python rec
 
 ## Understand documentation boundaries 📚
 
-This site owns code-adjacent developer documentation, repository guides, and the Python reference generated from the checked-out source. Follow the [image/version boundary](automatic-recovery.md#match-the-guide-to-your-image) before applying `main` diagnostics to a stable image. Broader fleet guidance remains in [Plundarrpedia](https://scottgigawatt.github.io/plundarrpedia/); generated stack development belongs in the [Plundarr developer site](https://scottgigawatt.github.io/plundarr/).
+This site covers the checked-out source, repository guides, and generated Python reference. Broader fleet guidance lives in [Plundarrpedia](https://scottgigawatt.github.io/plundarrpedia/); generated stack development belongs in the [Plundarr developer site](https://scottgigawatt.github.io/plundarr/).
 
 The static HTML is generated during validation and deployment. Only Markdown sources, MkDocs configuration, styling, and pinned documentation dependencies belong in Git; the generated `site/` directory does not.

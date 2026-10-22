@@ -2,6 +2,10 @@
 
 Buccaneerr was reviewed on October 20, 2026 with Trivy 0.75.0 in comprehensive mode and Docker Scout 1.26.0. Trivy's database was updated at 01:19:53 UTC on October 21, or 21:19:53 EDT on October 20. Both scanners examined the immutable `edge` image built from main commit `f8b07cb65487645974a56c37e9bece9578704281` on `linux/amd64`, `linux/arm64`, and `linux/arm/v7`. All three platforms have matching advisory sets. Scanner databases change, so these findings apply to the recorded artifacts rather than every future image with the same tag. The production-image snapshot below remains historical evidence from October 19; production and `latest` images were not scanned again during this Buccaneerr review.
 
+## Current Compose exception
+
+The existing CI exception for CVE-2026-78669 applies only to `usr/local/lib/docker/cli-plugins/docker-compose` and expires on November 6, 2026. Its advisory identifier, binary path, risk statement, and all other scan rules remain unchanged. The later expiry gives the official Compose update more time; it does not resolve the HTTP/2 vulnerability or establish safety against untrusted peers. Review or remove the exception before that date and retain unfiltered artifact scans. The dated reviews below preserve the policy and findings recorded at their original review times.
+
 ## Review the October 21 tool update
 
 Source commit `8c2f14c48568fe47a0d142c89e7cf48aba107f36` updates the official Docker CLI donor to 29.9.2 and the official Compose donor to 5.6.1. Their verified image indices are `sha256:2a146f3eb1ee1015c482756624bbff3a94a1b0531cad6fca03be55943373cf95` and `sha256:2aeaeedd4f2d8e2dcb399b2b9723bfaeb6714140cb0657897f5865960f1624ae`, respectively. The [official Docker inventory](https://github.com/docker-library/repo-info/blob/master/repos/docker/remote/29.9.2-cli.md) records its published platforms; the [Compose release](https://github.com/docker/compose/releases/tag/v5.6.1) identifies the Go 1.26.10 security fix. No project-specific Go rebuild or dependency override is introduced.
@@ -122,3 +126,18 @@ docker scout cves registry://ghcr.io/scottgigawatt/buccaneerr@sha256:IMAGE-DIGES
 ```
 
 For Trivy, replace `IMAGE-DIGEST` with the published runtime manifest digest for the platform being reviewed. For Scout, use the image index digest with `--platform` so it can locate the matching published SPDX attestation. Repeat for every supported platform and retain scanner versions, database date, package versions, and scan date. A clean scan is evidence about that artifact and database snapshot.
+
+## October 22 stable musl fix
+
+Local OCI builds from `dc3b6df54d609b9d58660f20cceea2def403f3c8` require `musl` and `musl-utils` at least `1.2.6-r3`. Inspection of the installed APK databases confirms both packages at `1.2.6-r3` in Privateerr and Buccaneerr on amd64, arm64, and ARMv7. These are local candidate artifacts, not published release images.
+
+| Candidate image | OCI index digest |
+| --- | --- |
+| Privateerr | `sha256:843d74b2b8f333980eef2bfe7a5ec85a302ce8d4fa82b9bc4e0807a19460dd5e` |
+| Buccaneerr | `sha256:740dec2486d3a405083fa3d491da24f01ff6cbab8c161bd1adc34634e32ab7b6` |
+
+Comprehensive Trivy 0.75.0 scans of each runtime manifest, including unfixed findings and every severity without an ignore file, report zero Privateerr findings and nine Buccaneerr findings per platform. Raw Scout reports contain one Privateerr result and 34 Buccaneerr result instances representing 31 advisory IDs per platform. Existing actionlint, x/net, and other dependency reports remain visible; passing CI is not a zero-findings claim.
+
+Scout reports [CVE-2026-107891](https://www.openwall.com/lists/oss-security/2026/10/21/18) against the installed stable musl `1.2.6-r3` with a `<1.2.6-r6` threshold. Alpine's [stable package recipe](https://github.com/alpinelinux/aports/blob/3.24-stable/main/musl/APKBUILD) and [security database](https://secdb.alpinelinux.org/v3.24/main.json) record this fix in `1.2.6-r3`; `r6` is the edge revision. Fresh stable indexes and actual package downloads confirm `r3` for x86_64, aarch64, and ARMv7. Scout also reports the same mismatch on official patched Alpine bases. Preserve the raw report and the stable backport evidence; do not switch the C library to edge or add an exception to hide the discrepancy.
+
+The issue concerns compiling untrusted regex patterns, rather than matching untrusted text against a fixed pattern. Source review found fixed patterns in Privateerr's supported runtime and pinned PIA scripts; it did not establish a remotely controlled pattern path or prove every third-party tool non-exploitable. The package update removes the identified vulnerable stable revision. No scan exception was added, broadened, or extended; the retained x/net exception still expires October 23, 2026.

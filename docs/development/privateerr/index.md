@@ -10,7 +10,7 @@ Privateerr's standard-library Python program coordinates PIA configuration gener
 
 | Component | Responsibility | Source |
 | :--- | :--- | :--- |
-| Configuration | Validate environment settings while retaining image-only compatibility defaults | `docker/privateerr/config.py` |
+| Configuration | Validate environment settings and generation/recovery modes | `docker/privateerr/config.py` |
 | HTTP client | Bound authenticated control requests, health probes, and catalog downloads | `docker/privateerr/client.py` |
 | JSON validation | Narrow external values before inspecting their fields | `docker/privateerr/data.py` |
 | Connection settings | Validate matching generated files and finish interrupted publication | `docker/privateerr/settings.py` |
@@ -27,7 +27,7 @@ Keep shell at the upstream and container-startup boundaries. Recovery state, dea
 
 The production image retains UID 0 for upstream scripts while the example drops all Linux capabilities and enables `no-new-privileges`. Read [container hardening](../../automatic-recovery.md#run-without-privileged-mode) before changing generation or namespace configuration.
 
-## Preserve existing deployments
+## Understand startup modes
 
 The supplied Compose example enables recovery. Image-only deployments that omit `PRIVATEERR_AUTO_RECOVER` retain generation and keepalive behavior. Recovery validates its additional settings only when enabled. One-shot generation still exits after producing matching files when keepalive and recovery are disabled.
 

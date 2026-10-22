@@ -48,6 +48,7 @@ ARG ACTIONLINT_APK_MIN_VERSION=1.7.12-r3
 ARG SETUPTOOLS_APK_MIN_VERSION=83.0.0-r0
 ARG CURL_APK_MIN_VERSION=8.23.0-r0
 ARG LIBEXPAT_APK_MIN_VERSION=2.9.0-r0
+ARG MUSL_APK_MIN_VERSION=1.2.6-r3
 ARG ZLIB_APK_MIN_VERSION=1.3.2-r1
 ARG IMAGE_CREATED=unknown
 ARG IMAGE_REVISION=unknown
@@ -81,6 +82,7 @@ LABEL org.opencontainers.image.title="Buccaneerr" \
 # then install validation tools. These stay out of the production image.
 # Use only fixed curl and setuptools from edge until stable includes their security updates.
 # Keep the curl repository tagged so other packages stay on stable Alpine.
+# The musl floor requires the stable regex-overflow fix even with an older base.
 # The zlib floor rejects the older vulnerable stable revision.
 # BusyBox supplies the portable AWK and core utilities used by the tests.
 #
@@ -98,6 +100,8 @@ RUN apk upgrade --no-cache libcrypto3 libssl3 && \
         ruff \
         "actionlint>=${ACTIONLINT_APK_MIN_VERSION}" \
         nodejs \
+        "musl>=${MUSL_APK_MIN_VERSION}" \
+        "musl-utils>=${MUSL_APK_MIN_VERSION}" \
         "zlib>=${ZLIB_APK_MIN_VERSION}" \
         "libexpat>=${LIBEXPAT_APK_MIN_VERSION}" && \
     apk add --no-cache \

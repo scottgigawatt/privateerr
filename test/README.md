@@ -2,6 +2,8 @@
 
 Welcome to the test hold, where Buccaneerr climbs aboard after Privateerr and Gluetun to make sure the whole WireGuard voyage did not spring a leak. ☠️
 
+`make test` runs the credential-free repository suite. Buccaneerr's live service belongs to the `test` Compose profile and stays out of `make up` / `make up-build`; `make test-e2e` explicitly enables it for live validation.
+
 The test tree keeps responsibilities separate:
 
 - `policy/` verifies repository-wide dependency and image-tag rules.
@@ -83,7 +85,7 @@ make test-e2e
 
 ## Follow the end-to-end voyage 🧭
 
-The Compose stack starts Privateerr first. Its Python supervisor checks recovery storage and validates a saved pair or generates these files:
+The end-to-end target enables the `test` profile and starts Privateerr first. Its Python supervisor checks recovery storage and validates a saved pair or generates these files:
 
 - `config/gluetun/wireguard/wg0.conf`
 - `config/gluetun/wireguard/privateerr.env`
@@ -101,21 +103,15 @@ The [examples](examples/) directory stores example files used to reset the repo 
 
 These files contain fake pirate-flavored data. Cleanup targets copy them back into `config/gluetun/wireguard/` so live secrets do not accidentally sneak into Git.
 
-Example restoration overwrites live VPN files. In the disposable test checkout, preserve any needed configuration and stop the test stack first:
+Example restoration overwrites live VPN files. Use it only in the disposable test checkout after preserving any needed configuration:
 
 ```sh
-make down
+make clean-test
 ```
 
-After shutdown succeeds, restore the examples:
+The target stops the selected project, including Buccaneerr's `test` profile, and restores examples only after shutdown succeeds. You can also run `make down`, wait for it to succeed, then run `make restore-test-config`. `make nuke` is a separate destructive reset, not a prerequisite for committing or restoring examples.
 
-```sh
-make restore-test-config
-```
-
-Run those steps sequentially. Do not use parallel Make execution for `make clean-test`, whose stopping and restoration prerequisites can otherwise race. `make nuke` is a separate destructive reset, not a prerequisite for committing or restoring examples.
-
-`clean-test` uses the volume-preserving `down` path and restores the examples. `nuke` additionally removes project containers, networks, volumes, images, and the `privateerr-local` Buildx cache, but it leaves `.env`, `backups/`, and the persistent config directory intact. Shared or in-use base images are retained.
+`clean-test` uses the volume- and image-preserving `down` path before restoring the examples. `nuke` additionally removes project containers, networks, volumes, images, and the `privateerr-local` Buildx cache, but it leaves `.env`, `backups/`, and the persistent config directory intact. Shared or in-use base images are retained.
 
 Run cleanup before committing after any real end-to-end voyage. Future ye will thank past ye for not smuggling secrets into the cargo hold. 🏴‍☠️
 
@@ -137,22 +133,22 @@ make spellcheck
 Build the production image and verify authenticated settings replacement against Gluetun v3.41.3:
 
 ```sh
-docker build -t privateerr:recovery-review docker
-make test-recovery-api
+docker build --tag privateerr:recovery-review --file docker/Dockerfile docker
+PRIVATEERR_TEST_IMAGE=privateerr:recovery-review make test-recovery-api
 ```
 
 The API test runs in Buccaneerr with Docker socket access. It creates uniquely named, labeled containers and a network, verifies their labels before cleanup, and uses temporary generated keys. It checks connection-field replacement, preservation of unrelated settings, invalid-update rejection, and unchanged container and network identity. Without credentials, it does not establish a real PIA tunnel. Ordinary offline suites have no Docker socket access.
 
-To test a real tunnel, put your PIA credentials in `.env` and run:
+The live suite needs real PIA credentials in `.env` and deliberately interrupts its test endpoint. Use a disposable checkout and protect any needed configuration before running it:
 
 ```sh
 make test-recovery-live
 ```
 
-Run `scripts/compose/test.sh smoke` to validate an image-only upgrade using the legacy privileged container options, `PIA_DISABLE_IPV6=yes`, and no `PRIVATEERR_AUTO_RECOVER` variable. The new image must retain recovery-disabled behavior and produce clean IPv6 and permission diagnostics while Buccaneerr verifies real PIA forwarding. `make test-recovery-live` exercises the hardened configuration with all capabilities dropped, Docker-applied IPv6 settings, and `no-new-privileges`, including clean logs after recovery.
+`make test-recovery-live` checks recovery with all capabilities dropped, Docker-applied IPv6 settings, and `no-new-privileges`. The separate `scripts/compose/test.sh smoke` check tests generation without recovery using a disposable privileged fixture and `PIA_DISABLE_IPV6=yes`. That fixture is only a compatibility test; normal Privateerr deployment drops all capabilities. Both live checks verify clean IPv6 and permission diagnostics and real PIA forwarding.
 
 Override `PRIVATEERR_TEST_IMAGE` to select another locally built production image, or `PRIVATEERR_TEST_ENV_FILE` to use another credential file. The live test checks endpoint failure, automatic recovery, saved configuration, port forwarding, dependent-client connectivity, and traffic blocking outside the VPN.
 
-Runtime checks require a local Unix Docker socket. A shared temporary directory lets the test driver and Docker daemon see the same isolated files. The live test reads only the required credentials from Compose's resolved environment, blocks the current endpoint only inside the test Gluetun container, and cleans up its labeled resources on exit. It does not modify existing deployments or the supplied environment file. The complete demo test is `make test-e2e`; it starts all four services and includes the controlled recovery fault by default. Run `make clean-test` afterward. Set `BUCCANEERR_TEST_RECOVERY=false` for a connectivity-only run.
+Runtime checks require a local Unix Docker socket. A shared temporary directory lets the test driver and Docker daemon see the same isolated files. The live test reads only the required credentials from Compose's resolved environment, blocks the current endpoint only inside the test Gluetun container, and cleans up its labeled resources on exit. It does not modify existing deployments or the supplied environment file. The complete demo test is `make test-e2e`; it starts all four services and includes the controlled recovery fault by default. Afterward, [stop the test stack and restore examples sequentially](../docs/advanced-usage.md#restore-vpn-examples). Set `BUCCANEERR_TEST_RECOVERY=false` for a connectivity-only run.
 
 The real API suite also starts qBittorrent and checks both forwarding hooks against its Web API without requiring PIA credentials. The live suite keeps that application running during endpoint failure, verifies its restored port and VPN binding, and connects to the forwarded TCP port from outside the VPN. UDP reachability and torrent throughput are not measured. All test containers have unique ownership labels and disposable configuration.

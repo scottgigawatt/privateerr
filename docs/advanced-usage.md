@@ -4,22 +4,11 @@ The main README stays focused on the shortest path: generate `wg0.conf`, inspect
 
 ## Run full-stack validation 🧪
 
-Privateerr includes an end-to-end Compose test path:
-
-1. Build the Privateerr image.
-2. Generate `wg0.conf`.
-3. Generate `privateerr.env`.
-4. Start Gluetun after Privateerr reports healthy.
-5. Enable PIA port forwarding through Gluetun when configured.
-6. Start qBittorrent inside Gluetun's network namespace.
-7. Run Buccaneerr in the same namespace to check the application and exercise automatic recovery.
+`make test` runs credential-free repository checks without starting the VPN stack. The separate end-to-end target enables the `test` profile and starts Privateerr, Gluetun, qBittorrent, and Buccaneerr. It generates live VPN files and deliberately blocks the active endpoint to test recovery. Use real PIA credentials in a disposable checkout, and preserve any needed configuration before running it:
 
 ```sh
 make test-e2e
 ```
-
-> [!IMPORTANT]
-> The e2e test uses **real PIA credentials** from `.env`. Fake credentials should fail, and live generated VPN files should not be committed.
 
 Before Privateerr starts, Make asks Docker Compose for the resolved environment and checks only `PIA_USER` and `PIA_PASS`. The preflight never sources `.env` or prints either value, and it rejects the documented examples before a live run.
 
@@ -145,13 +134,16 @@ Region preferences are still operational information; review even filtered outpu
 | `make print-env`        | Print uncommented Compose environment values.                          |
 | `make ps`               | Show a compact Compose status table.                                   |
 | `make backup`           | Archive the complete config directory without replacing older cargo.  |
+| `make up` / `make up-pull` | Pull published application images and start the three services detached. |
+| `make up-build`         | Pull Gluetun/qBittorrent, build Privateerr, and start the three services. |
+| `make test-e2e`         | Enable the test profile and run live VPN fault validation in a disposable project. |
 | `make test`             | Run Python tests, strict types, lint, policy, and helper checks.                 |
 | `make test-workflows`   | Test release, Discord, and registry helpers without external writes.   |
 | `make build`            | Build only the Privateerr image.                                       |
 | `make build-buccaneerr` | Build only the Buccaneerr validation image.                            |
 | `make build-platforms`  | Verify both images for every published architecture.                   |
-| `make logs`             | Show test stack logs.                                                  |
-| `make down`             | Stop containers and remove networks while preserving volumes/images.  |
+| `make logs`             | Show Compose project logs.                                                  |
+| `make down`             | Stop application/test-profile containers and project networks; retain volumes/images.  |
 | `make clean`            | Remove only disposable local test and tool artifacts.                  |
 | `make clean-test`       | Stop the live test stack and restore checked-in examples.              |
 | `make nuke`             | Remove project Docker resources/cache and reset transient test state.  |
@@ -171,19 +163,13 @@ Privateerr generates or reuses these files at startup. Automatic recovery replac
 | `config/gluetun/wireguard/wg0.conf`       | Contains WireGuard connection material. Do not commit a live file.     |
 | `config/gluetun/wireguard/privateerr.env` | Contains endpoint and region metadata consumed by the Gluetun wrapper. |
 
-Example restoration overwrites both generated VPN files; it is not a backup restore or a recovery procedure for an active deployment. Use it only in a disposable test checkout after preserving any needed state. From that checkout, stop its services first:
+Example restoration overwrites both generated VPN files; it is not a backup restore or a recovery procedure for an active deployment. Use it only in a disposable test checkout after preserving any needed state:
 
 ```sh
-make down
+make clean-test
 ```
 
-Wait for `make down` to finish successfully, then restore the examples:
-
-```sh
-make restore-test-config
-```
-
-Run the commands sequentially. `make clean-test` combines stopping and restoration as prerequisites, so do not invoke it with parallel Make execution or assume restoration will wait for shutdown. Verify that only example files remain before committing; leave an operator's live configuration untouched.
+The target stops the selected project, including the `test` profile, and restores examples only after shutdown succeeds. For separate control, run `make down` and then `make restore-test-config` after shutdown succeeds. Verify that only example files remain before committing; leave an operator's live configuration untouched.
 
 ## Inspect example output 📦
 

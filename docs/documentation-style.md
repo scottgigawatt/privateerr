@@ -75,7 +75,7 @@ When renaming a page, update inbound Markdown links, workflow paths, scripts, an
 
 Before publishing documentation:
 
-1. Check commands, paths, defaults, and examples against the current source and the documented image or release. Distinguish unreleased `main` behavior from stable releases.
+1. Check commands, paths, defaults, and examples against the current branch. Describe its current behavior without migration narratives, historical feature comparisons, or repeated documentation/image-version matching pointers. Keep necessary current compatibility requirements, support policies, and image-channel reference; earlier behavior belongs in Git history.
 2. Read the page in rendered GitHub Markdown.
 3. Verify diagrams, tables, alerts, anchors, and narrow-screen readability. Check changed relative-link targets and anchors, and test relevant external destinations when access permits; lint and a strict build are not full external-link checks.
 4. Run `make docs` and `make test-precommit`, then inspect `git diff --check`.

@@ -10,7 +10,7 @@ make test-types
 make spellcheck
 ```
 
-`make test` runs Ruff lint and formatting, strict Pyright, ShellCheck, helper and workflow tests, and Python unit tests. `make test-types` is also enforced by pre-commit and pull-request validation. Compose tests check the complete service graph and verify that Web UI port changes keep the host mapping, internal listener, healthcheck, and API clients synchronized.
+`make test` runs Ruff lint and formatting, strict Pyright, ShellCheck, helper and workflow tests, and Python unit tests without starting the VPN stack or requiring PIA credentials. `make test-types` is also enforced by pre-commit and pull-request validation. Compose tests check the complete service graph and verify that Web UI port changes keep the host mapping, internal listener, healthcheck, and API clients synchronized.
 
 Python tests exercise environment validation, endpoint selection, bounded HTTP behavior, candidate publication, recovery timing, uncertain updates, and shutdown. They use controlled clocks and temporary state rather than real credentials. Filesystem regressions cover readable saved files with blocked writes, first-generation failure, failed publication after API acceptance, probe cleanup, safe region summaries, and credential-free error diagnostics. A Linux root-only test drops all capabilities in a disposable child process and verifies that UID 0 cannot write another user's directory; the parent retains cleanup access.
 
@@ -35,7 +35,7 @@ PRIVATEERR_TEST_IMAGE=privateerr:recovery-review make test-recovery-api
 
 This suite runs the real Gluetun API and qBittorrent in isolated, labeled containers with disposable state. It checks authentication, settings updates, application port synchronization, and shutdown without needing PIA credentials.
 
-For a real account and incoming-port validation, configure the ignored local `.env`, then run:
+The live suite needs real PIA credentials in the ignored local `.env` and deliberately interrupts its test endpoint. Use a disposable checkout and protect any needed configuration before running it:
 
 ```sh
 make test-recovery-live
@@ -51,7 +51,7 @@ This test needs real PIA credentials and deliberately interrupts the active endp
 make test-e2e
 ```
 
-The example starts Privateerr, Gluetun, qBittorrent, and Buccaneerr. After the voyage, [stop the test stack and restore example files sequentially](../../advanced-usage.md#restore-vpn-examples). Do not overwrite an active deployment's VPN files or run `make clean-test` with parallel Make execution.
+The target enables Buccaneerr's `test` profile and starts Privateerr, Gluetun, qBittorrent, and Buccaneerr. Normal `make up` and `make up-build` do not start Buccaneerr. After the voyage, [use `make clean-test` in the disposable checkout](../../advanced-usage.md#restore-vpn-examples); it stops the project before restoring examples and stops on shutdown failure. Do not overwrite an active deployment's VPN files.
 
 ## Build the images
 

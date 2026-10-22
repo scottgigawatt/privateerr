@@ -16,6 +16,8 @@ CHECK_PIA=check-pia
 ENSURE_BUILDX_BUILDER=ensure-buildx-builder
 ALL=all
 UP=up
+UP_PULL=up-pull
+UP_BUILD=up-build
 DOWN=down
 PS=ps
 LOGS=logs
@@ -63,6 +65,8 @@ COMMON_TARGETS= \
 	$(ENSURE_BUILDX_BUILDER) \
 	$(ALL) \
 	$(UP) \
+	$(UP_PULL) \
+	$(UP_BUILD) \
 	$(DOWN) \
 	$(PS) \
 	$(LOGS) \
@@ -122,8 +126,13 @@ COMMA=,
 #
 # Docker Compose service names.
 #
-PRIVATEERR_SERVICE ?= privateerr
-BUCCANEERR_SERVICE ?= buccaneerr
+PRIVATEERR_SERVICE  ?= privateerr
+GLUETUN_SERVICE     ?= gluetun
+QBITTORRENT_SERVICE ?= qbittorrent
+BUCCANEERR_SERVICE  ?= buccaneerr
+APPLICATION_SERVICES = $(PRIVATEERR_SERVICE) $(GLUETUN_SERVICE) $(QBITTORRENT_SERVICE)
+DEPENDENCY_SERVICES  = $(GLUETUN_SERVICE) $(QBITTORRENT_SERVICE)
+TEST_SERVICES        = $(APPLICATION_SERVICES) $(BUCCANEERR_SERVICE)
 
 #
 # Config reset paths.
@@ -175,7 +184,8 @@ COMPOSE_ENV_FILE                ?= $(ENV_FILE)
 COMPOSE_DOWN_OPTIONS            ?= --timeout $(COMPOSE_DOWN_TIMEOUT) --remove-orphans
 COMPOSE_NUKE_OPTIONS            ?= --timeout $(COMPOSE_DOWN_TIMEOUT) --volumes --remove-orphans --rmi all
 COMPOSE_BUILD_OPTIONS           ?= --pull --no-cache
-COMPOSE_UP_OPTIONS              ?= --build --force-recreate --pull always --remove-orphans
+COMPOSE_UP_OPTIONS              ?= --detach --no-build --pull never
+COMPOSE_TEST_PROFILE            ?= test
 COMPOSE_LOGS_OPTIONS            ?= --follow
 
 #
@@ -445,23 +455,44 @@ $(ENSURE_BUILDX_BUILDER): $(BUILD_DEPENDS)
 	fi
 
 #
-# $(ALL): Default makefile target. Builds and starts the service stack.
+# $(ALL): Pulls and starts the application stack using published images.
 #
 # Dependencies:
-#   $(UP) - Builds, recreates, and starts every service in the stack.
+#   $(UP) - Pull and start Privateerr, Gluetun, and qBittorrent.
 #
 $(ALL): $(UP)
 
 #
-# $(UP): Builds, (re)creates, and starts every service in the stack.
+# $(UP): Pulls published images and starts only the application services.
 #
 # Dependencies:
-#   $(BUILD_DEPENDS) - Ensure build dependencies are installed.
 #   $(CHECK_PIA) - Reject missing or example PIA credentials.
 #
-$(UP): $(CHECK_PIA) $(ENSURE_BUILDX_BUILDER)
-	$(call announce,Building and starting the full service stack. 🚀)
-	$(PRIVATEERR_COMPOSE) up $(COMPOSE_UP_OPTIONS)
+$(UP): $(CHECK_PIA)
+	$(call announce,Pulling published images and starting the application stack. 🚀)
+	$(PRIVATEERR_COMPOSE) pull $(APPLICATION_SERVICES)
+	$(PRIVATEERR_COMPOSE) up $(COMPOSE_UP_OPTIONS) $(APPLICATION_SERVICES)
+
+#
+# $(UP_PULL): Explicit alias for published-image application startup.
+#
+# Dependencies:
+#   $(UP) - Pull and start only the application services.
+#
+$(UP_PULL): $(UP)
+
+#
+# $(UP_BUILD): Pulls application dependencies and starts a locally built Privateerr.
+#
+# Dependencies:
+#   $(CHECK_PIA) - Reject missing or example PIA credentials.
+#   $(ENSURE_BUILDX_BUILDER) - Select the repository-owned image builder.
+#
+$(UP_BUILD): $(CHECK_PIA) $(ENSURE_BUILDX_BUILDER)
+	$(call announce,Building Privateerr and starting the application stack. ⚒️)
+	$(PRIVATEERR_COMPOSE) pull $(DEPENDENCY_SERVICES)
+	$(PRIVATEERR_COMPOSE) build $(COMPOSE_BUILD_OPTIONS) $(PRIVATEERR_SERVICE)
+	$(PRIVATEERR_COMPOSE) up $(COMPOSE_UP_OPTIONS) $(APPLICATION_SERVICES)
 
 #
 # $(DOWN): Stops containers and removes containers and networks.
@@ -471,8 +502,8 @@ $(UP): $(CHECK_PIA) $(ENSURE_BUILDX_BUILDER)
 #   $(CHECK_ENV) - Ensure .env exists before running Compose commands.
 #
 $(DOWN): $(BUILD_DEPENDS) $(CHECK_ENV)
-	$(call announce,Droppin' anchor for the Privateerr test stack. ⚓)
-	$(PRIVATEERR_COMPOSE) down $(COMPOSE_DOWN_OPTIONS)
+	$(call announce,Droppin' anchor for the Privateerr project. ⚓)
+	$(PRIVATEERR_COMPOSE) --profile "$(COMPOSE_TEST_PROFILE)" down $(COMPOSE_DOWN_OPTIONS)
 
 #
 # $(PS): Displays the current Compose project in a compact status table.
@@ -600,7 +631,7 @@ $(TEST_RECOVERY):
 #
 $(TEST_E2E): $(CHECK_PIA) $(ENSURE_BUILDX_BUILDER)
 	$(call announce,Starting Privateerr$(COMMA) Gluetun$(COMMA) qBittorrent$(COMMA) and Buccaneerr for e2e validation. 🌊)
-	$(PRIVATEERR_COMPOSE) up $(COMPOSE_TEST_OPTIONS)
+	$(PRIVATEERR_COMPOSE) --profile "$(COMPOSE_TEST_PROFILE)" up $(COMPOSE_TEST_OPTIONS) $(TEST_SERVICES)
 
 #
 # $(BACKUP): Archives the complete Privateerr config directory.
@@ -628,9 +659,9 @@ $(RESTORE_TEST_CONFIG):
 #
 # Dependencies:
 #   $(DOWN) - Stop and remove the stack.
-#   $(RESTORE_TEST_CONFIG) - Restore example config files.
 #
-$(CLEAN_TEST): $(DOWN) $(RESTORE_TEST_CONFIG)
+$(CLEAN_TEST): $(DOWN)
+	@$(MAKE) --no-print-directory $(RESTORE_TEST_CONFIG)
 
 #
 # $(CLEAN): Removes only disposable developer artifacts.
@@ -658,6 +689,7 @@ $(NUKE): $(BUILD_DEPENDS) $(CHECK_ENV)
 		--compose-file "$(COMPOSE_FILE)" \
 		--env-file "$(COMPOSE_ENV_FILE)" \
 		--project-name "$(PRIVATEERR_COMPOSE_PROJECT_NAME)" \
+		--profile "$(COMPOSE_TEST_PROFILE)" \
 		--down-timeout "$(COMPOSE_DOWN_TIMEOUT)" \
 		$(foreach dockerfile,$(DOCKERFILES),--dockerfile "$(dockerfile)") \
 		--base-image-awk "$(DOCKERFILE_BASE_IMAGES_AWK)" \
@@ -678,7 +710,9 @@ $(HELP):
 	$(call announce_title,🏴‍☠️ Privateerr command chart)
 	$(call announce_detail,Usage: make <target>)
 	$(call help_heading,🚀 Run the stack)
-	$(call help_line,$(UP),Build and start the complete validation stack.)
+	$(call help_line,$(UP),Pull published images and start the application stack.)
+	$(call help_line,$(UP_PULL),Explicit alias for published-image startup.)
+	$(call help_line,$(UP_BUILD),Build Privateerr and start it with pulled dependencies.)
 	$(call help_line,$(DOWN),Stop the stack while preserving volumes and images.)
 	$(call help_line,$(PS),Show a compact container status table.)
 	$(call help_line,$(LOGS),Follow stack logs.)
@@ -690,7 +724,7 @@ $(HELP):
 	$(call help_heading,🧪 Build and test)
 	$(call help_line,$(BUILD),Build the Privateerr image.)
 	$(call help_line,$(BUILD_PLATFORMS),Check every published image architecture.)
-	$(call help_line,$(TEST),Run policy and automation-helper tests.)
+	$(call help_line,$(TEST),Run credential-free lint$(COMMA) policy$(COMMA) helper$(COMMA) and unit tests.)
 	$(call help_line,$(TEST_RECOVERY),Test recovery and generation inside Buccaneerr.)
 	$(call help_line,$(TEST_TYPES),Check all Python with strict Pyright in Buccaneerr.)
 	$(call help_line,$(LINT),Check Python formatting and Python/shell lint.)
@@ -701,7 +735,7 @@ $(HELP):
 	$(call help_line,$(SPELLCHECK),Check project spelling inside Buccaneerr.)
 	$(call help_line,$(TEST_MAKE_HELPERS),Test reusable Make and Compose helpers.)
 	$(call help_line,$(TEST_WORKFLOWS),Test workflow helpers and shared publishing policies.)
-	$(call help_line,$(TEST_E2E),Validate the application stack and automatic VPN recovery.)
+	$(call help_line,$(TEST_E2E),Run live PIA validation with VPN fault injection by default.)
 	$(call help_heading,📚 Developer documentation)
 	$(call help_line,$(DOCS_INSTALL),Build the locked documentation tools in Buccaneerr.)
 	$(call help_line,$(DOCS),Build the strict developer site and Python reference.)

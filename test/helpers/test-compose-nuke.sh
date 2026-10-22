@@ -104,6 +104,53 @@ test -f "${test_output}/project.env.preserved"
 test -f "${test_output}/config/state.db"
 test -f "${test_output}/backups/config.tar.gz"
 
+# Keep callers that omit a profile limited to the original service inventory.
+if grep -E -- '--profile|image rm test/profiled:local' "${test_output}/nuke.log" >/dev/null; then
+    echo "Compose nuke helper changed cleanup without an explicit profile." >&2
+    exit 1
+fi
+
+#
+# Include the selected profile in every Compose operation with either frontend
+# and with either explicit or environment-derived project selection.
+#
+for compose_mode in plugin standalone; do
+    for project_selection in named environment; do
+        profile_log="${test_output}/profile-${compose_mode}-${project_selection}.log"
+        : >"${profile_log}"
+        set -- \
+            --docker-bin "${stub_path}" \
+            --compose-bin "${stub_path}" \
+            --compose-mode "${compose_mode}" \
+            --compose-file "${test_output}/compose-file.yml" \
+            --env-file "${test_output}/project.env" \
+            --profile test \
+            --down-timeout 45
+        compose_prefix=""
+
+        if [ "${compose_mode}" = "plugin" ]; then
+            compose_prefix="compose "
+        fi
+
+        if [ "${project_selection}" = "named" ]; then
+            set -- "$@" --project-name test-project
+            compose_prefix="${compose_prefix}--project-name test-project "
+        fi
+
+        compose_prefix="${compose_prefix}--env-file ${test_output}/project.env --file ${test_output}/compose-file.yml --profile test"
+        NUKE_STUB_LOG="${profile_log}" NUKE_STUB_REQUIRE_PROFILE=true \
+            sh scripts/compose/nuke.sh "$@" \
+                >"${test_output}/profile-${compose_mode}-${project_selection}.out" 2>&1
+
+        grep -F -x -- "${compose_prefix} config --quiet" "${profile_log}" >/dev/null
+        grep -F -x -- "${compose_prefix} config --images" "${profile_log}" >/dev/null
+        grep -F -x -- "${compose_prefix} down --timeout 45 --volumes --remove-orphans --rmi all" \
+            "${profile_log}" >/dev/null
+        grep -F -x 'image rm test/profiled:local' "${profile_log}" >/dev/null
+    done
+
+done
+
 #
 # Stop after an unexpected Compose failure without removing images or builders.
 #
@@ -115,6 +162,7 @@ if NUKE_STUB_LOG="${test_output}/failure.log" NUKE_STUB_FAIL_COMPOSE=down \
         --compose-file "${test_output}/compose-file.yml" \
         --env-file "${test_output}/project.env" \
         --project-name test-project \
+        --profile test \
         --down-timeout 45 \
         --builder-name test-builder \
         >"${test_output}/failure.out" 2>&1; then
