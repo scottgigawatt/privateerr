@@ -10,7 +10,7 @@
 #
 # Usage: scripts/compose/nuke.sh --docker-bin <path> --compose-mode <mode>
 #        --compose-file <path> --env-file <path> --down-timeout <seconds>
-#        [--compose-bin <path>] [--project-name <name>]
+#        [--compose-bin <path>] [--project-name <name>] [--profile <name>]
 #        [--dockerfile <path> ...] [--base-image-awk <path>]
 #        [--builder-name <name>] [--additional-image <reference> ...]
 #
@@ -24,6 +24,7 @@ compose_mode=""
 compose_file=""
 env_file=""
 project_name=""
+compose_profile=""
 down_timeout=""
 base_image_awk=""
 builder_name=""
@@ -104,6 +105,11 @@ require_command() {
 # Returns: The Docker Compose exit status.
 #
 compose_project() {
+    # Include the selected test service in validation, image discovery, and teardown.
+    if [ -n "${compose_profile}" ]; then
+        set -- --profile "${compose_profile}" "$@"
+    fi
+
     if [ "${compose_mode}" = "plugin" ]; then
         if [ -n "${project_name}" ]; then
             "${docker_bin}" compose \
@@ -214,6 +220,12 @@ while [ "$#" -gt 0 ]; do
         --project-name)
             [ "$#" -ge 2 ] || fail "Missing value for --project-name."
             project_name=$2
+            shift 2
+            ;;
+        --profile)
+            [ "$#" -ge 2 ] || fail "Missing value for --profile."
+            [ -n "$2" ] || fail "--profile must not be empty."
+            compose_profile=$2
             shift 2
             ;;
         --down-timeout)

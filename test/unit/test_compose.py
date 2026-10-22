@@ -22,7 +22,7 @@ ROOT = Path(__file__).resolve().parents[2]
 class ComposeTests(unittest.TestCase):
     """Check the default service graph and shared application settings."""
 
-    def model(self, *, overrides: str = ""):
+    def model(self, *, overrides: str = "", test_profile: bool = False):
         """Resolve example defaults and operator overrides with Buccaneerr's Compose binary."""
 
         # Resolve the public example without reading the operator's private environment file.
@@ -44,6 +44,11 @@ class ComposeTests(unittest.TestCase):
                 "--env-file",
                 str(environment),
             ]
+
+            # Keep test-only services out of the ordinary application model.
+            if test_profile:
+                command.extend(["--profile", "test"])
+
             command.extend(["config", "--format", "json"])
 
             # Inherit only PATH so host environment overrides cannot change the rendered example.
@@ -61,8 +66,12 @@ class ComposeTests(unittest.TestCase):
         """Require a complete example with recovery enabled and Privateerr hardened."""
 
         services = self.model()
-        self.assertEqual(set(services), {"privateerr", "gluetun", "qbittorrent", "buccaneerr"})
-        self.assertNotIn("profiles", services["qbittorrent"])
+        self.assertEqual(set(services), {"privateerr", "gluetun", "qbittorrent"})
+
+        # No application service may activate the fault-injecting validator through a dependency.
+        for service in services.values():
+            self.assertNotIn("profiles", service)
+            self.assertNotIn("buccaneerr", service.get("depends_on", {}))
 
         # Docker sets IPv6 policy while Privateerr runs with no added capabilities.
         privateerr = services["privateerr"]
@@ -77,13 +86,21 @@ class ComposeTests(unittest.TestCase):
             },
         )
 
-        # The default example must include the application and enable its recovery validation.
-        self.assertIn("qbittorrent", services["buccaneerr"]["depends_on"])
-        self.assertEqual(services["buccaneerr"]["environment"]["BUCCANEERR_TEST_RECOVERY"], "true")
+        # Application recovery remains enabled without running the destructive validation service.
         self.assertEqual(services["privateerr"]["environment"]["PRIVATEERR_AUTO_RECOVER"], "true")
         self.assertEqual(services["gluetun"]["environment"]["PRIVATEERR_AUTO_RECOVER"], "true")
         self.assertEqual(services["gluetun"]["environment"]["QBITTORRENT_PORT_SYNC"], "true")
         self.assertEqual(services["gluetun"]["ports"][0]["published"], "8080")
+
+    def test_fault_validation_requires_explicit_test_profile(self):
+        """Expose the complete live test graph only when its profile is selected."""
+
+        services = self.model(test_profile=True)
+        self.assertEqual(set(services), {"privateerr", "gluetun", "qbittorrent", "buccaneerr"})
+        validator = services["buccaneerr"]
+        self.assertEqual(validator["profiles"], ["test"])
+        self.assertIn("qbittorrent", validator["depends_on"])
+        self.assertEqual(validator["environment"]["BUCCANEERR_TEST_RECOVERY"], "true")
 
     def test_environment_owns_defaults_and_operator_overrides(self):
         """Propagate operator settings consistently without Compose fallback defaults."""
@@ -91,7 +108,8 @@ class ComposeTests(unittest.TestCase):
         source = (ROOT / "docker-compose.yml").read_text()
         self.assertIsNone(re.search(r"\$\{[^}]+:-", source))
         services = self.model(
-            overrides="PRIVATEERR_AUTO_RECOVER=false\nQBITTORRENT_WEBUI_PORT=8090\n"
+            overrides="PRIVATEERR_AUTO_RECOVER=false\nQBITTORRENT_WEBUI_PORT=8090\n",
+            test_profile=True,
         )
         self.assertEqual(services["privateerr"]["environment"]["PRIVATEERR_AUTO_RECOVER"], "false")
 

@@ -12,7 +12,7 @@
 
 Privateerr packages the official, unmodified [PIA manual connection scripts](https://github.com/pia-foss/manual-connections) into a small Docker image that generates WireGuard configuration and Gluetun metadata. Privateerr is not a VPN client: Gluetun owns the tunnel and port lease. The optional standard-library Python supervisor renews stale PIA registrations through Gluetun's authenticated API without restarting containers.
 
-The default Compose example includes Privateerr, Gluetun, qBittorrent, and the test-only Buccaneerr service without application profiles. Buccaneerr verifies forwarding, application settings, and recovery through a temporary firewall fault inside the shared VPN namespace. Web UI ports and API endpoints remain driven by environment settings.
+The default Compose example starts Privateerr, Gluetun, and qBittorrent. The test-only Buccaneerr service requires the `test` profile and verifies forwarding, application settings, and recovery through a temporary firewall fault inside the shared VPN namespace. Web UI ports and API endpoints remain driven by environment settings.
 
 | Path | Responsibility |
 | --- | --- |
@@ -109,7 +109,7 @@ Run `make spellcheck` across project-owned files. Correct misspellings; genuine 
 
 ## Containers and deployment constraints
 
-Primary deployment target: Synology DSM Container Manager. Secondary development target: macOS with Docker Desktop. Preserve one main `docker-compose.yml`; avoid runtime designs requiring multiple Compose files or application profiles.
+Primary deployment target: Synology DSM Container Manager. Secondary development target: macOS with Docker Desktop. Preserve one main `docker-compose.yml`; avoid runtime designs requiring multiple Compose files or application profiles. Reserve the `test` profile for optional Buccaneerr validation; application startup must not enable it.
 
 Keep Privateerr deployments unprivileged with all Linux capabilities dropped and `no-new-privileges`. UID 0 remains necessary for the unmodified upstream scripts; do not equate UID 0 with permission to add privileged mode or capabilities. Docker owns initial namespace IPv6 settings; the adapter skips redundant writes while preserving legacy image-only behavior.
 
@@ -150,7 +150,9 @@ User-facing Make output may be lightly pirate-themed while clearly describing th
 | `make help` | Prints the command chart without starting the stack |
 | `make config`, `make env`, `make print-config`, `make print-env` | Print configuration or environment content that can expose secrets; keep output private |
 | `make build`, `make build-buccaneerr`, `make build-platforms` | Build images or check architectures; can fetch dependencies and create Buildx resources |
-| `make up`, `make all`, `make run-privateerr` | Start services or generate real VPN state; require PIA credentials and operational authorization |
+| `make up`, `make up-pull`, `make all` | Pull published images and start only Privateerr, Gluetun, and qBittorrent; require PIA credentials and operational authorization |
+| `make up-build` | Pull Gluetun/qBittorrent, build Privateerr, and start the three services without pulling over the local image |
+| `make run-privateerr` | Generate real VPN state; requires PIA credentials and operational authorization |
 | `make down` | Stops the selected Compose project; preserves volumes and images |
 | `make backup` | Archives the full config directory, potentially including secrets; protect and verify the archive |
 | `make restore-test-config` | Overwrites generated VPN files with checked-in examples |
@@ -158,7 +160,7 @@ User-facing Make output may be lightly pirate-themed while clearly describing th
 | `make clean` | Removes disposable developer artifacts only; must preserve deployment state, examples, containers, volumes, images, and `.env` |
 | `make nuke` | Removes selected project Docker resources, repository-owned Buildx cache, and transient runtime state; restores examples and preserves `.env`, `backups/`, and persistent bind-mounted config |
 
-Destructive targets require an explicitly disposable project, verified ownership boundaries, and authorization. Back up needed data first and understand the recovery path. Never use global Docker prune or delete unrelated resources. The `clean-test` recipe expresses stopping and restoration as prerequisites; do not assume parallel Make execution enforces a safe sequence. Confirm services are stopped before restoring files.
+Destructive targets require an explicitly disposable project, verified ownership boundaries, and authorization. Back up needed data first and understand the recovery path. Never use global Docker prune or delete unrelated resources. The `clean-test` recipe must complete profile-aware teardown before restoring examples, including under parallel Make execution. Never restore files while another writer is active.
 
 ## Documentation standards
 

@@ -2,6 +2,8 @@
 
 Welcome to the test hold, where Buccaneerr climbs aboard after Privateerr and Gluetun to make sure the whole WireGuard voyage did not spring a leak. ☠️
 
+`make test` runs the credential-free repository suite. Buccaneerr's live service belongs to the `test` Compose profile and stays out of `make up` / `make up-build`; `make test-e2e` explicitly enables it for live validation.
+
 The test tree keeps responsibilities separate:
 
 - `policy/` verifies repository-wide dependency and image-tag rules.
@@ -83,7 +85,7 @@ make test-e2e
 
 ## Follow the end-to-end voyage 🧭
 
-The Compose stack starts Privateerr first. Its Python supervisor checks recovery storage and validates a saved pair or generates these files:
+The end-to-end target enables the `test` profile and starts Privateerr first. Its Python supervisor checks recovery storage and validates a saved pair or generates these files:
 
 - `config/gluetun/wireguard/wg0.conf`
 - `config/gluetun/wireguard/privateerr.env`
@@ -101,21 +103,15 @@ The [examples](examples/) directory stores example files used to reset the repo 
 
 These files contain fake pirate-flavored data. Cleanup targets copy them back into `config/gluetun/wireguard/` so live secrets do not accidentally sneak into Git.
 
-Example restoration overwrites live VPN files. In the disposable test checkout, preserve any needed configuration and stop the test stack first:
+Example restoration overwrites live VPN files. Use it only in the disposable test checkout after preserving any needed configuration:
 
 ```sh
-make down
+make clean-test
 ```
 
-After shutdown succeeds, restore the examples:
+The target stops the selected project, including Buccaneerr's `test` profile, and restores examples only after shutdown succeeds. You can also run `make down`, wait for it to succeed, then run `make restore-test-config`. `make nuke` is a separate destructive reset, not a prerequisite for committing or restoring examples.
 
-```sh
-make restore-test-config
-```
-
-Run those steps sequentially. Do not use parallel Make execution for `make clean-test`, whose stopping and restoration prerequisites can otherwise race. `make nuke` is a separate destructive reset, not a prerequisite for committing or restoring examples.
-
-`clean-test` uses the volume-preserving `down` path and restores the examples. `nuke` additionally removes project containers, networks, volumes, images, and the `privateerr-local` Buildx cache, but it leaves `.env`, `backups/`, and the persistent config directory intact. Shared or in-use base images are retained.
+`clean-test` uses the volume- and image-preserving `down` path before restoring the examples. `nuke` additionally removes project containers, networks, volumes, images, and the `privateerr-local` Buildx cache, but it leaves `.env`, `backups/`, and the persistent config directory intact. Shared or in-use base images are retained.
 
 Run cleanup before committing after any real end-to-end voyage. Future ye will thank past ye for not smuggling secrets into the cargo hold. 🏴‍☠️
 

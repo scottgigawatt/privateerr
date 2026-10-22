@@ -2,6 +2,10 @@
 
 Buccaneerr was reviewed on October 20, 2026 with Trivy 0.75.0 in comprehensive mode and Docker Scout 1.26.0. Trivy's database was updated at 01:19:53 UTC on October 21, or 21:19:53 EDT on October 20. Both scanners examined the immutable `edge` image built from main commit `f8b07cb65487645974a56c37e9bece9578704281` on `linux/amd64`, `linux/arm64`, and `linux/arm/v7`. All three platforms have matching advisory sets. Scanner databases change, so these findings apply to the recorded artifacts rather than every future image with the same tag. The production-image snapshot below remains historical evidence from October 19; production and `latest` images were not scanned again during this Buccaneerr review.
 
+## Current Compose exception
+
+The existing CI exception for CVE-2026-78669 applies only to `usr/local/lib/docker/cli-plugins/docker-compose` and expires on November 6, 2026. Its advisory identifier, binary path, risk statement, and all other scan rules remain unchanged. The later expiry gives the official Compose update more time; it does not resolve the HTTP/2 vulnerability or establish safety against untrusted peers. Review or remove the exception before that date and retain unfiltered artifact scans. The dated reviews below preserve the policy and findings recorded at their original review times.
+
 ## Review the October 21 tool update
 
 Source commit `8c2f14c48568fe47a0d142c89e7cf48aba107f36` updates the official Docker CLI donor to 29.9.2 and the official Compose donor to 5.6.1. Their verified image indices are `sha256:2a146f3eb1ee1015c482756624bbff3a94a1b0531cad6fca03be55943373cf95` and `sha256:2aeaeedd4f2d8e2dcb399b2b9723bfaeb6714140cb0657897f5865960f1624ae`, respectively. The [official Docker inventory](https://github.com/docker-library/repo-info/blob/master/repos/docker/remote/29.9.2-cli.md) records its published platforms; the [Compose release](https://github.com/docker/compose/releases/tag/v5.6.1) identifies the Go 1.26.10 security fix. No project-specific Go rebuild or dependency override is introduced.

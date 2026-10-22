@@ -60,7 +60,7 @@ The upstream PIA scripts remain visible as the `docker/pia-manual-connections` s
 
 For one-shot generation, you need an active PIA subscription and Docker. Replace `YOUR_PIA_USERNAME` and `YOUR_PIA_PASSWORD` with your account credentials.
 
-### Standalone Docker example
+### Using Docker directly
 
 This command pulls the published image and writes `wireguard/wg0.conf` and `wireguard/privateerr.env` under your current directory. Docker creates `wireguard` if it does not exist. Existing directories must allow container UID 0 to traverse the path and write files with all Linux capabilities dropped. Preserve any files you need and stop other writers before running it; generation replaces saved files.
 
@@ -87,7 +87,7 @@ docker run --rm --pull always \
 
 This one-shot container uses recovery-disabled defaults, leaves IPv6 settings unchanged, and exits after generation.
 
-### Repository workflow using Make
+### Using Make
 
 Use Git, Make, and Docker with Compose and Buildx. Clone the repository with its PIA submodule and create your private environment file:
 
@@ -112,7 +112,7 @@ The repository workflow writes:
 - `config/gluetun/wireguard/wg0.conf` — WireGuard configuration for Gluetun or another compatible VPN client.
 - `config/gluetun/wireguard/privateerr.env` — PIA server metadata used by Gluetun and related automation.
 
-### Repository workflow using Docker Compose
+### Using Docker Compose
 
 If you do not have Make, complete the same checkout and `.env` setup above, then use Compose directly. It reads your credentials and paths from `.env`. The same overwrite and single-writer precautions apply. Generate from the published image with:
 
@@ -156,36 +156,40 @@ After completing the repository checkout and `.env` setup above:
     ```
 
 2. Set `PRIVATEERR_GLUETUN_API_KEY` in `.env` to that value. Review qBittorrent's user/group IDs, storage paths, and Web UI port in the same file.
-3. Start only the application services from published images. Bare `make up` includes Buccaneerr's deliberate VPN fault injection, so override its full-stack defaults explicitly:
+3. Pull the published application images and start the three services in the background:
 
     ```sh
-    make up COMPOSE_UP_OPTIONS='--detach --no-build --pull always privateerr gluetun qbittorrent'
+    make up
     ```
 
-To build the checked-out Privateerr source instead, keep the PIA submodule initialized and use:
+`make up-pull` is an explicit alias for `make up`. Neither target builds images or starts Buccaneerr. To build Privateerr from the checked-out source instead, keep the PIA submodule initialized and run:
 
 ```sh
-make up COMPOSE_UP_OPTIONS='--detach --build privateerr gluetun qbittorrent'
+make up-build
 ```
 
-Without Make, use the same `.env` file and pull the published images before starting the three services:
+`up-build` pulls Gluetun and qBittorrent, builds Privateerr locally, and starts the three services without pulling over that build.
+
+Without Make, pull the published images explicitly, then start them without building or pulling again:
 
 ```sh
 docker compose --env-file .env pull privateerr gluetun qbittorrent
-docker compose --env-file .env up --detach --no-build privateerr gluetun qbittorrent
+docker compose --env-file .env up --detach --no-build --pull never privateerr gluetun qbittorrent
 ```
 
-Or build the checked-out Privateerr source with:
+For a source build, pull only the two upstream application images, build Privateerr, then start the same three services:
 
 ```sh
-docker compose --env-file .env up --detach --build privateerr gluetun qbittorrent
+docker compose --env-file .env pull gluetun qbittorrent
+docker compose --env-file .env build privateerr
+docker compose --env-file .env up --detach --no-build --pull never privateerr gluetun qbittorrent
 ```
 
 Use `make ps` to inspect service status and `make logs` to read output. Without Make, use `docker compose --env-file .env ps` and `docker compose --env-file .env logs`. The qBittorrent Web UI uses the configured host port, `8080` by default; follow the [application access instructions](docs/automatic-recovery.md#try-the-qbittorrent-example) to obtain and change its initial password.
 
 The example enables automatic recovery: Privateerr monitors Gluetun and refreshes stale PIA settings through its authenticated API. Configure the shared key before starting. See [automatic Gluetun recovery](docs/automatic-recovery.md) for timing, diagnostics, and custom deployments.
 
-Buccaneerr is a separate test-only service that deliberately interrupts the VPN to verify recovery. Bare `docker compose up` or `make up` starts it too; use the explicit options and three-service commands above for normal startup. See [Buccaneerr's testing guide](test/README.md) when you intend to run live validation.
+Buccaneerr is a separate test-only service in the `test` profile. `make test` runs credential-free repository checks; `make test-e2e` explicitly enables live VPN validation and deliberate recovery faults. See [Buccaneerr's testing guide](test/README.md) before running live tests.
 
 ## Select a PIA region 🧭
 

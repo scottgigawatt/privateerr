@@ -5,8 +5,8 @@
 #
 # Licensed under the Apache License, Version 2.0.
 #
-# test-make-helpers.sh: Validate Make's AWK, backup, credential, and Compose
-#                       status helpers without mutating a deployment.
+# test-make-helpers.sh: Validate Make's AWK, backup, credential, status, and
+#                       startup recipes without mutating a deployment.
 #
 # Usage: test/helpers/test-make-helpers.sh
 #
@@ -256,6 +256,261 @@ if grep -F '[::]' "${test_output}/ps.out" >/dev/null; then
 fi
 
 #
+# Isolate real Make startup recipes behind a Docker stub and disposable state.
+#
+startup_root="${test_output}/startup"
+startup_stub="$(pwd)/test/stubs/startup-docker-stub.sh"
+mkdir -p "${startup_root}/bin"
+ln -s "${startup_stub}" "${startup_root}/bin/docker"
+ln -s "${startup_stub}" "${startup_root}/bin/cp"
+: >"${startup_root}/compose.yml"
+: >"${startup_root}/stack.env"
+printf '%s\n' 'example wireguard state' >"${startup_root}/example-wg.conf"
+printf '%s\n' 'example metadata state' >"${startup_root}/example-metadata.env"
+startup_compose="compose --project-name startup-project --env-file ${startup_root}/stack.env --file ${startup_root}/compose.yml"
+
+#
+# startup_reset: Reset failure switches, action logs, and generated-state fixtures.
+#
+# Parameters: None.
+#
+# Returns: Nothing.
+#
+startup_reset() {
+    unset STARTUP_STUB_FAIL STARTUP_STUB_BUILDER_MISSING STARTUP_STUB_DOWN_DELAY
+    : >"${startup_root}/actions.log"
+    rm -f "${startup_root}/down.done"
+    printf '%s\n' 'preserved wireguard state' >"${startup_root}/wg.conf"
+    printf '%s\n' 'preserved metadata state' >"${startup_root}/metadata.env"
+}
+
+#
+# startup_make: Execute actual Make recipes using only the isolated command stubs.
+#
+# Parameters: $1 - First Make option or target.
+#             $2 - Additional Make arguments, when supplied.
+#
+# Returns: Make's exit status.
+#
+startup_make() {
+    STARTUP_STUB_LOG="${startup_root}/actions.log" \
+        STARTUP_STUB_ROOT="${startup_root}" \
+        STARTUP_STUB_DOWN_DONE="${startup_root}/down.done" \
+        PATH="${startup_root}/bin:${PATH}" \
+        NO_COLOR=1 make --no-print-directory "$@" \
+            DOCKER_BIN="${startup_stub}" \
+            DOCKER_COMPOSE="${startup_stub} compose" \
+            DOCKER_BUILDX="${startup_stub} buildx" \
+            DEPENDENCIES=sh \
+            BUILDX_BUILDER_NAME=startup-builder \
+            PRIVATEERR_COMPOSE_PROJECT_NAME=startup-project \
+            ENV_FILE="${startup_root}/stack.env" \
+            COMPOSE_ENV_FILE="${startup_root}/stack.env" \
+            COMPOSE_FILE="${startup_root}/compose.yml" \
+            PRIVATEERR_EXAMPLE_WG_CONFIG="${startup_root}/example-wg.conf" \
+            PRIVATEERR_EXAMPLE_METADATA="${startup_root}/example-metadata.env" \
+            PRIVATEERR_GENERATED_WG_CONFIG="${startup_root}/wg.conf" \
+            PRIVATEERR_GENERATED_METADATA="${startup_root}/metadata.env" \
+            >"${startup_root}/make.out" 2>&1
+}
+
+#
+# startup_assert_log: Compare the complete action sequence with an expected fixture.
+#
+# Parameters: $1 - Expected action lines.
+#
+# Returns: Success when every action and option matches in order.
+#
+startup_assert_log() {
+    printf '%s\n' "$1" >"${startup_root}/expected.log"
+    cmp "${startup_root}/expected.log" "${startup_root}/actions.log"
+}
+
+#
+# startup_assert_builder_log: Verify builder readiness before ordered Compose actions.
+#
+# Parameters: $1 - Expected Compose action lines.
+#
+# Returns: Success when builder inspection precedes pulls, builds, or service startup.
+#
+startup_assert_builder_log() {
+    test "$(grep -c '^buildx inspect startup-builder$' "${startup_root}/actions.log")" -eq 1
+    awk '
+        /^buildx inspect startup-builder$/ { ready = 1; next }
+        /^compose .* (pull|build|up) / && !ready { exit 1 }
+    ' "${startup_root}/actions.log"
+    awk '!/^buildx inspect startup-builder$/' "${startup_root}/actions.log" \
+        >"${startup_root}/compose-actions.log"
+    printf '%s\n' "$1" >"${startup_root}/expected.log"
+    cmp "${startup_root}/expected.log" "${startup_root}/compose-actions.log"
+}
+
+#
+# Published-image startup pulls only core services and never invokes build tooling.
+#
+for startup_target in up up-pull all; do
+    startup_reset
+    startup_make -j4 "${startup_target}"
+    startup_assert_log "${startup_compose} config --environment
+${startup_compose} pull privateerr gluetun qbittorrent
+${startup_compose} up --detach --no-build --pull never privateerr gluetun qbittorrent"
+done
+
+#
+# Build-first startup pulls only dependencies, then builds and preserves Privateerr locally.
+#
+startup_reset
+startup_make -j4 up-build
+startup_assert_builder_log "${startup_compose} config --environment
+${startup_compose} pull gluetun qbittorrent
+${startup_compose} build --pull --no-cache privateerr
+${startup_compose} up --detach --no-build --pull never privateerr gluetun qbittorrent"
+
+#
+# Missing credentials and failed dependency pulls must stop every startup path.
+#
+for startup_target in up up-pull up-build; do
+    startup_reset
+
+    if STARTUP_STUB_FAIL=credentials startup_make -j4 "${startup_target}"; then
+        echo "${startup_target} accepted missing credentials." >&2
+        exit 1
+    fi
+
+    awk '!/^buildx inspect startup-builder$/' "${startup_root}/actions.log" \
+        >"${startup_root}/credential-actions.log"
+    printf '%s\n' "${startup_compose} config --environment" \
+        >"${startup_root}/expected.log"
+    cmp "${startup_root}/expected.log" "${startup_root}/credential-actions.log"
+    startup_reset
+
+    if STARTUP_STUB_FAIL=pull startup_make -j4 "${startup_target}"; then
+        echo "${startup_target} ignored a failed dependency pull." >&2
+        exit 1
+    fi
+
+    startup_pulled_services='privateerr gluetun qbittorrent'
+
+    if [ "${startup_target}" = up-build ]; then
+        startup_pulled_services='gluetun qbittorrent'
+        startup_assert_builder_log "${startup_compose} config --environment
+${startup_compose} pull ${startup_pulled_services}"
+    else
+        startup_assert_log "${startup_compose} config --environment
+${startup_compose} pull ${startup_pulled_services}"
+    fi
+done
+
+#
+# A failed local build cannot start services or replace the built image with a later pull.
+#
+startup_reset
+
+if STARTUP_STUB_FAIL=build startup_make -j4 up-build; then
+    echo "Build-first startup ignored a failed Privateerr build." >&2
+    exit 1
+fi
+
+startup_assert_builder_log "${startup_compose} config --environment
+${startup_compose} pull gluetun qbittorrent
+${startup_compose} build --pull --no-cache privateerr"
+
+#
+# Builder creation failures abort before any dependency pull or service start.
+#
+startup_reset
+
+if STARTUP_STUB_BUILDER_MISSING=true STARTUP_STUB_FAIL=builder-create startup_make up-build; then
+    echo "Build-first startup ignored a failed builder creation." >&2
+    exit 1
+fi
+
+startup_assert_log "${startup_compose} config --environment
+buildx inspect startup-builder
+buildx create --name startup-builder --driver docker-container"
+
+#
+# Failed service startup must reach Make's caller rather than report success.
+#
+startup_reset
+
+if STARTUP_STUB_FAIL=up startup_make -j4 up; then
+    echo "Published-image startup ignored a failed Compose up." >&2
+    exit 1
+fi
+
+startup_assert_log "${startup_compose} config --environment
+${startup_compose} pull privateerr gluetun qbittorrent
+${startup_compose} up --detach --no-build --pull never privateerr gluetun qbittorrent"
+
+#
+# E2e explicitly opts in to the validator and retains its original exit-code controls.
+#
+startup_reset
+startup_make -j4 test-e2e
+startup_assert_builder_log "${startup_compose} config --environment
+${startup_compose} --profile test up --build --force-recreate --remove-orphans --abort-on-container-exit --exit-code-from buccaneerr privateerr gluetun qbittorrent buccaneerr"
+startup_reset
+
+if STARTUP_STUB_FAIL=up startup_make -j4 test-e2e; then
+    echo "E2e validation ignored a failed Compose run." >&2
+    exit 1
+fi
+
+startup_assert_builder_log "${startup_compose} config --environment
+${startup_compose} --profile test up --build --force-recreate --remove-orphans --abort-on-container-exit --exit-code-from buccaneerr privateerr gluetun qbittorrent buccaneerr"
+
+#
+# Centralized service names, options, and profile settings must reach the real recipes.
+#
+startup_reset
+startup_make -j4 up-build \
+    PRIVATEERR_SERVICE=generator GLUETUN_SERVICE=tunnel QBITTORRENT_SERVICE=torrent \
+    COMPOSE_BUILD_OPTIONS='--pull --progress plain' COMPOSE_UP_OPTIONS='--detach --no-build --pull never --wait'
+startup_assert_builder_log "${startup_compose} config --environment
+${startup_compose} pull tunnel torrent
+${startup_compose} build --pull --progress plain generator
+${startup_compose} up --detach --no-build --pull never --wait generator tunnel torrent"
+startup_reset
+startup_make -j4 test-e2e COMPOSE_TEST_PROFILE=acceptance BUCCANEERR_SERVICE=validator
+startup_assert_builder_log "${startup_compose} config --environment
+${startup_compose} --profile acceptance up --build --force-recreate --remove-orphans --abort-on-container-exit --exit-code-from validator privateerr gluetun qbittorrent validator"
+
+#
+# Teardown includes profiled test resources while retaining ordinary volume and image safety.
+#
+startup_reset
+startup_make -j4 down
+startup_assert_log "${startup_compose} --profile test down --timeout 30 --remove-orphans"
+startup_reset
+startup_make -j4 down COMPOSE_TEST_PROFILE=acceptance COMPOSE_DOWN_TIMEOUT=47
+startup_assert_log "${startup_compose} --profile acceptance down --timeout 47 --remove-orphans"
+
+#
+# Even under parallel Make, both restoration copies wait for successful teardown.
+#
+startup_reset
+STARTUP_STUB_DOWN_DELAY=1 startup_make -j4 clean-test
+startup_assert_log "${startup_compose} --profile test down --timeout 30 --remove-orphans
+copy ${startup_root}/example-wg.conf ${startup_root}/wg.conf
+copy ${startup_root}/example-metadata.env ${startup_root}/metadata.env"
+cmp "${startup_root}/example-wg.conf" "${startup_root}/wg.conf"
+cmp "${startup_root}/example-metadata.env" "${startup_root}/metadata.env"
+startup_reset
+
+if STARTUP_STUB_DOWN_DELAY=1 STARTUP_STUB_FAIL=down startup_make -j4 clean-test; then
+    echo "Test cleanup ignored a failed Compose teardown." >&2
+    exit 1
+fi
+
+startup_assert_log "${startup_compose} --profile test down --timeout 30 --remove-orphans"
+printf '%s\n' 'preserved wireguard state' >"${startup_root}/preserved-wg.conf"
+printf '%s\n' 'preserved metadata state' >"${startup_root}/preserved-metadata.env"
+cmp "${startup_root}/preserved-wg.conf" "${startup_root}/wg.conf"
+cmp "${startup_root}/preserved-metadata.env" "${startup_root}/metadata.env"
+test ! -e "${startup_root}/down.done"
+
+#
 # Keep clean non-destructive and keep destructive operations on explicit targets.
 #
 NO_COLOR=1 make --dry-run clean >"${test_output}/clean.out"
@@ -351,8 +606,9 @@ common_targets=$(awk '
         exit
     }
 ' Makefile)
-test "${common_targets}" = "BUILD_DEPENDS CHECK_ENV CHECK_PIA ENSURE_BUILDX_BUILDER ALL UP DOWN PS LOGS CONFIG ENV PRINT_CONFIG PRINT_ENV BUILD BUILD_PLATFORMS TEST TEST_MAKE_HELPERS TEST_WORKFLOWS TEST_RECOVERY TEST_E2E BACKUP RESTORE_TEST_CONFIG CLEAN_TEST CLEAN NUKE HELP"
-common_recipe_order=$(awk '
+test "${common_targets}" = "BUILD_DEPENDS CHECK_ENV CHECK_PIA ENSURE_BUILDX_BUILDER ALL UP UP_PULL UP_BUILD DOWN PS LOGS CONFIG ENV PRINT_CONFIG PRINT_ENV BUILD BUILD_PLATFORMS TEST TEST_MAKE_HELPERS TEST_WORKFLOWS TEST_RECOVERY TEST_E2E BACKUP RESTORE_TEST_CONFIG CLEAN_TEST CLEAN NUKE HELP"
+common_target_count=$(printf '%s\n' "${common_targets}" | awk '{ print NF }')
+common_recipe_order=$(awk -v target_count="${common_target_count}" '
     /^\$\([A-Z0-9_]+\)(:| )/ {
         target = $0
         sub(/^\$\(/, "", target)
@@ -361,7 +617,7 @@ common_recipe_order=$(awk '
             targets = targets " "
         }
         targets = targets target
-        if (++count == 26) {
+        if (++count == target_count) {
             print targets
             exit
         }

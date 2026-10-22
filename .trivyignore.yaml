@@ -14,7 +14,7 @@ vulnerabilities:
   - id: CVE-2026-78669
     paths:
       - usr/local/lib/docker/cli-plugins/docker-compose
-    expired_at: 2026-10-23
+    expired_at: 2026-11-06
     statement: >-
       This advisory affects HTTP/2 clients and servers; Compose is not generally exempt.
       Supported repository checks use trusted fixtures and the wrapper's local Unix Docker socket.

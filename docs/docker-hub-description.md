@@ -39,7 +39,7 @@ The supplied Gluetun wrapper reads `PIA_WG_SERVER_NAME` from the generated metad
 
 The Compose example enables recovery after you configure a shared API key. Custom deployments must explicitly set `PRIVATEERR_AUTO_RECOVER=true` to enable it. Privateerr runs as UID 0 because upstream scripts require it; the supplied Compose drops all Linux capabilities and enables `no-new-privileges`.
 
-Follow the [normal startup instructions](https://github.com/scottgigawatt/privateerr#start-privateerr-with-gluetun-) to start only Privateerr, Gluetun, and qBittorrent. Buccaneerr is a separate test service that deliberately interrupts the VPN. The [recovery guide](https://github.com/scottgigawatt/privateerr/blob/main/docs/automatic-recovery.md) covers API authentication, storage diagnostics, region selection, and safe regeneration.
+Follow the [normal startup instructions](https://github.com/scottgigawatt/privateerr#start-privateerr-with-gluetun-) to start only Privateerr, Gluetun, and qBittorrent. The normal `make up` target pulls and starts those three published images; `make up-build` builds Privateerr locally instead. Buccaneerr is a separate service in the `test` profile that deliberately interrupts the VPN only during explicit live validation. The [recovery guide](https://github.com/scottgigawatt/privateerr/blob/main/docs/automatic-recovery.md) covers API authentication, storage diagnostics, region selection, and safe regeneration.
 
 ## Choose an image 📦
 

@@ -41,7 +41,7 @@ Archives the complete `config/` directory with a timestamped filename. An increm
 
 ### `compose/check-pia-credentials.sh`
 
-Reads resolved Compose environment values from standard input and fails when a Privateerr deployment would start without real `PIA_USER` and `PIA_PASS` values. Invalid credentials produce a color-aware diagnostic with a corrective action; redirected output remains plain text and `NO_COLOR` disables terminal color. `make run-privateerr`, `make up`, and `make test-e2e` call it automatically.
+Reads resolved Compose environment values from standard input and fails when a Privateerr deployment would start without real `PIA_USER` and `PIA_PASS` values. Invalid credentials produce a color-aware diagnostic with a corrective action; redirected output remains plain text and `NO_COLOR` disables terminal color. `make run-privateerr`, `make up`, `make up-build`, and `make test-e2e` call it automatically; `make up-pull` aliases `make up`.
 
 ### `compose/nuke.sh`
 

@@ -46,6 +46,14 @@ case " $* " in
             'test/service:local' \
             'test/absent:latest' \
             'test/service:local'
+
+        # Expose the test-only image only when its profile is part of the model.
+        if [ "${NUKE_STUB_REQUIRE_PROFILE:-false}" = "true" ]; then
+            case " $* " in
+                *" --profile test "*) printf '%s\n' 'test/profiled:local' ;;
+            esac
+        fi
+
         exit 0
         ;;
     *" down --timeout "*)

@@ -27,13 +27,13 @@ Follow these steps from the repository root:
     PRIVATEERR_GLUETUN_API_KEY=YOUR-GENERATED-KEY
     ```
 
-3. Build and recreate the application services so both VPN containers receive the configured environment. This restarts the selected services and can interrupt application traffic. For a lasting deployment, leave Buccaneerr's deliberate fault injection out of the startup command:
+3. Pull and start the application services so both VPN containers receive the configured environment. Changed settings recreate affected containers and can interrupt application traffic:
 
     ```sh
-    docker compose up --detach --build --force-recreate privateerr gluetun qbittorrent
+    make up
     ```
 
-    Use `make up` only when you intend to run the complete validation example, including Buccaneerr.
+    This starts only Privateerr, Gluetun, and qBittorrent. Use `make up-build` to build Privateerr from the checkout instead; [the startup guide](https://github.com/scottgigawatt/privateerr#start-privateerr-with-gluetun-) also gives the raw Compose commands.
 
 4. Read Privateerr's logs:
 
@@ -77,15 +77,15 @@ PIA_PREFERRED_REGION=ca
 
 `PIA_PREFERRED_REGION` defaults to `ca` in `example.env`. Choose another PIA region ID to use that region instead. `PIA_AUTOCONNECT=true` takes precedence and ignores the preferred region.
 
-Recovery-enabled startup reuses a valid saved pair, so changing the environment and recreating containers alone does not immediately replace a healthy connection. To apply an intentional region or forwarding-selection change, stop the application services, generate a fresh pair, then recreate them. This interrupts application traffic and replaces the saved VPN files; preserve any configuration you need before proceeding. Run each command only after the previous command succeeds:
+Recovery-enabled startup reuses a valid saved pair, so changing the environment and recreating containers alone does not immediately replace a healthy connection. To apply a region or forwarding-selection change, stop the selected Compose project, generate a fresh pair, and start it from the checked-out source. This interrupts application traffic, removes the project containers and network, and replaces the saved VPN files; preserve any configuration you need first. Volumes and images are retained. Run each command only after the previous command succeeds:
 
 ```sh
-docker compose stop privateerr gluetun qbittorrent
+make down
 make run-privateerr
-docker compose up --detach --build --force-recreate privateerr gluetun qbittorrent
+make up-build
 ```
 
-The one-shot command disables recovery and keepalive only for that run. Stopping the existing supervisor prevents two writers from replacing the same files. The recreation command starts the three application services; use `make up` only when you intend to include Buccaneerr's deliberate fault-injection test. A plain restart does not reload environment changes.
+The one-shot command disables recovery and keepalive only for that run. Stopping the supervisor prevents two writers from replacing the same files. `make up-build` recreates only the three application services and keeps the locally built Privateerr image. A plain restart does not reload environment changes.
 
 Recovery tries another advertised endpoint in the selected region. A pinned region never falls back to another region. Automatic selection prefers other endpoints in the current region, then other eligible regions in the server catalog; recovery does not rerun a full latency benchmark. With `PIA_PF=true`, only regions advertising port forwarding are eligible. If no unused endpoint remains, Privateerr attempts fresh registration against the current permitted endpoint. Dedicated IPs retain their dedicated endpoint through upstream setup.
 
@@ -204,10 +204,10 @@ The supplied VPN services carry labels disabling unattended Watchtower updates. 
 
 ## Disable recovery
 
-Set `PRIVATEERR_AUTO_RECOVER=false` in `.env`. Recreating the application services interrupts traffic and causes Privateerr to replace the saved configuration pair; preserve any configuration you need before proceeding:
+Set `PRIVATEERR_AUTO_RECOVER=false` in `.env`. Applying the changed environment recreates affected containers, interrupts traffic, and causes Privateerr to replace the saved configuration pair; preserve any configuration you need before proceeding:
 
 ```sh
-docker compose up --detach --build --force-recreate privateerr gluetun qbittorrent
+make up
 ```
 
 Gluetun resumes its configured health-restart policy. Privateerr returns to ordinary startup behavior and generates a fresh configuration pair. The command leaves Buccaneerr's deliberate fault-injection test out of the application startup.
@@ -228,11 +228,13 @@ QBITTORRENT_WEBUI_PORT=8080
 QBITTORRENT_API_WAIT_SECONDS=300
 ```
 
-Set `QBITTORRENT_PUID`, `QBITTORRENT_PGID`, and the configuration/download paths from `example.env` to match the host. Complete the recovery setup above, then build and start only the application services:
+Set `QBITTORRENT_PUID`, `QBITTORRENT_PGID`, and the configuration/download paths from `example.env` to match the host. Complete the recovery setup above, then pull and start the three application services:
 
 ```sh
-docker compose up --detach --build privateerr gluetun qbittorrent
+make up
 ```
+
+Use `make up-build` when you want to build Privateerr from the checkout instead.
 
 The Web UI is published on the Docker host at the port selected by `QBITTORRENT_WEBUI_PORT` (8080 by default). Changing that value also updates the internal listener, healthcheck, forwarding hook API URL, and Buccaneerr checks. LinuxServer [recommends matching both sides of the port mapping and `WEBUI_PORT`](https://docs.linuxserver.io/images/docker-qbittorrent/#webui) because mismatched ports can cause CSRF and login problems. Keep those ports synchronized rather than fixing the container side at `8080`. The Gluetun API and health listener remain unpublished. Set `QBITTORRENT_WEBUI_PORT` in `.env` if port 8080 is already in use.
 
@@ -242,9 +244,9 @@ The hook binds qBittorrent to the VPN interface and assigned port, with random p
 
 ### Test the example
 
-Buccaneerr is a separate validator. With `BUCCANEERR_TEST_RECOVERY=true`, it deliberately blocks the active VPN endpoint, then verifies a new registration, healthy tunnel, matching saved files, and qBittorrent settings. Its `NET_ADMIN` capability applies only inside the shared test namespace; it needs no Docker socket and removes its firewall rule on completion or failure. The default recovery deadline is 600 seconds, including Gluetun's health-detection delay. Set `BUCCANEERR_TEST_RECOVERY=false` for a connectivity-only run.
+Buccaneerr is a separate validator in the `test` profile. Normal startup does not start it. With `BUCCANEERR_TEST_RECOVERY=true`, it deliberately blocks the active VPN endpoint, then verifies a new registration, healthy tunnel, matching saved files, and qBittorrent settings. Its `NET_ADMIN` capability applies only inside the shared test namespace; it needs no Docker socket and removes its firewall rule on completion or failure. The default recovery deadline is 600 seconds, including Gluetun's health-detection delay. Set `BUCCANEERR_TEST_RECOVERY=false` for a connectivity-only run.
 
-Use the following only in a disposable test project with real PIA credentials. It starts all four services, replaces generated VPN files, and deliberately interrupts the VPN; preserve any configuration you need first:
+Use the following only in a disposable test project with real PIA credentials. It enables the `test` profile, starts all four services, replaces generated VPN files, and deliberately interrupts the VPN; preserve any configuration you need first:
 
 ```sh
 make test-e2e
