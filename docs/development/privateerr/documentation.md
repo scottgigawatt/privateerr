@@ -25,6 +25,8 @@ def connection_settings(config: Path, metadata: Path) -> ConnectionSettings:
 
 Use `Args`, `Returns`, `Raises`, `Attributes`, or `Note` only when applicable. Do not add an empty section, restate a parameter name as its description, or repeat a type already expressed by the signature.
 
+Indent continuation lines in `Returns` and `Yields` descriptions four spaces beyond the first description line; otherwise the parser can render separate table entries for each source line. For a context manager, document the yielded value and its lifetime. Supply the yielded element type when the renderer would otherwise show the generator container as that value's type, and verify the generated table.
+
 ## Document private helpers
 
 Private helpers are filtered out of the generated API reference, but they are not undocumented. Give every non-obvious helper a concise docstring that states its transformation or safety rule. Add inline comments at decision points where the reason cannot be inferred from the code.

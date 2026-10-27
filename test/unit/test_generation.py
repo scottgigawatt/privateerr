@@ -193,7 +193,9 @@ printf 'WG_HOSTNAME=example-one\\nPIA_TOKEN=test-token-redact\\n'  # pragma: all
 
         from privateerr.generation import prepare_ipv6
 
+        # Simulate Docker-applied kernel flags without changing the test host's network state.
         root = self.root / "proc"
+
         for interface in ("all", "default"):
             (root / interface).mkdir(parents=True)
 

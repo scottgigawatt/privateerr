@@ -6,7 +6,13 @@
 # generation.py: Invoke unmodified PIA scripts and prepare validated configuration candidates.
 #
 
-"""Keep Privateerr orchestration, metadata, and bounded subprocess logging in Python."""
+"""Prepare candidate VPN files through unmodified upstream PIA scripts.
+
+The generator owns subprocess lifetimes, redacted invocation logs, IPv6 adaptation,
+and metadata serialization. Candidates remain separate from the published pair;
+callers decide when to publish or retain them through the configuration store.
+Generation uses one monotonic deadline across upstream calls and catalog lookup.
+"""
 
 import ipaddress
 import logging
@@ -31,7 +37,11 @@ from .log import ANSI, redact
 from .settings import InvalidSettings, Store, assignments
 
 LOG = logging.getLogger("privateerr")
+
+# Upstream writes this fixed token path independently of its installed script directory.
 TOKEN_PATH = Path("/opt/piavpn-manual/token")
+
+# Drop a whole oversized line so a credential cannot escape redaction in fragments.
 MAX_LINE_BYTES = 65536
 
 
@@ -41,14 +51,23 @@ class GenerationFailed(Exception):
 
 @dataclass(frozen=True)
 class Endpoint:
-    """Pair an advertised endpoint address with its matching PIA TLS server name."""
+    """Pair an advertised endpoint address with its matching PIA TLS server name.
+
+    Attributes:
+        ip: IPv4 address already selected and validated by the supervisor.
+        name: Matching advertised server identity passed to upstream registration.
+    """
 
     ip: str
     name: str
 
 
 def reap_children() -> None:
-    """Collect exited descendants adopted when the supervisor runs as container PID 1."""
+    """Collect exited children, including descendants adopted as container PID 1.
+
+    Live children are never waited on. Call only after the active direct child's
+    status has been collected, so reaping cannot consume its subprocess status.
+    """
 
     while True:
         try:
@@ -61,7 +80,17 @@ def reap_children() -> None:
 
 
 def stop_group(process: subprocess.Popen[bytes]) -> None:
-    """Stop every upstream descendant before staged secrets are removed."""
+    """Terminate an upstream process group before staged secrets are removed.
+
+    Args:
+        process: Direct child started with its own session by the generator.
+
+    Note:
+        Allow the direct child up to five seconds after SIGTERM, then send
+        SIGKILL to remaining group members even if that child has already exited.
+        Collect the direct child's status before returning; adopted descendants
+        are collected separately by `reap_children`.
+    """
 
     try:
         os.killpg(process.pid, signal.SIGTERM)
@@ -83,7 +112,17 @@ def stop_group(process: subprocess.Popen[bytes]) -> None:
 
 
 def prepare_ipv6(environment: dict[str, str], root: Path = Path("/proc/sys/net/ipv6/conf")) -> None:
-    """Skip upstream writes only when Docker already satisfied the explicit IPv6 request."""
+    """Suppress redundant upstream IPv6 writes when Docker already disabled IPv6.
+
+    Args:
+        environment: Invocation environment, mutated in place only when a nonempty
+            DISABLE_IPV6 request does not begin with n and both kernel flags are 1.
+        root: Kernel IPv6 configuration directory; injectable for isolated tests.
+
+    Note:
+        Missing or unreadable flags preserve the request. This helper does not
+        write kernel settings; otherwise upstream retains its existing behavior.
+    """
 
     requested = environment.get("DISABLE_IPV6", "")
 
@@ -104,7 +143,17 @@ def prepare_ipv6(environment: dict[str, str], root: Path = Path("/proc/sys/net/i
 
 
 def remaining(until: float) -> float:
-    """Bound the entire generation attempt, including registration and metadata lookup."""
+    """Return the time budget left in a shared generation attempt.
+
+    Args:
+        until: Absolute deadline from the same monotonic clock used here.
+
+    Returns:
+        Positive seconds remaining for upstream work or catalog retrieval.
+
+    Raises:
+        GenerationFailed: If the shared deadline has been reached.
+    """
 
     seconds = until - time.monotonic()
 
@@ -115,7 +164,16 @@ def remaining(until: float) -> float:
 
 
 class Generator:
-    """Generate staged candidates while retaining saved configuration until publication."""
+    """Generate validated candidates without publishing over saved configuration.
+
+    Args:
+        config: Validated paths, invocation environment, and generation timeout.
+        store: Configuration store used to validate each complete candidate pair.
+
+    Note:
+        Use `generate` as a context manager. Its temporary files cease to exist
+        when the context exits, so publish or retain a candidate inside the context.
+    """
 
     def __init__(self, config: Config, store: Store):
         self.config = config
@@ -124,8 +182,27 @@ class Generator:
     def run_script(self, name: str, environment: dict[str, str], until: float) -> str:
         """Stream one invocation with its source label, redaction, and a shared deadline.
 
+        Args:
+            name: Project-selected upstream script filename under PIA_BIN_HOME.
+            environment: Complete child environment, including PIA_BIN_HOME and
+                any credentials whose literal values should be redacted.
+            until: Absolute monotonic deadline shared with the generation attempt.
+
         Returns:
-            The last syntactically safe WG_HOSTNAME reported by this invocation.
+            The last syntactically safe WG_HOSTNAME reported by this invocation,
+                or an empty string if none was reported. This is a syntax check,
+                not proof that the name belongs to the registered endpoint.
+
+        Raises:
+            GenerationFailed: If the script fails or the shared deadline expires.
+            privateerr.diagnostics.FileOperationError: If the upstream process cannot be launched.
+            OSError: If reading output, logging, or process cleanup fails.
+
+        Note:
+            Stdout and stderr share the PIA invocation label, including output
+            from nested children. Redacted lines containing text use INFO; oversized
+            lines are omitted entirely. Every exit path stops the process group
+            and reaps exited children. Cleanup can extend beyond the work deadline.
         """
 
         logger = logging.getLogger("PIA/" + name)
@@ -133,7 +210,7 @@ class Generator:
         hostname = ""
 
         def record(raw: bytes) -> None:
-            """Retain only a safe hostname; redact output before either logger receives it."""
+            """Extract a syntax-checked hostname and emit the redacted line only if it contains text."""
 
             nonlocal hostname
             line = ANSI.sub("", raw.decode("utf-8", errors="replace"))
@@ -179,6 +256,7 @@ class Generator:
 
                         break
 
+                    # Progress output may end with carriage returns instead of newlines.
                     buffer += chunk.replace(b"\r", b"\n")
 
                     while b"\n" in buffer:
@@ -189,6 +267,7 @@ class Generator:
                         elif not dropping:
                             logger.warning("Omitted an oversized upstream log line.")
 
+                        # Resume recording only after the discarded line's delimiter.
                         dropping = False
 
                     # Discard the whole oversized line rather than leaking a partially redacted token.
@@ -214,7 +293,27 @@ class Generator:
         return hostname
 
     def write_metadata(self, stage: Path, hostname: str, until: float) -> None:
-        """Enrich the same-run endpoint with optional catalog data and save safe shell assignments."""
+        """Write shell-safe metadata for the WireGuard file in one staging directory.
+
+        Args:
+            stage: Existing candidate directory containing wg0.conf; privateerr.env
+                is written here without touching the published metadata file.
+            hostname: Syntax-checked identity reported by this registration, used
+                when no usable catalog identity matches the endpoint or hostname.
+            until: Absolute monotonic deadline shared with upstream generation.
+
+        Raises:
+            InvalidSettings: If the endpoint, port, or final server name is invalid.
+            GenerationFailed: If the generation deadline is reached.
+            OSError: If candidate file access fails.
+
+        Note:
+            Catalog failure is optional: retain the registration identity and
+            unknown region values, with PIA_PF as the forwarding fallback. Region
+            labels are bounded and shell-escaped because Gluetun sources metadata;
+            the Python store instead parses assignments as data. The caller must
+            still validate the complete pair before publication.
+        """
 
         try:
             endpoint, port = assignments(stage / "wg0.conf")["Endpoint"].split(":")
@@ -272,7 +371,30 @@ class Generator:
 
     @contextmanager
     def generate(self, endpoint: Endpoint | None = None) -> IteratorGenerator[Path]:
-        """Yield a validated temporary pair, then remove it after publication or failure."""
+        """Yield a validated candidate pair and remove staging when the context exits.
+
+        Args:
+            endpoint: Selected recovery endpoint; omit it to let run_setup.sh
+                perform normal upstream selection and registration.
+
+        Yields:
+            (Path): Private directory containing matching wg0.conf and privateerr.env.
+                Its lifetime is limited to this context; callers own publication.
+
+        Raises:
+            GenerationFailed: If registration fails, its token is unusable, or
+                the shared work deadline expires.
+            InvalidSettings: If candidate files fail connection validation.
+            privateerr.diagnostics.FileOperationError: If staging, process launch, or token access fails,
+                or a filesystem error escapes the caller's context body.
+            OSError: If other candidate access, output logging, or cleanup fails.
+
+        Note:
+            The invocation environment is copied before output paths are changed.
+            Recovery reads upstream's fixed token-file handoff and removes that
+            file after the read attempt, including decoding failures. This method
+            never publishes files or applies settings to Gluetun.
+        """
 
         until = time.monotonic() + self.config.generation_timeout
 
@@ -324,7 +446,20 @@ class Generator:
 
 
 def enrich_metadata(metadata: dict[str, str], catalog: dict[str, object]) -> None:
-    """Match the endpoint or reported hostname without trusting arbitrary catalog field types."""
+    """Enrich metadata in place from the first matching catalog WireGuard server.
+
+    Args:
+        metadata: Initialized metadata fields, including endpoint IP and the
+            registration hostname used to match advertised servers.
+        catalog: Decoded catalog object; nested collections and fields remain
+            untrusted until checked here.
+
+    Note:
+        Match either endpoint IP or server name. Malformed structures and field
+        types are ignored; unmatched or unusable fields retain their prior values.
+        Server names and region IDs are syntax-checked here, while display-name
+        bounding and shell quoting belong to `Generator.write_metadata`.
+    """
 
     regions = catalog.get("regions")
 

@@ -6,7 +6,12 @@
 # log.py: Format application and upstream output consistently without recording credentials.
 #
 
-"""Use one UTC format for Privateerr and explicitly identified PIA invocations."""
+"""Configure UTC logs and sanitize output at the upstream subprocess boundary.
+
+Formatting does not redact arbitrary application messages. The generator calls
+`redact` before forwarding upstream text to the root logger's console and file
+handlers; application-authored diagnostics must avoid including secrets themselves.
+"""
 
 import logging
 import re
@@ -15,6 +20,7 @@ import time
 from collections.abc import Mapping
 from pathlib import Path
 
+# Recognize ANSI CSI sequences; redact also removes remaining C0 controls except tabs.
 ANSI = re.compile(r"\x1b\[[0-?]*[ -/]*[@-~]")
 CREDENTIAL = re.compile(
     r"((?:PIA_USER|PIA_PASS|PIA_TOKEN|DIP_TOKEN|WG_PRIVKEY|PrivateKey)\s*=\s*)[^\s\\]+"
@@ -22,7 +28,12 @@ CREDENTIAL = re.compile(
 
 
 def formatter() -> logging.Formatter:
-    """Give console and persistent records the same timestamp, severity, and source."""
+    """Create the UTC timestamp, severity, and logger-name layout used by both handlers.
+
+    Returns:
+        Independent formatter using second-resolution ISO-style UTC timestamps.
+            Source labels come from each record's logger name.
+    """
 
     result = logging.Formatter(
         "%(asctime)s %(levelname)s [%(name)s] %(message)s", datefmt="%Y-%m-%dT%H:%M:%SZ"
@@ -32,7 +43,12 @@ def formatter() -> logging.Formatter:
 
 
 def configure_logging() -> None:
-    """Initialize console output before configuration or file access can fail."""
+    """Configure the root logger for INFO output to stdout during application startup.
+
+    Call once before reading configuration or opening persistent logs, so startup
+    failures remain visible. Existing root handlers are preserved by basicConfig;
+    this function does not force reconfiguration or perform credential redaction.
+    """
 
     handler = logging.StreamHandler(sys.stdout)
     handler.setFormatter(formatter())
@@ -40,7 +56,18 @@ def configure_logging() -> None:
 
 
 def add_file_log(path: Path) -> None:
-    """Append application and upstream records through the same logging handlers."""
+    """Attach a persistent append handler to the root logger.
+
+    Args:
+        path: Log file whose parent directory the caller has already prepared.
+
+    Raises:
+        OSError: If the file cannot be opened for appending.
+
+    Note:
+        Call once after console setup. This adds a handler without deduplicating
+        existing file handlers, changing the root level, or rotating old logs.
+    """
 
     handler = logging.FileHandler(path)
     handler.setFormatter(formatter())
@@ -48,7 +75,24 @@ def add_file_log(path: Path) -> None:
 
 
 def redact(line: str, environment: Mapping[str, str]) -> str:
-    """Remove terminal controls and credentials before output reaches any handler."""
+    """Sanitize one upstream output line before logging it.
+
+    Args:
+        line: Decoded text from an upstream script's combined stdout and stderr.
+        environment: Invocation environment supplying known PIA_USER, PIA_PASS,
+            PIA_TOKEN, and DIP_TOKEN values for literal replacement.
+
+    Returns:
+        Stripped text with ANSI CSI sequences and C0 controls except tabs removed,
+            known credential values replaced longest first, and recognized credential
+            assignments and existing-token messages masked. Blank input returns empty.
+
+    Note:
+        Empty values and the placeholders no, none, and false are excluded from
+        literal replacement. This is a best-effort filter for upstream conventions,
+        not a general secret detector; paths, regions, and unrecognized secret
+        formats can remain. It does not mutate the supplied environment.
+    """
 
     result = ANSI.sub("", line)
     result = "".join(character for character in result if character >= " " or character == "\t")

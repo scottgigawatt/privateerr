@@ -421,7 +421,7 @@ class Supervisor:
         self.failed_since = self.clock()
 
     def run(self) -> None:
-        """Prepare startup files, report readiness, and enter recovery or legacy keepalive mode."""
+        """Prepare startup files, report readiness, and enter recovery or idle keepalive mode."""
 
         # Install image-owned integration before Gluetun is allowed to start, even with saved files.
         install_gluetun_scripts(
@@ -535,7 +535,7 @@ def main() -> int:
         with filesystem_operation("clear readiness marker", config.marker):
             config.marker.unlink(missing_ok=True)
 
-        # Keep supervisor messages in the persistent log as well as Docker's console output.
+        # Keep application and redacted upstream records in the persistent log and console.
         with filesystem_operation("open persistent log", config.log_path):
             add_file_log(config.log_path)
 

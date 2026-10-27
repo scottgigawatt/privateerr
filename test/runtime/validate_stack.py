@@ -6,7 +6,14 @@
 # validate_stack.py: Verify qBittorrent and automatic recovery inside the demo VPN namespace.
 #
 
-"""Exercise the running application without a Docker socket or access to host networking."""
+"""Run Buccaneerr preflight and optional recovery validation in Gluetun's namespace.
+
+The Python entrypoint checks saved files, tunnel health, the forwarded-port lease,
+and application settings before any optional endpoint fault. Console and per-run
+file logs share a UTC layout. Fault injection requires the test container's network
+capability and removes its own labeled rule on normal exit or handled shutdown;
+no Docker socket or host network access is needed.
+"""
 
 import ipaddress
 import json
@@ -94,7 +101,19 @@ class StackCheck:
         self.opener = build_opener(ProxyHandler({}))
 
     def validate_files(self) -> None:
-        """Check the saved pair before contacting applications or injecting a test fault."""
+        """Check required saved fields before network probes or fault injection.
+
+        Raises:
+            RuntimeError: If a required file is unreadable, empty, or missing a
+                nonempty required assignment, or forwarding is required but the
+                metadata does not advertise support.
+            UnicodeError: If a file cannot be decoded as text.
+
+        Note:
+            This preflight checks assignment presence and forwarding eligibility;
+            it does not validate WireGuard key encoding or compare the saved
+            endpoint with Gluetun. Metadata is read as text, never sourced.
+        """
 
         for filename, required in (
             ("wg0.conf", ("PrivateKey", "PublicKey", "Endpoint")),
@@ -128,7 +147,12 @@ class StackCheck:
         LOG.info("Saved WireGuard configuration and PIA metadata are ready.")
 
     def forwarded_port(self) -> int:
-        """Return a usable lease or zero while Gluetun is still preparing forwarding."""
+        """Read Gluetun's current forwarded-port lease without logging the value.
+
+        Returns:
+            Port in the range 1 through 65535, or zero for a missing, unreadable,
+                nonnumeric, or out-of-range lease so readiness polling can retry.
+        """
 
         try:
             port = int(self.lease.read_text().strip())
@@ -280,7 +304,27 @@ def stop(signum: int, frame: FrameType | None) -> None:
 
 
 def main() -> None:
-    """Validate the complete demo and optionally prove recovery with a controlled outage."""
+    """Run configured stack checks and optionally inject a controlled VPN outage.
+
+    Read settings from the process environment. Initialize console logging, create
+    the persistent log directory, and truncate the per-run log before preflight.
+    Check files, health, optional forwarding, and application readiness in order;
+    only then may the explicitly enabled recovery test install a temporary rule.
+
+    Raises:
+        RuntimeError: If preflight, readiness, or recovery checks fail.
+        OSError: If log preparation, file access, or a network operation fails.
+        ValueError: If settings or responses are malformed.
+        KeyError: If required API response fields are absent.
+        subprocess.SubprocessError: If fault installation or cleanup cannot complete.
+        SystemExit: On handled shutdown, after unwinding any active fault context.
+
+    Note:
+        SIGTERM and SIGINT unwind the context that removes this test's labeled
+        firewall rule. Forced termination cannot guarantee that cleanup runs.
+        The module entrypoint converts expected failures into safe error logs
+        and a nonzero exit; direct callers receive the exceptions above.
+    """
 
     # Console logging is available even if preparing the persistent log fails.
     formatter = logging.Formatter(

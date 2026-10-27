@@ -75,6 +75,7 @@ class StackTests(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, "does not support port forwarding"):
             self.check.validate_files()
 
+        # Opting out skips forwarding eligibility, but required connection fields still matter.
         self.check.require_forwarding = False
         self.check.validate_files()
         (self.root / "wg0.conf").write_text("incomplete\n")

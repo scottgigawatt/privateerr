@@ -57,6 +57,7 @@ class GenerationDetailTests(unittest.TestCase):
             "\x1b[31mPIA_PASS=password with spaces PIA_USER=example-user PIA_TOKEN=unseen-token\x1b[0m",
             environment,
         )
+        # Verify the complete sensitive values and terminal escapes are absent.
         self.assertNotIn("password", result)
         self.assertNotIn("with spaces", result)
         self.assertNotIn("example-user", result)
@@ -85,6 +86,7 @@ class GenerationDetailTests(unittest.TestCase):
         self.assertEqual(hostname, "example-one")
         self.assertTrue(captured.output[-1].endswith("last message"))
         self.assertEqual(len(captured.output), 3)
+        # Check the shared formatter independently of assertLogs' capture layout.
         record = logging.LogRecord("PIA/run_setup.sh", logging.INFO, "", 0, "message", (), None)
         self.assertRegex(
             formatter().format(record), r"^\d{4}-\d\d-\d\dT.*Z INFO \[PIA/run_setup.sh\] message$"
@@ -154,6 +156,7 @@ class GenerationDetailTests(unittest.TestCase):
         self.assertIn("PIA_GEOLOCATED_REGION=false\n", metadata)
         self.assertIn(r"\$(command) \`command\` \"region\"", metadata)
 
+        # A real shell must recover the literal label without executing its substitutions.
         sourced = subprocess.run(
             [
                 "sh",
@@ -172,6 +175,7 @@ class GenerationDetailTests(unittest.TestCase):
     def test_targeted_registration_uses_upstream_scripts_and_removes_token(self):
         """Recovery passes its selected endpoint to upstream without a shell adapter."""
 
+        # Redirect upstream's fixed token handoff into this test's disposable directory.
         token = self.root / "token"
         self.script("get_token.sh", f"printf 'example-token\\nexpiration\\n' > '{token}'\n")
         key = base64.b64encode(bytes(range(32))).decode()
@@ -200,6 +204,7 @@ CONFIG
                 self.assertTrue((stage / "privateerr.env").exists())
                 self.assertFalse(token.exists())
 
+        # Both invocation identities must survive while token and candidate state are removed.
         output = "\n".join(captured.output)
         self.assertIn("PIA/get_token.sh", output)
         self.assertIn("PIA/connect_to_wireguard_with_token.sh", output)
