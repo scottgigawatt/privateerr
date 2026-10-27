@@ -12,6 +12,7 @@ import ipaddress
 import json
 import logging
 import os
+import re
 import signal
 import subprocess
 import sys
@@ -24,6 +25,8 @@ from types import FrameType
 from typing import TypedDict, cast
 from urllib.error import URLError
 from urllib.request import ProxyHandler, Request, build_opener
+
+LOG = logging.getLogger("buccaneerr")
 
 
 class InterfaceState(TypedDict):
@@ -90,6 +93,49 @@ class StackCheck:
         # Keep local API probes independent of inherited HTTP proxy settings.
         self.opener = build_opener(ProxyHandler({}))
 
+    def validate_files(self) -> None:
+        """Check the saved pair before contacting applications or injecting a test fault."""
+
+        for filename, required in (
+            ("wg0.conf", ("PrivateKey", "PublicKey", "Endpoint")),
+            (
+                "privateerr.env",
+                ("PIA_WG_SERVER_NAME", "PIA_WG_ENDPOINT_IP", "PIA_PORT_FORWARDING_SUPPORTED"),
+            ),
+        ):
+            path = self.config / filename
+
+            try:
+                content = path.read_text()
+            except OSError:
+                raise RuntimeError(f"Cannot read required configuration file: {path}") from None
+
+            if not content.strip() or any(
+                re.search(rf"^{field}\s*=\s*\S+", content, re.MULTILINE) is None
+                for field in required
+            ):
+                raise RuntimeError(f"Required configuration fields are missing from {path}")
+
+            if filename == "privateerr.env" and self.require_forwarding:
+                if (
+                    re.search(r"^PIA_PORT_FORWARDING_SUPPORTED=true$", content, re.MULTILINE)
+                    is None
+                ):
+                    raise RuntimeError(
+                        "The saved PIA configuration does not support port forwarding."
+                    )
+
+        LOG.info("Saved WireGuard configuration and PIA metadata are ready.")
+
+    def forwarded_port(self) -> int:
+        """Return a usable lease or zero while Gluetun is still preparing forwarding."""
+
+        try:
+            port = int(self.lease.read_text().strip())
+            return port if 1 <= port <= 65535 else 0
+        except OSError, ValueError:
+            return 0
+
     def read(self, url: str, *, authenticate: bool = False) -> bytes:
         """Bound response size and socket waits; keep authentication on control API calls."""
 
@@ -147,7 +193,7 @@ class StackCheck:
                 return "listen_port" in preferences
 
             # Require the application to use the lease itself with automatic port changes disabled.
-            port = int(self.lease.read_text().strip())
+            port = self.forwarded_port()
             return (
                 1 <= port <= 65535
                 and preferences.get("listen_port") == port
@@ -236,28 +282,45 @@ def stop(signum: int, frame: FrameType | None) -> None:
 def main() -> None:
     """Validate the complete demo and optionally prove recovery with a controlled outage."""
 
-    # Preserve entrypoint logging while handling shutdown in the process that owns the fault.
-    logging.basicConfig(
-        level=logging.INFO,
-        format="%(message)s",
-        handlers=[
-            logging.StreamHandler(sys.stdout),
-            logging.FileHandler(
-                os.environ.get("BUCCANEERR_LOG_PATH", "/buccaneerr-config/logs/buccaneerr.log")
-            ),
-        ],
+    # Console logging is available even if preparing the persistent log fails.
+    formatter = logging.Formatter(
+        "%(asctime)s %(levelname)s [%(name)s] %(message)s", datefmt="%Y-%m-%dT%H:%M:%SZ"
     )
+    formatter.converter = time.gmtime
+    console = logging.StreamHandler(sys.stdout)
+    console.setFormatter(formatter)
+    logging.basicConfig(level=logging.INFO, handlers=[console])
+    path = Path(os.environ.get("BUCCANEERR_LOG_PATH") or "/buccaneerr-config/logs/buccaneerr.log")
+    path.parent.mkdir(parents=True, exist_ok=True)
+    handler = logging.FileHandler(path, mode="w")
+    handler.setFormatter(formatter)
+    logging.getLogger().addHandler(handler)
     signal.signal(signal.SIGTERM, stop)
     signal.signal(signal.SIGINT, stop)
 
     # Establish application readiness before deliberately interrupting the tunnel.
     check = StackCheck(os.environ)
+    check.validate_files()
+
+    if not check.healthy():
+        raise RuntimeError("Gluetun's VPN healthcheck failed.")
+
+    LOG.info("Gluetun reports a healthy VPN tunnel.")
+
+    if check.require_forwarding:
+        wait_for(
+            lambda: check.forwarded_port() > 0,
+            30,
+            "Gluetun did not publish a valid forwarded port.",
+        )
+        LOG.info("Gluetun published a valid forwarded port.")
+
     wait_for(
         check.application_ready,
         check.application_wait,
         "qBittorrent did not adopt the VPN port and interface.",
     )
-    logging.info("PASS: qBittorrent Web API and VPN port settings are ready.")
+    LOG.info("PASS: qBittorrent Web API and VPN port settings are ready.")
 
     if check.recovery:
         if not check.key:
@@ -266,7 +329,7 @@ def main() -> None:
         active = check.settings()
         endpoint = active["provider"]["server_selection"]["wireguard"]["endpoint_ip"]
         old_key = active["wireguard"]["private_key"]
-        logging.info("Testing automatic recovery by temporarily blocking the active VPN endpoint.")
+        LOG.info("Testing automatic recovery by temporarily blocking the active VPN endpoint.")
 
         with blocked_endpoint(endpoint):
             # Share one deadline across observing the outage and proving recovery.
@@ -282,11 +345,11 @@ def main() -> None:
                 "Automatic recovery did not restore the VPN, saved configuration, and qBittorrent.",
             )
 
-        logging.info(
+        LOG.info(
             "PASS: automatic recovery replaced the registration and restored qBittorrent's VPN port."
         )
 
-    logging.info("All checks passed. The tunnel and application are shipshape.")
+    LOG.info("All checks passed. The tunnel and application are shipshape.")
 
 
 if __name__ == "__main__":
@@ -306,4 +369,5 @@ if __name__ == "__main__":
             if isinstance(error, RuntimeError)
             else "Stack validation failed; check service health and configuration."
         )
-        raise SystemExit(message) from None
+        LOG.error("%s", message)
+        raise SystemExit(1) from None

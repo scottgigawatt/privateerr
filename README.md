@@ -202,7 +202,7 @@ flowchart TB
   accDescr: Inside Privateerr, a Python supervisor checks storage and reuses or generates configuration through unmodified PIA scripts. Gluetun loads the saved files at startup. With recovery enabled, the supervisor monitors Gluetun status and health, generates a candidate after a sustained outage, applies it through the authenticated API, and saves it only after confirmation. Applications retain Gluetun's network namespace.
 
   Supervisor["🏴‍☠️ Privateerr Python supervisor<br/>Check storage; reuse or generate"]
-  PIA["📜 Unmodified PIA scripts<br/>Invoked through shell adapter"]
+  PIA["📜 Unmodified PIA scripts<br/>Invoked by Python generator"]
   Files["📦 Saved wg0.conf<br/>and privateerr.env"]
   Gluetun["🛡️ Gluetun owns<br/>the VPN tunnel"]
   Services["🚢 Applications share<br/>Gluetun networking"]

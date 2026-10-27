@@ -1,0 +1,3 @@
+# Generation API
+
+::: privateerr.generation

@@ -41,12 +41,15 @@ elapsed_seconds=0
 #
 # log: Prefix wrapper lines so they are distinct from Gluetun output.
 #
-# Parameters: $* - Message fragments to write as one log line.
+# Parameters: $1 - Log severity.
+#             $* - Message fragments to write as one log line.
 #
 # Returns: printf's exit status.
 #
 log() {
-    printf '[%s] %s\n' "${gluetun_script_name}" "$*"
+    severity="$1"
+    shift
+    printf '%s %s [privateerr/%s] %s\n' "$(date -u +'%Y-%m-%dT%H:%M:%SZ')" "${severity}" "${gluetun_script_name}" "$*"
 }
 
 #
@@ -58,14 +61,14 @@ while [ ! -s "${PRIVATEERR_METADATA_PATH}" ] || [ -d "$(dirname "${PRIVATEERR_ME
     # If the metadata file is not found within the expected time, log an error and exit.
     #
     if [ "${elapsed_seconds}" -ge "${PRIVATEERR_GLUETUN_METADATA_WAIT_SECONDS}" ]; then
-        log "Privateerr metadata was not found at ${PRIVATEERR_METADATA_PATH}." >&2
+        log ERROR "Privateerr metadata was not found at ${PRIVATEERR_METADATA_PATH}." >&2
         exit 1
     fi
 
     #
     # Log the wait status and sleep for 2 seconds before checking again.
     #
-    log "Waiting for Privateerr metadata: ${PRIVATEERR_METADATA_PATH}"
+    log INFO "Waiting for Privateerr metadata: ${PRIVATEERR_METADATA_PATH}"
     sleep 2
     elapsed_seconds=$((elapsed_seconds + 2))
 done
@@ -81,14 +84,14 @@ if [ "${PRIVATEERR_AUTO_RECOVER}" = true ]; then
     #
     HEALTH_RESTART_VPN=off
     export HEALTH_RESTART_VPN
-    log "Privateerr owns sustained-outage recovery; Gluetun health-triggered restarts are disabled."
+    log INFO "Privateerr owns sustained-outage recovery; Gluetun health-triggered restarts are disabled."
 
     #
     # Reject characters that cannot be written safely into the API authentication file.
     #
     case "${PRIVATEERR_GLUETUN_API_KEY:-}" in
         *[!A-Za-z0-9]*|"")
-            log "PRIVATEERR_GLUETUN_API_KEY must contain only letters and numbers." >&2
+            log ERROR "PRIVATEERR_GLUETUN_API_KEY must contain only letters and numbers." >&2
             exit 1
             ;;
     esac
@@ -97,7 +100,7 @@ if [ "${PRIVATEERR_AUTO_RECOVER}" = true ]; then
     # Require the same API key length accepted by the Privateerr monitor.
     #
     if [ "${#PRIVATEERR_GLUETUN_API_KEY}" -lt 20 ] || [ "${#PRIVATEERR_GLUETUN_API_KEY}" -gt 128 ]; then
-        log "PRIVATEERR_GLUETUN_API_KEY must contain 20-128 characters." >&2
+        log ERROR "PRIVATEERR_GLUETUN_API_KEY must contain 20-128 characters." >&2
         exit 1
     fi
 
@@ -145,7 +148,7 @@ fi
 # Validate that the expected PIA_WG_SERVER_NAME variable is set in the metadata.
 #
 if [ -z "${PIA_WG_SERVER_NAME:-}" ]; then
-    log "PIA_WG_SERVER_NAME is missing from ${PRIVATEERR_METADATA_PATH}." >&2
+    log ERROR "PIA_WG_SERVER_NAME is missing from ${PRIVATEERR_METADATA_PATH}." >&2
     exit 1
 fi
 
@@ -154,7 +157,7 @@ fi
 #
 export SERVER_NAMES="${PIA_WG_SERVER_NAME}"
 
-log "Gluetun received SERVER_NAMES=${SERVER_NAMES} from Privateerr metadata. 🧭"
+log INFO "Gluetun received SERVER_NAMES=${SERVER_NAMES} from Privateerr metadata. 🧭"
 
 #
 # Execute Gluetun's original entrypoint to start the VPN client.

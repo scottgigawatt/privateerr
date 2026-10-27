@@ -6,7 +6,7 @@
 # supervisor.py: Generate PIA settings and recover sustained Gluetun outages in one process.
 #
 # The supervisor:
-#   - Invokes unmodified upstream PIA scripts through the generation adapter.
+#   - Invokes unmodified upstream PIA scripts through the Python generator.
 #   - Validates and saves matching configuration before reporting startup readiness.
 #   - Reconciles uncertain API updates before generating another replacement.
 #   - Uses bounded subprocesses, a monotonic clock, and interruptible shutdown.
@@ -26,21 +26,17 @@ import os
 import re
 import shutil
 import signal
-import subprocess
-import tempfile
 import time
 from collections.abc import Callable
-from collections.abc import Generator as IteratorGenerator
-from contextlib import contextmanager
-from dataclasses import dataclass
 from enum import Enum, auto
-from pathlib import Path
 from types import FrameType
 
 from .client import APIUnavailable, Client
 from .config import Config, ConfigurationError
 from .data import is_list, is_object, object_fields
 from .diagnostics import FileOperationError, check_recovery_directory, filesystem_operation
+from .generation import Endpoint, GenerationFailed, Generator, reap_children
+from .log import add_file_log, configure_logging
 from .scripts import install_gluetun_scripts
 from .settings import InvalidSettings, Store, assignments, contains_settings, region_description
 
@@ -49,10 +45,6 @@ LOG = logging.getLogger("privateerr")
 
 class Shutdown(BaseException):
     """Unwind active work on container shutdown without treating it as a recovery failure."""
-
-
-class GenerationFailed(Exception):
-    """Report failed or timed-out upstream generation without exposing its environment."""
 
 
 class Pending(Enum):
@@ -66,14 +58,6 @@ class Pending(Enum):
 
     # Gluetun has the candidate settings, but its tunnel has not recovered yet.
     UNHEALTHY = auto()
-
-
-@dataclass(frozen=True)
-class Endpoint:
-    """Pair a validated server address with the PIA name used for port forwarding."""
-
-    ip: str
-    name: str
 
 
 def select_endpoint(
@@ -162,120 +146,6 @@ def select_endpoint(
             return endpoint
 
     raise GenerationFailed("No permitted endpoint is available.")
-
-
-def reap_children() -> None:
-    """Collect exited descendants adopted when the supervisor runs as container PID 1."""
-
-    # Reap only children that have already exited so monitoring never waits on a live descendant.
-    while True:
-        try:
-            pid, _ = os.waitpid(-1, os.WNOHANG)
-        except ChildProcessError:
-            return
-
-        if pid == 0:
-            return
-
-
-def stop_group(process: subprocess.Popen[bytes]) -> None:
-    """Stop the generator and any surviving descendants before removing staged secrets."""
-
-    # Give the shell adapter and its children a short opportunity to exit cleanly.
-    try:
-        os.killpg(process.pid, signal.SIGTERM)
-    except ProcessLookupError:
-        pass
-
-    try:
-        process.wait(timeout=5)
-    except subprocess.TimeoutExpired:
-        pass
-    finally:
-        # The parent can exit before its children; kill any remaining members of the same group.
-        try:
-            os.killpg(process.pid, signal.SIGKILL)
-        except ProcessLookupError:
-            pass
-
-        process.wait()
-
-
-class Generator:
-    """Keep shell at the upstream integration boundary and supervise its whole process group."""
-
-    def __init__(self, config: Config, store: Store):
-        self.config = config
-        self.store = store
-
-    @contextmanager
-    def generate(self, endpoint: Endpoint | None = None) -> IteratorGenerator[Path]:
-        """Yield a validated temporary pair, then remove staged secrets when the caller finishes.
-
-        Args:
-            endpoint: Optional recovery endpoint; omit it to retain upstream selection.
-
-        Yields:
-            Private directory containing matching configuration and metadata files.
-
-        Raises:
-            GenerationFailed: If upstream setup fails or exceeds its deadline.
-            InvalidSettings: If upstream output does not describe a valid connection.
-            OSError: If staging or launching the adapter fails.
-        """
-
-        # Generate beside the saved files without overwriting the last usable configuration.
-        with (
-            filesystem_operation("generate replacement files", self.config.config_path.parent),
-            tempfile.TemporaryDirectory(
-                prefix=".privateerr-stage.", dir=self.config.config_path.parent
-            ) as temporary,
-        ):
-            stage = Path(temporary)
-
-            # Redirect adapter output into the private staging directory for this attempt.
-            env = self.config.environment.copy()
-            env.update(
-                PIA_CONF_PATH=str(stage / "wg0.conf"),
-                PRIVATEERR_METADATA_PATH=str(stage / "privateerr.env"),
-                PRIVATEERR_LOG_PATH=str(self.config.log_path),
-                PRIVATEERR_HEALTHCHECK_MARKER=str(self.config.marker),
-            )
-
-            # Only this recovery decision may override endpoint selection for the adapter.
-            for name in ("PRIVATEERR_CANDIDATE_IP", "PRIVATEERR_CANDIDATE_NAME"):
-                env.pop(name, None)
-
-            if endpoint is not None:
-                env.update(
-                    PRIVATEERR_CANDIDATE_IP=endpoint.ip, PRIVATEERR_CANDIDATE_NAME=endpoint.name
-                )
-
-            # A separate process group lets shutdown stop every upstream child, not just Bash.
-            with filesystem_operation("launch generation adapter", self.config.bin_home):
-                process = subprocess.Popen(
-                    ["bash", str(self.config.bin_home / "privateerr-generate.sh")],
-                    env=env,
-                    stdin=subprocess.DEVNULL,
-                    start_new_session=True,
-                )
-
-            # A failed or timed-out attempt leaves the previously published pair untouched.
-            try:
-                try:
-                    code = process.wait(timeout=self.config.generation_timeout)
-                except subprocess.TimeoutExpired:
-                    raise GenerationFailed("PIA generation exceeded its deadline.") from None
-
-                if code != 0:
-                    raise GenerationFailed("PIA generation failed; retained saved configuration.")
-            finally:
-                stop_group(process)
-                reap_children()
-
-            # Exit status alone is insufficient; callers receive only a valid matching pair.
-            self.store.candidate_settings(stage)
-            yield stage
 
 
 class Supervisor:
@@ -557,7 +427,10 @@ class Supervisor:
         install_gluetun_scripts(
             self.config.bin_home / "gluetun", self.config.config_path.parent.parent / "scripts"
         )
-        LOG.info("Gluetun integration scripts installed.")
+        LOG.info(
+            "Installed Gluetun integration scripts: %s",
+            self.config.config_path.parent.parent / "scripts",
+        )
 
         # Finish any interrupted publication before validating the saved configuration.
         self.store.resume()
@@ -586,33 +459,36 @@ class Supervisor:
             if not reuse:
                 raise
 
-            self.failure("Automatic recovery storage check failed", error)
+            self.failure("Configuration directory write check failed", error)
             LOG.warning(
                 "Continuing with saved configuration; recovery may fail until storage access is fixed. "
                 "No ownership or permissions were changed."
             )
         else:
-            LOG.info("Recovery filesystem check passed.")
+            LOG.info(
+                "Configuration directory check passed: %s (create, write, replace, and remove).",
+                self.config.config_path.parent,
+            )
 
         if not reuse:
             with self.generator.generate() as stage:
                 self.store.publish(stage)
 
-            LOG.info(
-                "Saved generated VPN region: %s; awaiting Gluetun health.",
-                region_description(self.config.metadata_path),
-            )
+            LOG.info("Saved WireGuard configuration: %s", self.config.config_path)
+            LOG.info("Saved PIA metadata: %s", self.config.metadata_path)
+            LOG.info("Saved VPN region: %s", region_description(self.config.metadata_path))
 
         # Readiness means scripts and valid files exist, without waiting for a running tunnel.
         with filesystem_operation("write readiness marker", self.config.marker):
             self.config.marker.touch()
 
-        LOG.info("Configuration is ready for Gluetun.")
+        LOG.info("Configuration and integration scripts are ready for Gluetun.")
 
         # Allow Gluetun time to start before health probes begin.
         if self.config.recover:
             LOG.info(
-                "Automatic recovery enabled; allowing %ss for startup.", self.config.failure_seconds
+                "Automatic recovery enabled; waiting %s seconds for Gluetun before monitoring.",
+                self.config.failure_seconds,
             )
             self.wait(self.config.failure_seconds)
 
@@ -620,9 +496,12 @@ class Supervisor:
                 self.step()
                 self.wait(self.config.interval)
         elif self.config.keepalive:
+            LOG.info("Automatic recovery is disabled; keeping Privateerr running.")
             # Legacy keepalive reports readiness without performing recovery work.
             while True:
                 self.wait(86400)
+        else:
+            LOG.info("Generation complete.")
 
 
 def main() -> int:
@@ -642,9 +521,7 @@ def main() -> int:
     # Signal-driven unwinding interrupts sleeps and requests while still running cleanup blocks.
     signal.signal(signal.SIGTERM, shutdown)
     signal.signal(signal.SIGINT, shutdown)
-    logging.basicConfig(
-        level=logging.INFO, format="[privateerr] %(asctime)s %(levelname)s %(message)s"
-    )
+    configure_logging()
 
     try:
         config = Config.from_environment(dict(os.environ))
@@ -660,12 +537,7 @@ def main() -> int:
 
         # Keep supervisor messages in the persistent log as well as Docker's console output.
         with filesystem_operation("open persistent log", config.log_path):
-            handler = logging.FileHandler(config.log_path)
-
-        handler.setFormatter(
-            logging.Formatter("[privateerr] %(asctime)s %(levelname)s %(message)s")
-        )
-        LOG.addHandler(handler)
+            add_file_log(config.log_path)
 
         # Share one store across generation and recovery so a single process owns publication.
         store = Store(config)
@@ -682,5 +554,5 @@ def main() -> int:
         return 1
     except OSError:
         # Low-level exceptions may contain private paths or values; report a fixed diagnostic.
-        LOG.error("Cannot complete startup; check file permissions and the generation adapter.")
+        LOG.error("Cannot complete startup; check file permissions and the PIA generation scripts.")
         return 1

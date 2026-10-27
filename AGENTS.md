@@ -16,7 +16,7 @@ The default Compose example starts Privateerr, Gluetun, and qBittorrent. The tes
 
 | Path | Responsibility |
 | --- | --- |
-| `docker/` | Production image context, shell adapters, and health checks |
+| `docker/` | Production image context, Python application, Gluetun scripts, date compatibility, and health checks |
 | `docker/privateerr/` | Standard-library Python supervisor, API client, validation, persistence, and script installation |
 | `docker/gluetun/` | Image-owned startup wrapper and qBittorrent forwarding hook, installed into shared configuration |
 | `docker/pia-manual-connections/` | Licensed upstream PIA git submodule; leave its contents unmodified |
@@ -112,7 +112,7 @@ Run `make spellcheck` across project-owned files. Correct misspellings; genuine 
 
 Primary deployment target: Synology DSM Container Manager. Secondary development target: macOS with Docker Desktop. Preserve one main `docker-compose.yml`; avoid runtime designs requiring multiple Compose files or application profiles. Reserve the `test` profile for optional Buccaneerr validation; application startup must not enable it.
 
-Keep Privateerr deployments unprivileged with all Linux capabilities dropped and `no-new-privileges`. UID 0 remains necessary for the unmodified upstream scripts; do not equate UID 0 with permission to add privileged mode or capabilities. Docker owns initial namespace IPv6 settings; the adapter skips redundant writes while preserving legacy image-only behavior.
+Keep Privateerr deployments unprivileged with all Linux capabilities dropped and `no-new-privileges`. UID 0 remains necessary for the unmodified upstream scripts; do not equate UID 0 with permission to add privileged mode or capabilities. Docker owns initial namespace IPv6 settings; the Python generator skips redundant writes while preserving legacy image-only behavior.
 
 Dockerfiles use architecture-neutral base images, OCI labels, and minimal required packages. Explain required packages with concise plain-English comments. Prefer Alpine unless a specific need justifies changing it. Do not hardcode architecture-specific image names. Preserve Buildx support for `linux/amd64`, `linux/arm64`, and `linux/arm/v7`. Multi-architecture registry descriptions need index-level OCI annotations as well as Dockerfile labels. Attestation manifests may appear as `unknown/unknown`; they are metadata, not runnable images.
 

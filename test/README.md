@@ -66,7 +66,7 @@ Buccaneerr keeps its verification scripts and additional test tools in a separat
 
 ## Build and run Buccaneerr 🛠️
 
-The image is built from [Dockerfile](Dockerfile), using the same pinned Alpine base digest as Privateerr. Its default command runs [buccaneerr-entrypoint.sh](buccaneerr-entrypoint.sh) for stack validation. Make uses [checks.sh](checks.sh) for Python, shell, workflow, formatting, and spelling checks in the same image.
+The image is built from [Dockerfile](Dockerfile), using the same pinned Alpine base digest as Privateerr. Its default command runs [the Python validator](runtime/validate_stack.py) directly for configuration preflight, VPN and forwarding checks, application validation, and optional fault testing. Make uses [checks.sh](checks.sh) for Python, shell, workflow, formatting, and spelling checks in the same image.
 
 Build it directly with:
 

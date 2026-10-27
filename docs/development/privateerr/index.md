@@ -16,16 +16,17 @@ Privateerr's standard-library Python program coordinates PIA configuration gener
 | Connection settings | Validate matching generated files and finish interrupted publication | `docker/privateerr/settings.py` |
 | Filesystem diagnostics | Probe storage and explain failures without exposing configuration contents | `docker/privateerr/diagnostics.py` |
 | Supervisor | Select endpoints, manage generation, and reconcile recovery state | `docker/privateerr/supervisor.py` |
-| Generation adapter | Invoke upstream PIA scripts and collect their generated metadata | `docker/privateerr-generate.sh` |
+| Generator | Invoke upstream PIA scripts, bound their output, and prepare matching metadata | `docker/privateerr/generation.py` |
+| Logging | Format UTC records and redact upstream credentials before output | `docker/privateerr/log.py` |
 | Script installer | Install image-owned Gluetun scripts before startup readiness | `docker/privateerr/scripts.py` |
 | Gluetun wrapper | Load saved metadata and configure the existing API and health listener | `docker/gluetun/gluetun-entrypoint-wrapper.sh` |
 | Forwarding hook | Synchronize qBittorrent with Gluetun's port lease | `docker/gluetun/qbittorrent-port-forwarding.sh` |
 
-The Python package starts through `python3 -m privateerr`. The shell entrypoint supplies that command; `supervisor.main()` validates configuration, protects new files, installs shutdown handlers, and starts the supervisor. The [Python reference](reference/index.md) documents the source contracts.
+The Python package starts through `python3 -m privateerr`. The image starts that command directly; `supervisor.main()` validates configuration, protects new files, installs shutdown handlers, and starts the supervisor. The [Python reference](reference/index.md) documents the source contracts.
 
 ## Keep the integration small
 
-Keep shell at the upstream and container-startup boundaries. Recovery state, deadlines, response validation, and candidate reconciliation belong in Python. Do not add a production web server, package dependency, Docker socket, or container lifecycle controller to solve a problem already handled through Gluetun's existing API.
+Keep upstream PIA scripts and Gluetun-local hooks in shell. Privateerr and Buccaneerr start their Python programs directly. Recovery state, deadlines, response validation, and candidate reconciliation belong in Python. Do not add a production web server, package dependency, Docker socket, or container lifecycle controller to solve a problem already handled through Gluetun's existing API.
 
 The production image retains UID 0 for upstream scripts while the example drops all Linux capabilities and enables `no-new-privileges`. Read [container hardening](../../automatic-recovery.md#run-without-privileged-mode) before changing generation or namespace configuration.
 

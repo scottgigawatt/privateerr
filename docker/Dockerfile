@@ -52,7 +52,9 @@ ARG IMAGE_VERSION=latest
 # hadolint ignore=DL3064
 ENV PIA_BIN_HOME=${PIA_BIN_HOME} \
     PRIVATEERR_BIN_HOME=${PRIVATEERR_BIN_HOME} \
-    PRIVATEERR_HEALTHCHECK_MARKER=/healthcheck/privateerr.ready
+    PRIVATEERR_HEALTHCHECK_MARKER=/healthcheck/privateerr.ready \
+    PYTHONPATH=${PRIVATEERR_BIN_HOME} \
+    PYTHONDONTWRITEBYTECODE=1
 
 #
 # Add Open Container Initiative image labels. GitHub Container Registry reads
@@ -78,8 +80,6 @@ LABEL org.opencontainers.image.title="Privateerr" \
 COPY LICENSE                        /LICENSE
 COPY pia-manual-connections/LICENSE /licenses/pia-manual-connections/LICENSE
 COPY pia-manual-connections         ${PIA_BIN_HOME}
-COPY privateerr-entrypoint.sh       ${PRIVATEERR_BIN_HOME}/privateerr-entrypoint.sh
-COPY privateerr-generate.sh         ${PRIVATEERR_BIN_HOME}/privateerr-generate.sh
 COPY privateerr                     ${PRIVATEERR_BIN_HOME}/privateerr
 COPY gluetun                        ${PRIVATEERR_BIN_HOME}/gluetun
 COPY privateerr-healthcheck.sh      /usr/local/bin/privateerr-healthcheck
@@ -109,7 +109,6 @@ RUN apk upgrade --no-cache libcrypto3 libssl3 && \
         "curl@curlfix>=${CURL_APK_MIN_VERSION}" \
         "libcurl@curlfix>=${CURL_APK_MIN_VERSION}" && \
     chmod +x \
-        "${PRIVATEERR_BIN_HOME}/privateerr-entrypoint.sh" \
         /usr/local/bin/privateerr-healthcheck \
         /usr/local/bin/date
 
@@ -124,7 +123,7 @@ WORKDIR ${PIA_BIN_HOME}
 HEALTHCHECK CMD ["privateerr-healthcheck"]
 
 #
-# Run the Privateerr wrapper as PID 1 so it receives Docker stop signals and
-# can exit cleanly after keepalive mode is interrupted.
+# Run the Python supervisor directly as PID 1 so it receives shutdown signals
+# and can stop all upstream children before removing temporary configuration.
 #
-CMD [ "bash", "-c", "exec ${PRIVATEERR_BIN_HOME}/privateerr-entrypoint.sh" ]
+CMD ["python3", "-m", "privateerr"]

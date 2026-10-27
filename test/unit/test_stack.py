@@ -62,6 +62,26 @@ class StackTests(unittest.TestCase):
             with self.subTest(field=field), patch.dict(self.preferences, {field: value}):
                 self.assertFalse(self.check.application_ready())
 
+    def test_preflight_validates_saved_files_and_forwarding_choice(self):
+        """Python preflight replaces the shell checks and respects forwarding opt-out."""
+
+        (self.root / "wg0.conf").write_text(
+            "PrivateKey = example\nPublicKey = example\nEndpoint = example:1337\n"
+        )
+        (self.root / "privateerr.env").write_text(
+            "PIA_WG_SERVER_NAME=example\nPIA_WG_ENDPOINT_IP=192.0.2.1\nPIA_PORT_FORWARDING_SUPPORTED=false\n"
+        )
+
+        with self.assertRaisesRegex(RuntimeError, "does not support port forwarding"):
+            self.check.validate_files()
+
+        self.check.require_forwarding = False
+        self.check.validate_files()
+        (self.root / "wg0.conf").write_text("incomplete\n")
+
+        with self.assertRaisesRegex(RuntimeError, "Required configuration fields"):
+            self.check.validate_files()
+
     def test_recovery_requires_published_matching_pair(self):
         """Require new registration, saved files, and completed publication together."""
 

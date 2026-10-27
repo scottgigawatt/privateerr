@@ -41,7 +41,7 @@ script_name="qbittorrent-port-forwarding.sh"
 # Returns: 0 after writing the line.
 #
 log() {
-    printf '[%s] %s\n' "${script_name}" "$*"
+    printf '[privateerr/%s] %s\n' "${script_name}" "$*"
 }
 
 #

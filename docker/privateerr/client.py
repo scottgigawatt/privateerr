@@ -204,12 +204,14 @@ class Client:
         except APIUnavailable:
             return False
 
-    def catalog(self) -> dict[str, object]:
+    def catalog(self, *, timeout: float = 20) -> dict[str, object]:
         """Read PIA's advertised regions and WireGuard servers for endpoint selection."""
 
         # PIA serves JSON on the first line followed by signature data outside that JSON document.
         try:
-            result = json.loads(self.request(self.config.catalog_url, timeout=20).splitlines()[0])
+            result = json.loads(
+                self.request(self.config.catalog_url, timeout=timeout).splitlines()[0]
+            )
 
             result = object_fields(result)
 
