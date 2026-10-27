@@ -40,16 +40,11 @@ FROM alpine:${ALPINE_TAG} AS tools
 ARG ALPINE_TAG=3.24@sha256:be2656061b536c1883c4034790e21d0a09c5aaaf51968b89368a3c0371ea2c9a
 
 #
-# Default install locations, fixed package floors, and image metadata.
+# Default install locations and image metadata.
 #
 ARG BUCCANEERR_BIN_HOME=/buccaneerr
 ARG EDGE_APK_REPOSITORY=https://dl-cdn.alpinelinux.org/alpine/edge/main
-ARG ACTIONLINT_APK_MIN_VERSION=1.7.12-r3
-ARG SETUPTOOLS_APK_MIN_VERSION=83.0.0-r0
-ARG CURL_APK_MIN_VERSION=8.23.0-r0
-ARG LIBEXPAT_APK_MIN_VERSION=2.9.0-r0
-ARG MUSL_APK_MIN_VERSION=1.2.6-r3
-ARG ZLIB_APK_MIN_VERSION=1.3.2-r1
+ARG PYTHON_APK_MIN_VERSION=3.14.10-r0
 ARG IMAGE_CREATED=unknown
 ARG IMAGE_REVISION=unknown
 ARG IMAGE_VERSION=latest
@@ -79,50 +74,36 @@ LABEL org.opencontainers.image.title="Buccaneerr" \
         org.opencontainers.image.base.name="docker.io/library/alpine:${ALPINE_TAG}"
 
 #
-# Upgrade the base OpenSSL runtime libraries to Alpine's current fixed release,
-# then install validation tools. These stay out of the production image.
-# Use only fixed curl and setuptools from edge until stable includes their security updates.
-# Keep the curl repository tagged so other packages stay on stable Alpine.
-# The musl floor requires the stable regex-overflow fix even with an older base.
-# The zlib floor rejects the older vulnerable stable revision.
-# BusyBox supplies the portable AWK and core utilities used by the tests.
+# Refresh validation tools from stable Alpine; tag only Python for its security update.
+# BusyBox supplies portable AWK and core utilities; Python checker versions are
+# locked separately so linting and documentation use the same current Ruff release.
 #
-RUN apk upgrade --no-cache libcrypto3 libssl3 && \
+RUN apk upgrade --no-cache && \
     apk add --no-cache \
+        actionlint \
         bash \
         ca-certificates \
+        curl \
         git \
         make \
         grep \
         jq \
         iptables \
-        python3 \
-        py3-pip \
-        ruff \
-        "actionlint>=${ACTIONLINT_APK_MIN_VERSION}" \
-        nodejs \
-        "musl>=${MUSL_APK_MIN_VERSION}" \
-        "musl-utils>=${MUSL_APK_MIN_VERSION}" \
-        "zlib>=${ZLIB_APK_MIN_VERSION}" \
-        "libexpat>=${LIBEXPAT_APK_MIN_VERSION}" && \
-    apk add --no-cache \
-        --repository="${EDGE_APK_REPOSITORY}" \
-        "py3-setuptools>=${SETUPTOOLS_APK_MIN_VERSION}" && \
-    printf '%s\n' "@curlfix ${EDGE_APK_REPOSITORY}" >> /etc/apk/repositories && \
-    apk add --no-cache \
-        "curl@curlfix>=${CURL_APK_MIN_VERSION}" \
-        "libcurl@curlfix>=${CURL_APK_MIN_VERSION}"
+        nodejs && \
+    printf '%s\n' "@pythonfix ${EDGE_APK_REPOSITORY}" >> /etc/apk/repositories && \
+    apk add --no-cache "python3@pythonfix>=${PYTHON_APK_MIN_VERSION}"
 
-# Install pre-commit with fixed virtualenv outside Alpine's older Python tool packages.
+# Install pre-commit, virtualenv, and Ruff in an isolated, hash-verified environment.
 # The complete lockfile verifies every dependency and keeps these tools test-only.
-# Keep only seed wheels for the installed Python, preserving their upstream hash checks.
+# Keep only active upstream seed wheels and remove temporary bootstrap packages together.
 COPY test/requirements-tools.txt /tmp/requirements-tools.txt
-RUN python3 -m venv /opt/precommit && \
+RUN apk add --no-cache --virtual .python-build-deps py3-pip && \
+    python3 -m venv /opt/precommit && \
     /opt/precommit/bin/python -m pip install --no-cache-dir --disable-pip-version-check \
         --require-hashes --requirement /tmp/requirements-tools.txt && \
     /opt/precommit/bin/python -m pip uninstall --yes pip && \
     /opt/precommit/bin/python -c 'import sys; from virtualenv.seed.wheels import embed; version = ".".join(map(str, sys.version_info[:2])); active = embed.BUNDLE_SUPPORT[version]; [embed.get_embed_wheel(package, version) for package in active]; [wheel.unlink() for wheel in embed.BUNDLE_FOLDER.glob("*.whl") if wheel.name not in active.values()]' && \
-    apk del py3-pip && \
+    apk del .python-build-deps && \
     rm /tmp/requirements-tools.txt
 ENV PATH="/opt/precommit/bin:${PATH}"
 
@@ -173,7 +154,9 @@ CMD ["python3", "-m", "validate_stack"]
 FROM tools AS docs
 
 # Install documentation tools in an isolated environment without changing Alpine's Python packages.
-RUN apk add --no-cache py3-pip && python3 -m venv /opt/docs
+RUN apk add --no-cache --virtual .docs-build-deps py3-pip && \
+    python3 -m venv /opt/docs && \
+    apk del .docs-build-deps
 COPY requirements-docs.txt /tmp/requirements-docs.txt
 RUN /opt/docs/bin/python -m pip install --no-cache-dir --disable-pip-version-check \
     --require-hashes --requirement /tmp/requirements-docs.txt && \

@@ -1,143 +1,111 @@
-# Container scan review
+# Container security review
 
-Buccaneerr was reviewed on October 20, 2026 with Trivy 0.75.0 in comprehensive mode and Docker Scout 1.26.0. Trivy's database was updated at 01:19:53 UTC on October 21, or 21:19:53 EDT on October 20. Both scanners examined the immutable `edge` image built from main commit `f8b07cb65487645974a56c37e9bece9578704281` on `linux/amd64`, `linux/arm64`, and `linux/arm/v7`. All three platforms have matching advisory sets. Scanner databases change, so these findings apply to the recorded artifacts rather than every future image with the same tag. The production-image snapshot below remains historical evidence from October 19; production and `latest` images were not scanned again during this Buccaneerr review.
+This review checks published Privateerr and Buccaneerr artifacts and local update candidates on October 27, 2026. Every image was examined on `linux/amd64`, `linux/arm64`, and `linux/arm/v7`. The local candidates are review artifacts; changing source does not update an existing image or advance `latest`.
+
+## Scan scope and results
+
+Trivy 0.76.1 used comprehensive detection with all severities, unfixed findings, and no ignore file. Its freshly downloaded database was updated at `2026-10-27 01:25:30 UTC`; the same database was held constant for all comparisons. Docker Scout 1.27.0 also ran without severity or fix-status filters. Published scans used immutable runtime manifests or their matching published index and platform. Local OCI builds were inspected one runtime manifest at a time; their exact configuration and layer contents were preserved when preparing Docker archives for Scout. Each Trivy report's architecture was checked against its selected manifest.
+
+The counts below are the same on all three platforms. Trivy counts package findings; Scout counts report instances and distinct advisory identifiers separately. Aliases can describe the same issue, so these columns are not interchangeable. In particular, Scout reports the msgpack issue as both CVE-2026-57585 and GHSA-6v7p-g79w-8964.
+
+| Image | Artifact | Trivy findings | Scout instances | Scout identifiers |
+| --- | --- | --- | --- | --- |
+| Privateerr | `latest` | 2 | 4 | 4 |
+| Privateerr | `edge` | 2 | 4 | 4 |
+| Privateerr | `candidate` | 2 | 1 | 1 |
+| Buccaneerr | `latest` | 21 | 49 | 44 |
+| Buccaneerr | `edge` | 11 | 39 | 34 |
+| Buccaneerr | `candidate` | 10 | 35 | 31 |
+
+The production candidate removes the three Python advisories reported by Scout against both published production tags. Its remaining musl report is a stable-versus-edge revision mismatch described below. Buccaneerr still has real upstream tool and installer dependency findings; this review does not declare it free of vulnerabilities. The normal CI gate is narrower than this audit: it rejects fixed HIGH/CRITICAL findings, uses precise detection by default, and applies the one exact-path Compose exception.
+
+## Production runtime updates
+
+Both candidates install Python `3.14.10-r0`, including the [October 26 upstream security fixes](https://discuss.python.org/t/python-3-15-2-3-14-10-3-13-18-3-12-16-and-3-11-18-are-out/109678) for CVE-2026-12345, CVE-2026-114583, and CVE-2026-115557. These cover temporary-directory cleanup, archive filtering, and blocking compromised certificate keys. The certificate denylist is a security backstop; it does not replace a maintained trust store.
+
+Alpine 3.24 stable still supplies Python `3.14.8-r0`. A tagged `@pythonfix` edge repository supplies only Python and its matching bytecode package family, with a `3.14.10-r0` minimum. Installed APK databases on all six candidate platforms confirm that every other package version matches the stable repository indexes. Remove this targeted repository exception when stable supplies the fixed Python release; do not perform a general edge upgrade.
+
+The pinned Alpine 3.24 image already resolves to 3.24.3 and remains current. Builds refresh its stable packages rather than carrying separate historical OpenSSL, musl, zlib, or Expat floors. The candidates retain stable musl `1.2.6-r3`, OpenSSL libraries `3.5.9-r0`, zlib `1.3.2-r1`, libexpat `2.9.0-r0`, and curl/libcurl `8.23.0-r0` on every platform. Production keeps only the Python standard library and PIA runtime tools; lint, installer, and documentation dependencies stay in Buccaneerr.
+
+## Workaround decisions
+
+| Control or workaround | Decision and evidence |
+| --- | --- |
+| Curl edge repository and version floor | Removed. [Stable curl 8.23.0](https://pkgs.alpinelinux.org/package/v3.24/main/aarch64/curl) and matching libcurl are available in all three stable indexes. |
+| Separate OpenSSL upgrade and musl/zlib/Expat floors | Replaced by a stable-package refresh. The pinned base and stable packages already contain those fixes; actual installed versions were checked on every architecture. |
+| System setuptools edge install | Removed. Pip is a temporary build dependency, removed with its dependency group. No system pip or setuptools remains in the ordinary Buccaneerr image; the active upstream seed wheel is setuptools 84.2.1. |
+| Python security floor | Required as a narrow `@pythonfix` exception until stable includes Python 3.14.10. Its interpreter and bytecode packages are the only installed versions outside stable. |
+| markdown-it and smol-toml npm overrides | Removed. markdownlint-cli2 0.24.0 already requires the same fixed versions, 15.0.3 and 1.9.1. Regenerating the lockfile preserves its resolved graph. |
+| KaTeX npm override | Retained at 0.19.1. Removing it resolves the math extension's `^0.16.0` dependency to 0.16.47 and restores [CVE-2026-103923](https://github.com/advisories/GHSA-238p-pmpm-9mq7). The final npm audit reports zero findings. |
+| Ruff packaging | Updated to 0.17.3 in the hash-verified tool and documentation locks. Official wheels cover all three Linux targets; Alpine's older Ruff package is unnecessary. |
+| Inactive virtualenv seed-wheel cleanup | Retained. Only the active upstream pip 26.2.2 and setuptools 84.2.1 wheels are needed for Python 3.14; upstream wheel integrity checks remain intact. |
+| Compose CVE exception | Retained at its existing path and expiry; see the next section. No exception is added or broadened. |
+| Date compatibility shim | Retained. Current upstream PIA still calls `date --date='1 day'`; BusyBox rejects that syntax, while the shim translates it and delegates to BusyBox. No GNU coreutils package is introduced. |
+| Hadolint DL3018 package-version exception | Retained for APK installation. Stable package refreshes deliberately accept current security revisions rather than pinning each APK forever; immutable image pins and scans identify the built result. Removing the existing lint flag still produces DL3018. |
+| Hadolint DL3064 path exceptions | Retained. Current Hadolint 2.15.1 still flags the non-secret Privateerr install-path argument and environment names when these targeted comments are removed. |
+
+The PIA submodule, Docker CLI 29.9.2, Compose 5.6.1, ShellCheck 0.11.0, Hadolint 2.15.1, actionlint 1.7.12, and direct npm tools are already at their latest upstream releases checked during this review. Stable actionlint's `1.7.12-r3` package is newer than edge's `r2`; switching it to edge would regress its embedded Go runtime. No project-specific Go rebuild or customized pip distribution is added.
 
 ## Current Compose exception
 
-The existing CI exception for CVE-2026-78669 applies only to `usr/local/lib/docker/cli-plugins/docker-compose` and expires on November 6, 2026. Its advisory identifier, binary path, risk statement, and all other scan rules remain unchanged. The later expiry gives the official Compose update more time; it does not resolve the HTTP/2 vulnerability or establish safety against untrusted peers. Review or remove the exception before that date and retain unfiltered artifact scans. The dated reviews below preserve the policy and findings recorded at their original review times.
+The latest official Compose 5.6.1 binary still embeds `golang.org/x/net v0.58.0`; [CVE-2026-78669](https://pkg.go.dev/vuln/GO-2026-6611) requires its fix from x/net 0.60.0. The existing exception covers only `usr/local/lib/docker/cli-plugins/docker-compose` and still expires November 6, 2026. Its scope, expiry, and risk statement are unchanged. A fixed library release does not make the official binary fixed until that binary incorporates it.
 
-## Review the October 21 tool update
+This HTTP/2 issue affects clients and servers; being a CLI is not an exemption. Supported checks use trusted fixtures and the wrapper's local Unix Docker socket. The wrapper rejects remote Docker contexts and does not forward `DOCKER_HOST`. Network-enabled runtime tests remain supported, and untrusted HTTP/2 peers outside this boundary retain risk. Remove the exception after compatible official binaries on every supported platform include the fix, or review the remaining risk before the existing expiry. Keep full unfiltered scans regardless of the gate.
 
-Source commit `8c2f14c48568fe47a0d142c89e7cf48aba107f36` updates the official Docker CLI donor to 29.9.2 and the official Compose donor to 5.6.1. Their verified image indices are `sha256:2a146f3eb1ee1015c482756624bbff3a94a1b0531cad6fca03be55943373cf95` and `sha256:2aeaeedd4f2d8e2dcb399b2b9723bfaeb6714140cb0657897f5865960f1624ae`, respectively. The [official Docker inventory](https://github.com/docker-library/repo-info/blob/master/repos/docker/remote/29.9.2-cli.md) records its published platforms; the [Compose release](https://github.com/docker/compose/releases/tag/v5.6.1) identifies the Go 1.26.10 security fix. No project-specific Go rebuild or dependency override is introduced.
+## Interpret remaining findings
 
-Complete Buccaneerr images were built locally for all three supported platforms and exported as OCI layouts. The immutable runtime manifests and configuration digests below identify the actual scanned artifacts; these are local review artifacts, not published registry images. They do not establish that `edge`, `latest`, or an installed image has received the update. Production Privateerr was not rebuilt or scanned again in this local review.
+### Stable musl backport
 
-| Platform | Local runtime manifest digest | Image configuration digest |
+Both scanners compare installed musl `1.2.6-r3` with an edge `r6` threshold for CVE-2026-107891. Alpine's [stable recipe](https://github.com/alpinelinux/aports/blob/3.24-stable/main/musl/APKBUILD) and [stable security database](https://secdb.alpinelinux.org/v3.24/main.json) record that fix in `1.2.6-r3`. The stable and edge package revision numbers are not interchangeable. The candidate still installs the stable backport; it does not move the C library to edge or suppress this finding. Trivy reports the package twice for musl and musl-utils, while Scout reports one advisory.
+
+### Official Go tools
+
+Alpine actionlint `1.7.12-r3` embeds Go 1.26.9 and still reports CVE-2026-111943. It also reports the Windows-specific x/sys advisory [CVE-2026-39824](https://pkg.go.dev/vuln/GO-2026-5024). The latest official upstream release and the current edge package do not provide a better compatible binary. Keep the finding visible while awaiting an official package update; no actionlint exception is added.
+
+Compose retains the HTTP/2 finding, four MEDIUM x/net reports, and the [OpenPGP module advisory](https://pkg.go.dev/vuln/GO-2026-5932). Scout additionally reports the Windows plugin-discovery advisory [CVE-2025-15558](https://github.com/docker/cli/security/advisories/GHSA-p436-gjf2-799p). Module metadata does not prove that every affected package is invoked by supported commands. This review preserves those reports and does not claim all tool behavior is non-exploitable.
+
+### Installer code and upstream inventory
+
+Scout also reads `virtualenv-21.14.13.dist-info/sboms/virtualenv.cdx.json`. That upstream inventory still lists older wheels and vendored versions after inactive wheel archives are removed. Direct inspection confirms that the retained pip 26.2.2 wheel vendors requests 2.34.2, certifi 2026.10.19, idna 3.18, and Pygments 2.20.0. Reports for older versions of those components, pip 26.0.1, and setuptools 82.0.1 describe inventory entries rather than the retained versions. In particular, the reported certifi 2026.1.4 trust-store advisory does not describe the retained certifi 2026.10.19 code.
+
+The active pip wheel still vendors msgpack 1.1.2, urllib3 2.7.0, and the pkg_resources portion recorded as setuptools 70.3.0. Version-level findings for those components require separate code-path assessment; inventory for the complete setuptools distribution is not proof that all its modules exist inside pip. The latest upstream pip remains 26.2.2, so there is no newer complete upstream wheel to adopt. Standalone package upgrades do not replace vendored code. Keep the reports visible and the upstream SBOM intact; do not rewrite inventory or partially patch the wheel to reduce scanner counts. Production contains none of these tools.
+
+The [braces advisory CVE-2026-93687](https://github.com/advisories/GHSA-vfj7-8cjw-p6xm) was withdrawn upstream on October 23. It is absent from the fresh reports and final npm audit; no project exception hides it.
+
+## Reviewed artifact identities
+
+These immutable published indices identify the `latest` and `edge` snapshots used above. They are not aliases for the local candidates.
+
+| Image | Published tag | Index digest |
 | --- | --- | --- |
-| linux/amd64 | `sha256:b57c9331866fcdf4b82415d4481274f72789da2e24fddee9553ab8ffe4df8db7` | `sha256:bd044ad9bb90bb0f6acbee592fe734349f821450057d8e45b0877a4e3f9c2b9e` |
-| linux/arm64 | `sha256:b90022e6cd90cc291074651f9f9a4e541855c4768e9944f4b637d5731ea6dddd` | `sha256:e407d2636373d035e42f633740e462472a225b45cc3e57633d3e9252b8635e8d` |
-| linux/arm/v7 | `sha256:6a2ce2e5f5b2e822dab71364134a7884157989b9bf32930a3730b2f79b527fbd` | `sha256:b8816f5fd5d9812dc6195908a8c57d55c92a46aa073c1ae65dd7b4bfda6a4a15` |
+| Privateerr | `latest` | `sha256:430e49888564838517ff073c48b5ece02ca44af385c6b73c8ad0121126d3331e` |
+| Privateerr | `edge` | `sha256:cf132360969f87490de8e4bd77c89996067694b67ca75abf91788b75ed5478bd` |
+| Buccaneerr | `latest` | `sha256:f4634ed5656950b18d6592ef11939160da35659c3ec2d2bef971f6a7c8f2e0d9` |
+| Buccaneerr | `edge` | `sha256:78e13b2aaad73970889000957a6bc9a39cb6ac9b547c148e742ea4ee7a8a51ee` |
 
-Trivy 0.75.0 scanned these layouts on October 21 with the vulnerability database updated at 13:15:34 UTC that day. The database was freshly downloaded, then held constant across the three scans. Comprehensive detection, every severity, unfixed findings, and an empty ignore file were used. Each platform reports the same nine findings covering nine identifiers: three HIGH, four MEDIUM, and two UNKNOWN. Docker CLI and Compose both embed Go 1.26.10, and neither binary reports CVE-2026-111943. The two existing Compose standard-library exception identifiers, CVE-2026-78667 and CVE-2026-97031, are also absent from all three unfiltered scans.
+The local candidate runtime manifests below identify the exact built and scanned artifacts. All three platforms have the same reviewed runtime and tool versions and advisory sets described above. The checks verify Python 3.14.10, stable library versions, absent bootstrap packages, and unchanged upstream seed-wheel contents. Published release images must be checked separately after their normal build and publication workflow.
 
-The complete image still reports CVE-2026-111943 in Alpine actionlint 1.7.12-r3, which embeds Go 1.26.9. The default precise scan can omit upstream Go findings for an Alpine-owned binary, so passing the normal CI gate does not establish that this finding is fixed. The actionlint `golang.org/x/sys` finding and the unfixed braces finding remain visible as well. No new exception covers actionlint.
-
-Compose still embeds `golang.org/x/net v0.58.0`, including HIGH CVE-2026-78669 and four MEDIUM findings fixed in v0.60.0. Its unmaintained OpenPGP finding also remains. The existing exact-path CVE-2026-78669 exception expires on October 23, 2026; this update neither resolves that advisory nor extends its expiry. The policy scans also pass on all three artifacts after removing only the obsolete CVE-2026-78667 and CVE-2026-97031 entries. The CVE-2026-78669 entry, including its comments, exact path, statement, and October 23 expiry, is unchanged. No exclusion is added, extended, or broadened.
-
-Only Trivy was rerun for these local artifacts. The published-image and Scout evidence in the following sections retains its original dates and digests; it is not a scan of this source update.
-
-## Security status at the recorded review
-
-The October 19 published production images reported 48 Trivy findings covering 24 identifiers on every platform, all from curl and libcurl 8.22.0. CVE-2026-92392 is HIGH severity; the other reports are MEDIUM or LOW. Official curl 8.23.0 fixes all 24 identifiers. Source builds now require that version from a narrowly tagged Alpine edge repository because stable Alpine 3.24 still supplies 8.22.0. The historical indices below predate that fix and selected v2.1.6 for `latest`; they do not establish the current state of either tag. Do not treat a source merge as a fix to an existing immutable image.
-
-At the October 20 review, Buccaneerr used the digest-pinned official Compose 5.6.0 image and Alpine's actionlint package, with a minimum of 1.7.12-r3. Docker CLI remains digest-pinned, and the repaired smol-toml 1.9.1 lockfile remains intact. The project-specific Go builds and dependency overrides have been removed to avoid maintaining a separate tool dependency graph and cross-compilation pipeline. These tools remain outside production Privateerr.
-
-The official Compose and packaged actionlint binaries can still report Go vulnerabilities. As of October 20, the latest upstream releases remain Compose 5.6.0 and actionlint 1.7.12. Pip 26.2.2 is available, but its bundled dependencies still have the six installer CVEs listed below. There is no verified drop-in upstream release that removes the remaining Compose or bundled-installer findings. Alpine has rebuilt actionlint 1.7.12-r3 with Go 1.26.9 on all three platforms, fixing its former Go standard-library findings without a project-specific build. The `golang.org/x/sys` version finding remains visible. At that review, CI temporarily excluded CVE-2026-78667 and CVE-2026-97031 only at the exact Compose binary path until October 23, 2026. The obsolete actionlint paths have been removed from those exceptions. Those advisories concern HTTP file-serving and TLS-server denial of service; the supported CLI validation and test-container management commands do not expose those server paths. Buccaneerr runtime tests can use networking inside the VPN namespace, so this rationale does not depend on every test being offline. It is an invocation-boundary assessment, not proof about every dependency or unsupported command.
-
-The October 10 PR scan also reports [CVE-2026-78669](https://pkg.go.dev/vuln/GO-2026-6611) in official Compose's Go standard library and `golang.org/x/net`. This HTTP/2 SETTINGS-frame denial of service affects clients and servers; a CLI alone is not an exemption. The additional exception applies only to `usr/local/lib/docker/cli-plugins/docker-compose`, with the same October 23 expiry. Supported repository checks use trusted checked-in fixtures; `scripts/compose/test.sh` requires a local Unix Docker socket for runtime, live, smoke, and pre-commit suites, rejects remote Docker contexts, and does not forward `DOCKER_HOST` into Buccaneerr. Other suites run without networking. Network-enabled tests remain supported, and Compose used against untrusted HTTP/2 peers outside this wrapper boundary retains risk. This assessment does not prove every Compose command or dependency safe.
-
-The October 20 review retains the same three exact-path Compose exceptions and their October 23 expiry. The official release is still affected; this review does not extend the exceptions or establish that other Compose advisories are unreachable.
-
-The existing fixed HIGH/CRITICAL gate remains active for all other findings and paths, including Docker CLI. Braces and the OpenPGP module warning are not excluded. Full artifact reviews remain unfiltered. Review or remove the exceptions before their expiry, and remove them once compatible official tools on all three supported platforms include the Go fixes. Any extension requires a separate review of the expiry, exact paths, and affected package identifiers; a blanket exclusion is not an acceptable substitute.
-
-Both images retain the zlib 1.3.2-r1 and libexpat 2.9.0-r0 minimums. Stable Alpine now supplies fixed libexpat 2.9.0 on all three architectures, so the Expat edge exception has been removed. Only curl needs the production edge repository; Buccaneerr also retains its setuptools edge exception until stable supplies version 83 or later. No general edge upgrade is performed.
-
-## Retained security controls
-
-The October 20 reviewed Buccaneerr image used digest-pinned Docker CLI and the official Compose 5.6.0 binary. Compose includes fixed containerd 2.4.1. BusyBox supplies AWK and core utilities; npm is installed only during the build and removed in the same layer. Pre-commit runs Markdownlint through the same test-image helper as other checks.
-
-Pre-commit 4.7.0 and virtualenv 21.14.11 install into `/opt/precommit` from the complete exact, SHA-256-verified `test/requirements-tools.txt` lockfile. Bootstrap pip is removed after installation. Virtualenv retains the exact upstream pip 26.2.1 and setuptools 84.0.0 seed wheels for Python 3.14 with their SHA-256 verification; unused Python 3.9 seed archives are removed. No production Python dependencies, customized pip distribution, or rewritten upstream package inventory are introduced.
-
-## Published artifact findings
-
-The October 20 Buccaneerr image reports 23 comprehensive Trivy findings covering 18 identifiers on every platform: six HIGH, 13 MEDIUM, two LOW, and two UNKNOWN package findings. Alpine packages and the standalone Docker CLI have no findings in this scan. Comprehensive mode includes upstream Go-library analysis for Alpine-owned actionlint; the default precise mode can omit those Go findings while still identifying the installed APK. These are unfiltered all-severity results, distinct from CI's narrower fixed HIGH/CRITICAL gate.
-
-Scout reports 36 advisory identifiers across 15 package versions on each platform. Its report includes virtualenv's upstream software bill of materials (SBOM), which still lists removed seed wheels. Scout reports the same msgpack issue as both CVE-2026-57585 and GHSA-6v7p-g79w-8964; count those aliases once when comparing issues. Scout has not yet reported the two new Markdown parser advisories found by Trivy. Combining both reports and deduplicating that alias gives 37 issues, classified below. Severity assignments differ between the scanners; a Scout CRITICAL label alone does not establish Linux applicability.
-
-| Finding group | Issues | Assessment and next step |
+| Candidate | Platform | Runtime manifest digest |
 | --- | --- | --- |
-| Markdown parser | 2 | Update the existing markdown-it override from 15.0.2 to 15.0.3 and regenerate the lockfile. |
-| Removed or older seed-wheel inventory only | 12 | Record the installed-file evidence below; these vulnerable versions are absent from the retained wheels. |
-| Windows-only code | 3 | Record the Linux applicability assessment below. |
-| Remaining Compose advisories | 13 | Await compatible official updates or assess affected code paths individually. |
-| Dependencies in the active pip seed wheel | 6 | Await an upstream pip update; standalone package upgrades do not replace vendored code. |
-| Braces | 1 | Keep the unpatched dependency finding visible. |
-
-The source lockfile now selects markdown-it 15.0.3, fixing [CVE-2026-111758](https://github.com/advisories/GHSA-gfr2-rv44-r23c) and [CVE-2026-111766](https://github.com/advisories/GHSA-vfgh-jcmw-g37q). Both denial-of-service advisories were published on October 20 after the earlier Markdown parser fix. This is a source fix; the reviewed immutable image still contains 15.0.2. The inventory and platform assessments do not remove vulnerable code or guarantee a lower scanner count. Keep unfiltered reports and do not rewrite upstream inventory to hide findings.
-
-The following package-level reports remain visible and require context.
-
-- **CVE-2026-93687:** [braces 3.0.3](https://github.com/advisories/GHSA-vfj7-8cjw-p6xm) still has no published patched version. Markdownlint CLI2 depends on it through micromatch. Keep the GitHub dependency alert visible and use repository-controlled file patterns for checks.
-- **GO-2026-5932:** The Go [advisory](https://pkg.go.dev/vuln/GO-2026-5932) concerns the unmaintained OpenPGP package. Compose's module metadata includes `golang.org/x/crypto`; the advisory does not apply to every package in that module.
-- **CVE-2025-15558:** Docker's [advisory](https://github.com/docker/cli/security/advisories/GHSA-p436-gjf2-799p) applies to Windows plugin discovery. Scout reports the Docker CLI module embedded in Compose; the affected Windows behavior does not apply to these Linux images.
-- **CVE-2026-56857:** The Go [advisory](https://pkg.go.dev/vuln/GO-2026-6604) affects Windows junction handling in the standard library. Scout reports it as CRITICAL in Compose, but the affected Windows behavior does not apply to these Linux images.
-- **CVE-2026-39824:** The Go [advisory](https://pkg.go.dev/vuln/GO-2026-5024) affects `golang.org/x/sys/windows.NewNTUnicodeString`. The actionlint module inventory reports an older x/sys version, but that Windows package does not apply to these Linux images.
-
-## Bundled installer findings
-
-Virtualenv needs its integrity-checked pip seed wheel to create fresh Python hook environments. The retained pip 26.2.1 wheel and the newer upstream [pip 26.2.2 inventory](https://github.com/pypa/pip/blob/26.2.2/src/pip/_vendor/vendor.txt) still vendor the dependencies below. Installing their standalone fixed releases does not replace code inside that wheel. The [upstream vendoring policy](https://pip.pypa.io/en/latest/development/vendoring-policy/) does not support partially removing bundled libraries. Updating their vendored versions would require maintaining and validating a custom pip distribution, so this image preserves the upstream wheel. There is no published pip release containing these dependency fixes as of this review. These findings remain visible in Scout and require an upstream pip update. They affect the test-only Buccaneerr seed installer; production Privateerr contains neither virtualenv nor pip.
-
-| Bundled dependency | Reported advisory | Standalone fixed version |
-| --- | --- | --- |
-| msgpack 1.1.2 | [CVE-2026-57585](https://github.com/advisories/GHSA-6v7p-g79w-8964) | 1.2.1 |
-| urllib3 2.7.0 | [CVE-2026-97687](https://www.cve.org/CVERecord?id=CVE-2026-97687), [CVE-2026-97688](https://www.cve.org/CVERecord?id=CVE-2026-97688), [CVE-2026-97689](https://www.cve.org/CVERecord?id=CVE-2026-97689) | 2.8.0 |
-| setuptools 70.3.0, limited to pip's vendored `pkg_resources` | [CVE-2025-47273](https://www.cve.org/CVERecord?id=CVE-2025-47273), [CVE-2026-59890](https://www.cve.org/CVERecord?id=CVE-2026-59890) | 78.1.1 and 83.0.0, respectively |
-
-A read-only inspection of the published arm64 image found exactly two seed wheels: pip 26.2.1 and setuptools 84.0.0, matching virtualenv's active Python 3.14 mapping. The unused pip 26.0.1 and setuptools 82.0.1 seed wheels target Python 3.9, which this image does not provide. Those archives are absent. Pip's retained `pip/_vendor/vendor.txt` records requests 2.34.2, idna 3.18, Pygments 2.20.0, and urllib3 2.7.0. This distinguishes the 12 inventory-only CVEs below from the six CVEs still affecting the active pip wheel.
-
-| Older version reported by Scout | Inventory-only CVEs | Retained code |
-| --- | --- | --- |
-| pip 26.0.1 | CVE-2026-8643, CVE-2026-3219, CVE-2026-6357, CVE-2026-13346 | pip 26.2.1 |
-| requests 2.32.5 | CVE-2026-25645 | requests 2.34.2 inside pip |
-| idna 3.11 | CVE-2026-45409 | idna 3.18 inside pip |
-| Pygments 2.19.2 | CVE-2026-4539 | Pygments 2.20.0 inside pip |
-| urllib3 1.26.20 | CVE-2025-50181, CVE-2025-66418, CVE-2025-66471, CVE-2026-21441, CVE-2026-44431 | urllib3 2.7.0 inside pip; its three newer CVEs remain visible above |
-
-Scout reads these entries from `virtualenv-21.14.11.dist-info/sboms/virtualenv.cdx.json`. That upstream inventory describes the distributed virtualenv wheel before pruning. Reports for setuptools 82.0.1, msgpack, and newer urllib3 advisories overlap findings in retained pip code, so they are not counted among the 12 inventory-only issues. Preserve the upstream SBOM and describe this boundary rather than deleting metadata. A fresh pre-commit Python hook environment verifies that environment creation and package installation still work.
-
-A successful workflow scan rejects fixed high or critical findings; it does not mean either scanner reports zero findings. CI uses `ignore-unfixed: true`, applies the expiring binary-path exceptions above, and scans its local build. Use the full artifact scans when evaluating other severities, unfixed dependencies, platforms, and published stable images.
-
-## Reviewed image indices
-
-The October 20 Buccaneerr index is `sha256:1c56754fb640dcbe120b33f022a274cceb446f8327fae83301fe3687a32e4bd4`. The successful [main publication](https://github.com/scottgigawatt/privateerr/actions/runs/39526870674) and image revision labels identify commit `f8b07cb65487645974a56c37e9bece9578704281`.
-
-| Platform | Runtime manifest digest |
-| --- | --- |
-| linux/amd64 | `sha256:0b20ab2d4d39cc0413d3290bf19da51425db52811a4de7e1f552d001b9d982d9` |
-| linux/arm64 | `sha256:8d4f9710a3d0bc2c4cafb9e1f11cb1ed016090108f77304d92a8cbe17ee6735d` |
-| linux/arm/v7 | `sha256:f037ea747f2c60a98d23c21324563d9cc35acbd0b5a053e355e71b54ad32d925` |
-
-The following indices retain the historical October 19 snapshot before the curl security fix. They do not describe the current `edge` or `latest` tags:
-
-| Image | Tag | Index digest |
-| --- | --- | --- |
-| Privateerr | `edge` | `sha256:80110206589a48ffd52fa87ffa846c81bdaed1cad6853355a6c4fb7e82a49557` |
-| Privateerr | `latest` | `sha256:9ea437871a84581b8945323485eea0d953bfe3a61e24c08c57cd53baf9db0cb6` |
-| Buccaneerr | `edge` | `sha256:17166043a53d9a66d140e2b3df0df87ddc93f9ea9b4526c50a064b821b52469d` |
-| Buccaneerr | `latest` | `sha256:38061fda9f5ca23eaf1ec2eaa6bad6b973336ee399673ec5e4fc07147b55af70` |
+| Privateerr | `linux/amd64` | `sha256:cc003125474ce7f6a519370137454464694e54c2af2c677c512d047989af24be` |
+| Privateerr | `linux/arm64` | `sha256:d6faf0815569713731b42393775382e8318229705833de9cc0275b9caf571673` |
+| Privateerr | `linux/arm/v7` | `sha256:1b1f88649d0a4e6375f1140ecd5e856da60d08cec995e5bb1b1a981f4a24ca6d` |
+| Buccaneerr | `linux/amd64` | `sha256:2a5d4955c35cc1f6446cfef70e159af802874dab1fca6cf81f69a8b2e3ed4238` |
+| Buccaneerr | `linux/arm64` | `sha256:53e6a708cb41239df28ba51b29afd7c3a0a32d75a471351a5b1a373da454ef8a` |
+| Buccaneerr | `linux/arm/v7` | `sha256:8c53763caf48f67f44e066dd2ed01c8cc03a39e2036fac10267b94fef68bc4cb` |
 
 ## Repeat the review
 
-Scan immutable published digests, including findings with no fix and every severity:
+Scan an immutable published runtime digest with every severity, unfixed findings, and no repository exceptions:
 
 ```sh
-trivy image --image-src remote --scanners vuln --detection-priority comprehensive --ignorefile /dev/null ghcr.io/scottgigawatt/buccaneerr@sha256:IMAGE-DIGEST
-docker scout cves registry://ghcr.io/scottgigawatt/buccaneerr@sha256:IMAGE-DIGEST --platform linux/amd64
+trivy image --image-src remote --scanners vuln --detection-priority comprehensive --ignorefile /dev/null ghcr.io/scottgigawatt/privateerr@sha256:IMAGE-DIGEST
 ```
 
-For Trivy, replace `IMAGE-DIGEST` with the published runtime manifest digest for the platform being reviewed. For Scout, use the image index digest with `--platform` so it can locate the matching published SPDX attestation. Repeat for every supported platform and retain scanner versions, database date, package versions, and scan date. A clean scan is evidence about that artifact and database snapshot.
+Replace `IMAGE-DIGEST` with the runtime manifest digest for the platform being reviewed. Repeat for Buccaneerr. For Scout, use the published image index digest with an explicit platform so it can select the matching attestation:
 
-## October 22 stable musl fix
+```sh
+docker scout cves registry://ghcr.io/scottgigawatt/privateerr@sha256:IMAGE-DIGEST --platform linux/amd64
+```
 
-Local OCI builds from `dc3b6df54d609b9d58660f20cceea2def403f3c8` require `musl` and `musl-utils` at least `1.2.6-r3`. Inspection of the installed APK databases confirms both packages at `1.2.6-r3` in Privateerr and Buccaneerr on amd64, arm64, and ARMv7. These are local candidate artifacts, not published release images.
-
-| Candidate image | OCI index digest |
-| --- | --- |
-| Privateerr | `sha256:843d74b2b8f333980eef2bfe7a5ec85a302ce8d4fa82b9bc4e0807a19460dd5e` |
-| Buccaneerr | `sha256:740dec2486d3a405083fa3d491da24f01ff6cbab8c161bd1adc34634e32ab7b6` |
-
-Comprehensive Trivy 0.75.0 scans of each runtime manifest, including unfixed findings and every severity without an ignore file, report zero Privateerr findings and nine Buccaneerr findings per platform. Raw Scout reports contain one Privateerr result and 34 Buccaneerr result instances representing 31 advisory IDs per platform. Existing actionlint, x/net, and other dependency reports remain visible; passing CI is not a zero-findings claim.
-
-Scout reports [CVE-2026-107891](https://www.openwall.com/lists/oss-security/2026/10/21/18) against the installed stable musl `1.2.6-r3` with a `<1.2.6-r6` threshold. Alpine's [stable package recipe](https://github.com/alpinelinux/aports/blob/3.24-stable/main/musl/APKBUILD) and [security database](https://secdb.alpinelinux.org/v3.24/main.json) record this fix in `1.2.6-r3`; `r6` is the edge revision. Fresh stable indexes and actual package downloads confirm `r3` for x86_64, aarch64, and ARMv7. Scout also reports the same mismatch on official patched Alpine bases. Preserve the raw report and the stable backport evidence; do not switch the C library to edge or add an exception to hide the discrepancy.
-
-The issue concerns compiling untrusted regex patterns, rather than matching untrusted text against a fixed pattern. Source review found fixed patterns in Privateerr's supported runtime and pinned PIA scripts; it did not establish a remotely controlled pattern path or prove every third-party tool non-exploitable. The package update removes the identified vulnerable stable revision. No scan exception was added, broadened, or extended; the retained x/net exception still expires October 23, 2026.
+Repeat for all supported platforms, retain scanner versions and database timestamps, and inspect the installed files behind remaining reports. A multi-platform OCI archive is not a Docker image archive: extract the layout and select one runtime manifest for Trivy, or prepare a Docker archive preserving that manifest's configuration and layers. Verify the reported architecture; a requested platform flag alone does not establish what was scanned.

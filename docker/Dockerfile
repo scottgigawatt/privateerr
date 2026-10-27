@@ -23,7 +23,7 @@ FROM alpine:${ALPINE_TAG}
 ARG ALPINE_TAG=3.24@sha256:be2656061b536c1883c4034790e21d0a09c5aaaf51968b89368a3c0371ea2c9a
 
 #
-# Default install locations, fixed package floors, and image metadata.
+# Default install locations and image metadata.
 #
 ARG PIA_BIN_HOME=/pia
 
@@ -34,10 +34,7 @@ ARG PIA_BIN_HOME=/pia
 # hadolint ignore=DL3064
 ARG PRIVATEERR_BIN_HOME=/privateerr
 ARG EDGE_APK_REPOSITORY=https://dl-cdn.alpinelinux.org/alpine/edge/main
-ARG CURL_APK_MIN_VERSION=8.23.0-r0
-ARG LIBEXPAT_APK_MIN_VERSION=2.9.0-r0
-ARG MUSL_APK_MIN_VERSION=1.2.6-r3
-ARG ZLIB_APK_MIN_VERSION=1.3.2-r1
+ARG PYTHON_APK_MIN_VERSION=3.14.10-r0
 ARG IMAGE_CREATED=unknown
 ARG IMAGE_REVISION=unknown
 ARG IMAGE_VERSION=latest
@@ -86,28 +83,20 @@ COPY privateerr-healthcheck.sh      /usr/local/bin/privateerr-healthcheck
 COPY privateerr-date.sh             /usr/local/bin/date
 
 #
-# Upgrade the base OpenSSL runtime libraries to Alpine's current fixed release,
-# then install Python for the supervisor and the tools used by upstream PIA scripts.
-# Stable Alpine provides fixed jq, nghttp2, zlib, and libexpat.
-# Only curl uses edge until stable includes its 8.23.0 security fixes.
-# The musl floor requires the stable regex-overflow fix even with an older base.
+# Refresh the pinned base from its stable repositories, then install the runtime.
+# Stable Alpine supplies the runtime libraries and PIA tools. Only Python uses
+# a tagged edge repository until stable includes the 3.14.10 security release.
 #
-RUN apk upgrade --no-cache libcrypto3 libssl3 && \
+RUN apk upgrade --no-cache && \
     apk add --no-cache \
         bash \
         ca-certificates \
+        curl \
         jq \
         openresolv \
-        python3 \
-        wireguard-tools \
-        "musl>=${MUSL_APK_MIN_VERSION}" \
-        "musl-utils>=${MUSL_APK_MIN_VERSION}" \
-        "zlib>=${ZLIB_APK_MIN_VERSION}" \
-        "libexpat>=${LIBEXPAT_APK_MIN_VERSION}" && \
-    printf '%s\n' "@curlfix ${EDGE_APK_REPOSITORY}" >> /etc/apk/repositories && \
-    apk add --no-cache \
-        "curl@curlfix>=${CURL_APK_MIN_VERSION}" \
-        "libcurl@curlfix>=${CURL_APK_MIN_VERSION}" && \
+        wireguard-tools && \
+    printf '%s\n' "@pythonfix ${EDGE_APK_REPOSITORY}" >> /etc/apk/repositories && \
+    apk add --no-cache "python3@pythonfix>=${PYTHON_APK_MIN_VERSION}" && \
     chmod +x \
         /usr/local/bin/privateerr-healthcheck \
         /usr/local/bin/date
