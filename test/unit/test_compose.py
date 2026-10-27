@@ -92,6 +92,14 @@ class ComposeTests(unittest.TestCase):
         self.assertEqual(services["gluetun"]["environment"]["QBITTORRENT_PORT_SYNC"], "true")
         self.assertEqual(services["gluetun"]["ports"][0]["published"], "8080")
 
+        # Both scripts arrive through the shared directory, with no individual file mount.
+        gluetun = services["gluetun"]
+        self.assertEqual(
+            gluetun["entrypoint"], ["/bin/sh", "/gluetun/scripts/gluetun-entrypoint-wrapper.sh"]
+        )
+        self.assertEqual(len(gluetun["volumes"]), 2)
+        self.assertEqual(gluetun["depends_on"]["privateerr"]["condition"], "service_healthy")
+
     def test_fault_validation_requires_explicit_test_profile(self):
         """Expose the complete live test graph only when its profile is selected."""
 

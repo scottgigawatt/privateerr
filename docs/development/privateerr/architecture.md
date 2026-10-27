@@ -35,7 +35,9 @@ The supervisor reads environment settings once at startup. Configuration generat
 
 ## Separate readiness from tunnel health
 
-Startup first completes any interrupted file publication. With recovery enabled, an existing valid configuration pair can be reused; otherwise Privateerr generates and saves one. A disposable create/write/replace/delete probe checks recovery storage. When a valid pair is reused, probe failure warns without preventing Gluetun startup; when generation is required, it fails with a specific diagnostic. Existing files and permissions are not changed by the probe. The startup marker, `/healthcheck/privateerr.ready` by default, then allows Gluetun to start. `PRIVATEERR_HEALTHCHECK_MARKER` can change its path. It means that valid files exist, not that the VPN is healthy, avoiding a circular startup dependency.
+Startup first installs the two scripts packaged under `${PRIVATEERR_BIN_HOME}/gluetun/` into `scripts/` beside the WireGuard directory. Both files are staged with executable permissions before each is atomically replaced. Temporary staging is removed on success or failure; installation errors prevent readiness. The installer leaves other scripts, authentication, and VPN state untouched. These are generated files, not operator-managed configuration.
+
+Startup then completes any interrupted VPN file publication. With recovery enabled, an existing valid configuration pair can be reused; otherwise Privateerr generates and saves one. A disposable create/write/replace/delete probe checks recovery storage. When a valid pair is reused, probe failure warns without preventing Gluetun startup; when generation is required, it fails with a specific diagnostic. Existing files and permissions are not changed by the probe. The startup marker, `/healthcheck/privateerr.ready` by default, then allows Gluetun to start. `PRIVATEERR_HEALTHCHECK_MARKER` can change its path. It means that the scripts are installed and valid VPN files exist, not that the VPN is healthy, avoiding a circular startup dependency.
 
 Recovery begins after the startup grace period. Every probe checks control API access, intentional stop state, pending updates, and tunnel health before considering another registration. A sustained failure must exceed the configured threshold and retry cooldown. Healthy probes reset the failure timer and retry delay.
 
@@ -55,7 +57,7 @@ All paths below except the startup marker are relative to the shared configurati
 | `settings.json` inside those same directories | Validated connection fields recorded alongside the copied files | Retained and removed with its containing directory; contains private key material |
 | `wg0.conf.new` or `privateerr.env.new` | Temporary replacement of one published file | Renamed over its destination during publication; an interrupted replacement is rewritten on resume |
 | `wg0.conf` and `privateerr.env` | Matching published connection and PIA metadata | Retained for Gluetun startup until a verified replacement or explicit regeneration |
-| `/healthcheck/privateerr.ready` | Startup validation has produced a usable saved pair | Cleared at Privateerr startup and recreated after validation; unrelated to current tunnel health |
+| `/healthcheck/privateerr.ready` | Scripts are installed and startup validation has produced a usable saved pair | Cleared at Privateerr startup and recreated after validation; unrelated to current tunnel health |
 
 Each file replacement is atomic, but replacing the pair is not one filesystem transaction. The commit directory retains both source files so startup can finish an interrupted save. Its `ready` file, and the equivalent file in the pending directory, identify complete validated copies. They are separate from the startup healthcheck marker. A directory without its `ready` file is an incomplete copy and is discarded instead of applied.
 

@@ -90,6 +90,8 @@ The end-to-end target enables the `test` profile and starts Privateerr first. It
 - `config/gluetun/wireguard/wg0.conf`
 - `config/gluetun/wireguard/privateerr.env`
 
+Privateerr also installs both integration scripts from its image into `config/gluetun/scripts/` before reporting ready. The credential-free API suite uses the same image-to-directory handoff with synthetic saved VPN files; it does not copy scripts from the checkout.
+
 Then Gluetun uses those files to start WireGuard and request PIA port forwarding. Privateerr remains running to monitor tunnel health and apply replacement settings through the authenticated API after sustained failures. It saves recovered files only after confirmation. Buccaneerr runs inside Gluetun's network namespace and, with the example defaults, temporarily blocks the active endpoint to verify that recovery restores VPN egress, matching saved files, and qBittorrent settings. Its firewall rule is removed on completion or failure.
 
 If Buccaneerr exits cleanly, the ship be seaworthy. If it fails, check the service logs before blaming the sea monster in yer YAML.

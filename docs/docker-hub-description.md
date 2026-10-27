@@ -35,7 +35,9 @@ The command builds the checked-out source, disables recovery and keepalive for t
 
 ## Pair Privateerr with Gluetun 🧭
 
-The supplied Gluetun wrapper reads `PIA_WG_SERVER_NAME` from the generated metadata and sets `SERVER_NAMES` for PIA port forwarding. With recovery enabled, Privateerr reuses valid saved files, checks recovery write access, and monitors Gluetun. After a sustained outage, it applies replacement settings and saves them only after confirmation. Startup readiness is separate from tunnel health and future recovery write access.
+Privateerr automatically installs its Gluetun startup wrapper and qBittorrent forwarding hook into the shared `config/gluetun/scripts/` directory before reporting ready. No separate script download or copy is needed. Keep that directory writable by Privateerr and recreate the application stack together when updating images.
+
+The installed Gluetun wrapper reads `PIA_WG_SERVER_NAME` from the generated metadata and sets `SERVER_NAMES` for PIA port forwarding. With recovery enabled, Privateerr reuses valid saved files, checks recovery write access, and monitors Gluetun. After a sustained outage, it applies replacement settings and saves them only after confirmation. Startup readiness is separate from tunnel health and future recovery write access.
 
 The Compose example enables recovery after you configure a shared API key. Custom deployments must explicitly set `PRIVATEERR_AUTO_RECOVER=true` to enable it. Privateerr runs as UID 0 because upstream scripts require it; the supplied Compose drops all Linux capabilities and enables `no-new-privileges`.
 

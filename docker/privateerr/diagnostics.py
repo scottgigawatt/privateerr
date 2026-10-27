@@ -45,6 +45,7 @@ class FileOperationError(OSError):
             errno.ENOENT: "path missing; check the configured directory mount",
             errno.EISDIR: "expected a file; check the configured output path",
             errno.ENOTDIR: "expected a directory; check the configured mount path",
+            errno.ELOOP: "symbolic link rejected; use a real scripts directory",
             errno.EEXIST: "path already exists; check retained recovery state",
             errno.EBUSY: "path busy; mount the configuration directory, not individual files",
         }

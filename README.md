@@ -62,7 +62,7 @@ For one-shot generation, you need an active PIA subscription and Docker. Replace
 
 ### Using Docker directly
 
-This command pulls the published image and writes `wireguard/wg0.conf` and `wireguard/privateerr.env` under your current directory. Docker creates `wireguard` if it does not exist. Existing directories must allow container UID 0 to traverse the path and write files with all Linux capabilities dropped. Preserve any files you need and stop other writers before running it; generation replaces saved files.
+This command pulls the published image and writes `wireguard/wg0.conf`, `wireguard/privateerr.env`, and the Gluetun integration scripts under `config/gluetun/` in your current directory. Docker creates the shared directory if needed; Privateerr creates its `wireguard/` and `scripts/` subdirectories. Existing directories must allow container UID 0 to traverse the path and write files with all Linux capabilities dropped. Preserve any files you need and stop other writers before running it; generation replaces saved files.
 
 > [!WARNING]
 > Keep live `wg0.conf` and `privateerr.env` files private. They contain VPN connection material and deployment-specific metadata.
@@ -81,7 +81,7 @@ docker run --rm --pull always \
   --env PIA_PF=true \
   --env PIA_DNS=true \
   --env PRIVATEERR_KEEPALIVE=false \
-  --volume "$(pwd)/wireguard:/gluetun/wireguard" \
+  --volume "$(pwd)/config/gluetun:/gluetun" \
   ghcr.io/scottgigawatt/privateerr:latest
 ```
 
@@ -140,12 +140,9 @@ docker compose --env-file .env run --rm --no-deps --build --pull never \
 
 The supplied Compose file runs Privateerr, Gluetun, and qBittorrent together. qBittorrent shares Gluetun's VPN namespace and receives its forwarded port. This application example requires amd64 or arm64; Privateerr itself also supports arm/v7.
 
-The stack also needs two scripts from your checkout:
+Privateerr installs both Gluetun integration scripts from its image into the shared `config/gluetun/scripts/` directory before reporting ready. You do not need to download or copy them. The startup wrapper loads PIA server metadata and prepares recovery access; the forwarding hook keeps qBittorrent synchronized with Gluetun's port lease.
 
-- [gluetun-entrypoint-wrapper.sh](config/gluetun/scripts/gluetun-entrypoint-wrapper.sh) loads Privateerr's server metadata and prepares recovery access before starting Gluetun.
-- [qbittorrent-port-forwarding.sh](config/gluetun/scripts/qbittorrent-port-forwarding.sh) keeps qBittorrent's listening port and VPN interface synchronized with Gluetun's forwarded-port lease.
-
-The supplied Compose file mounts both scripts automatically. Keep them at the configured paths and readable inside Gluetun; the port-forwarding script must remain executable. If you change configuration locations, keep the script files and `.env` mount settings aligned.
+The shared directory must be writable by Privateerr's UID 0. Startup replaces these two generated scripts, so keep custom scripts under different names and select them explicitly in your deployment. Recreate Privateerr, Gluetun, and qBittorrent together when updating images so the stack uses the installed scripts.
 
 After completing the repository checkout and `.env` setup above:
 

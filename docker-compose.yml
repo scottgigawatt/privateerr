@@ -97,10 +97,10 @@ services:
       PRIVATEERR_RECOVERY_COOLDOWN_SECONDS: ${PRIVATEERR_RECOVERY_COOLDOWN_SECONDS}    # Initial retry delay in seconds; doubles up to one hour
       PRIVATEERR_GENERATION_TIMEOUT_SECONDS: ${PRIVATEERR_GENERATION_TIMEOUT_SECONDS}  # Maximum seconds for one PIA generation
 
-    # Report healthy after the wrapper finishes successfully
+    # Report healthy after script installation and VPN configuration preparation
     healthcheck:
       <<: *default-healthcheck-settings  # Pull in default healthcheck settings
-      test:                              # Healthy when healthcheck marker file exists
+      test:                              # Ready after scripts and VPN files are prepared
         - CMD
         - privateerr-healthcheck
 
@@ -120,7 +120,7 @@ services:
     hostname: gluetun                                               # Set hostname inside the container
 
     # Load Privateerr metadata before Gluetun starts
-    entrypoint: ["/bin/sh", "${GLUETUN_ENTRYPOINT_WRAPPER}"]  # Load Privateerr metadata before starting Gluetun
+    entrypoint: ["/bin/sh", "/gluetun/scripts/gluetun-entrypoint-wrapper.sh"]  # Load Privateerr metadata before starting Gluetun
 
     # Add additional linux capabilities
     cap_add:
@@ -168,9 +168,8 @@ services:
 
     # Mount host directories into the container
     volumes:
-      - ${GLUETUN_CONFIG_PATH}:/gluetun:rw                               # Gluetun config directory
-      - ${GLUETUN_CONFIG_PATH}:/tmp/gluetun:rw                           # Gluetun runtime state directory
-      - ${GLUETUN_WRAPPER_SCRIPT_PATH}:${GLUETUN_ENTRYPOINT_WRAPPER}:ro  # Gluetun entrypoint wrapper script
+      - ${GLUETUN_CONFIG_PATH}:/gluetun:rw      # Generated VPN files, scripts, and Gluetun state
+      - ${GLUETUN_CONFIG_PATH}:/tmp/gluetun:rw  # Gluetun runtime state directory
 
     # Define container healthcheck to verify VPN connectivity
     healthcheck:
@@ -186,7 +185,7 @@ services:
     # Specify container service dependencies
     depends_on:
       privateerr:
-        condition: service_healthy  # Wait for Privateerr to generate config and metadata
+        condition: service_healthy  # Wait for Privateerr to install scripts and prepare VPN files
 
   #
   # Configure the torrent client sharing Gluetun's protected network.

@@ -17,7 +17,8 @@ The default Compose example starts Privateerr, Gluetun, and qBittorrent. The tes
 | Path | Responsibility |
 | --- | --- |
 | `docker/` | Production image context, shell adapters, and health checks |
-| `docker/privateerr/` | Standard-library Python supervisor, API client, validation, and persistence |
+| `docker/privateerr/` | Standard-library Python supervisor, API client, validation, persistence, and script installation |
+| `docker/gluetun/` | Image-owned startup wrapper and qBittorrent forwarding hook, installed into shared configuration |
 | `docker/pia-manual-connections/` | Licensed upstream PIA git submodule; leave its contents unmodified |
 | `test/` | Buccaneerr image and test tooling using the restricted repository-root build context |
 | `test/policy/` | Static repository policy and spelling checks |

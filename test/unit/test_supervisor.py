@@ -144,6 +144,7 @@ class RecoveryTests(unittest.TestCase):
         self.root = Path(self.temporary.name)
         self.config = Config.from_environment(
             {
+                "PRIVATEERR_BIN_HOME": str(Path(__file__).resolve().parents[2] / "docker"),
                 "PIA_CONF_PATH": str(self.root / "saved/wg0.conf"),
                 "PRIVATEERR_METADATA_PATH": str(self.root / "saved/privateerr.env"),
                 "PRIVATEERR_HEALTHCHECK_MARKER": str(self.root / "ready"),
@@ -443,6 +444,8 @@ class RecoveryTests(unittest.TestCase):
             """Assert startup ordering and stop the otherwise persistent monitoring loop."""
 
             self.assertTrue(self.config.marker.exists())
+            self.assertTrue((self.root / "scripts/gluetun-entrypoint-wrapper.sh").is_file())
+            self.assertTrue((self.root / "scripts/qbittorrent-port-forwarding.sh").is_file())
             self.assertEqual(seconds, self.config.failure_seconds)
             raise Shutdown
 
@@ -483,6 +486,23 @@ class RecoveryTests(unittest.TestCase):
             before, (self.config.config_path.read_bytes(), self.config.metadata_path.read_bytes())
         )
         self.generator.generate.assert_not_called()
+
+    def test_script_installation_failure_blocks_readiness_and_generation(self):
+        """Valid saved VPN files cannot make an incomplete Gluetun integration ready."""
+
+        error = FileOperationError(
+            "install Gluetun scripts", self.root / "scripts", OSError(errno.EROFS, "private")
+        )
+
+        with (
+            patch("privateerr.supervisor.install_gluetun_scripts", side_effect=error),
+            self.assertRaises(FileOperationError),
+        ):
+            self.supervisor.run()
+
+        self.assertFalse(self.config.marker.exists())
+        self.generator.generate.assert_not_called()
+        self.client.get.assert_not_called()
 
     def test_first_generation_fails_with_specific_storage_error(self):
         """An unusable output directory must fail before contacting PIA on first generation."""

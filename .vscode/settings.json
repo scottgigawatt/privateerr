@@ -67,6 +67,7 @@
         "EEXIST",
         "EISDIR",
         "elif",
+        "ELOOP",
         "ENOENT",
         "ENOSPC",
         "ENOTDIR",
