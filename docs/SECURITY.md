@@ -73,7 +73,7 @@ The protected build path then:
 
 Rebuilding the same commit keeps the pinned base image, but uncached APK installation can pick up newer packages from Alpine. Renovate updates base and tool pins separately. Pull the resulting `edge` image or publish a stable release to deliver fixes to `latest`.
 
-The remaining exact-path Compose exception for CVE-2026-78669 expires on November 6, 2026. The advisory remains unresolved. The extension keeps that known finding excluded at the existing path until then; all other scan rules remain unchanged. See the [current exception scope and risk](container-scan-review.md#current-compose-exception).
+The remaining exact-path Compose exception for CVE-2026-78669 expires on November 6, 2026. The advisory remains unresolved. The exception keeps that known finding excluded at the existing path until then; all other scan rules remain unchanged. See the [current exception scope and risk](container-scan-review.md#current-compose-exception).
 
 See the [dated container scan review](container-scan-review.md) for the reviewed image identities, dependency-fix scope, and upstream evidence behind remaining package-level alerts. Its scan dates and image revisions matter; results for an `edge` image do not describe every stable release.
 

@@ -10,10 +10,6 @@
         "pyright": "1.1.414"
     },
     "overrides": {
-        "katex": "0.19.1",
-        "markdownlint-cli2": {
-            "markdown-it": "15.0.3",
-            "smol-toml": "1.9.1"
-        }
+        "katex": "0.19.1"
     }
 }
