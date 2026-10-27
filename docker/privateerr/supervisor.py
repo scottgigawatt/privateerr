@@ -41,6 +41,7 @@ from .client import APIUnavailable, Client
 from .config import Config, ConfigurationError
 from .data import is_list, is_object, object_fields
 from .diagnostics import FileOperationError, check_recovery_directory, filesystem_operation
+from .scripts import install_gluetun_scripts
 from .settings import InvalidSettings, Store, assignments, contains_settings, region_description
 
 LOG = logging.getLogger("privateerr")
@@ -552,6 +553,12 @@ class Supervisor:
     def run(self) -> None:
         """Prepare startup files, report readiness, and enter recovery or legacy keepalive mode."""
 
+        # Install image-owned integration before Gluetun is allowed to start, even with saved files.
+        install_gluetun_scripts(
+            self.config.bin_home / "gluetun", self.config.config_path.parent.parent / "scripts"
+        )
+        LOG.info("Gluetun integration scripts installed.")
+
         # Finish any interrupted publication before validating the saved configuration.
         self.store.resume()
         reuse = False
@@ -596,7 +603,7 @@ class Supervisor:
                 region_description(self.config.metadata_path),
             )
 
-        # Readiness means valid files exist, allowing Gluetun to start without a dependency cycle.
+        # Readiness means scripts and valid files exist, without waiting for a running tunnel.
         with filesystem_operation("write readiness marker", self.config.marker):
             self.config.marker.touch()
 

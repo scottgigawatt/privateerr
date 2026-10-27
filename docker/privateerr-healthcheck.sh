@@ -5,7 +5,7 @@
 #
 # Licensed under the Apache License, Version 2.0.
 #
-# privateerr-healthcheck.sh: Report whether Privateerr generated its output successfully.
+# privateerr-healthcheck.sh: Report whether Privateerr installed scripts and prepared its VPN output.
 #
 # Usage: docker/privateerr-healthcheck.sh
 #

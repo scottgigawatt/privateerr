@@ -6,7 +6,7 @@ Recovery runs inside the existing Privateerr container and uses Gluetun's authen
 
 ## Configure recovery
 
-Use the supplied Compose file and Gluetun entrypoint wrapper. The integration is tested against Gluetun **v3.41.3**; other versions must support the same authenticated control API routes and settings schema.
+Use the supplied Compose file. Privateerr installs its Gluetun entrypoint wrapper and qBittorrent forwarding hook into the shared `/gluetun/scripts/` directory before reporting ready; no manual script copying is needed. The integration is tested against Gluetun **v3.41.3**; other versions must support the same authenticated control API routes and settings schema.
 
 > [!IMPORTANT]
 > Recovery makes Privateerr responsible for sustained-outage recovery and sets Gluetun's `HEALTH_RESTART_VPN=off`. Keep Privateerr outside Gluetun's VPN network namespace so it can reach PIA when the tunnel fails.
@@ -49,7 +49,7 @@ The supplied wrapper disables Gluetun's health-triggered restarts when recovery 
 
 The supplied Compose stack gives both containers a shared Docker network. When recovery is enabled, the Gluetun wrapper changes the default health listener from `127.0.0.1:9999` to `0.0.0.0:9999` and creates a temporary API authentication file with only the required routes. When recovery is disabled, the listener, authentication, and Gluetun restart policy remain unchanged.
 
-For a custom deployment, use the supplied wrapper or configure `HEALTH_RESTART_VPN=off`, the shared network, health listener, and API authentication yourself.
+For a custom deployment, share the complete `/gluetun` directory with Privateerr and start Gluetun with `entrypoint: ["/bin/sh", "/gluetun/scripts/gluetun-entrypoint-wrapper.sh"]`. Keep its dependency on Privateerr's startup healthcheck. Privateerr needs write access to install the scripts on each startup. Keep custom scripts under different names because the two installed files are replaced automatically. Alternatively, configure `HEALTH_RESTART_VPN=off`, the shared network, health listener, and API authentication yourself.
 
 If an authentication file already exists at `/gluetun/auth/config.toml`, or `HTTP_CONTROL_SERVER_AUTH_CONFIG_FILEPATH` names a custom path, the wrapper preserves that file. Add a role with your shared key and these routes:
 
@@ -101,7 +101,7 @@ For one-shot generation, `make run-privateerr` disables recovery and keepalive f
 
 ## Understand the recovery sequence
 
-Privateerr validates the saved configuration or generates a new pair before reporting ready. Gluetun can therefore retain `depends_on: service_healthy`; Privateerr's Docker healthcheck does not depend on a working tunnel.
+Privateerr installs both image-owned integration scripts, then validates the saved configuration or generates a new pair before reporting ready. Gluetun can therefore retain `depends_on: service_healthy`; Privateerr's Docker healthcheck does not depend on a working tunnel.
 
 With recovery enabled, the monitor follows this sequence after the startup grace period. Blue marks monitoring, purple marks the settings handoff, green marks a verified save, and amber marks waiting or retrying. The arrow labels explain each transition.
 

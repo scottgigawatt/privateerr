@@ -92,6 +92,14 @@ class ComposeTests(unittest.TestCase):
         self.assertEqual(services["gluetun"]["environment"]["QBITTORRENT_PORT_SYNC"], "true")
         self.assertEqual(services["gluetun"]["ports"][0]["published"], "8080")
 
+        # Both scripts arrive through the shared directory, with no individual file mount.
+        gluetun = services["gluetun"]
+        self.assertEqual(
+            gluetun["entrypoint"], ["/bin/sh", "/gluetun/scripts/gluetun-entrypoint-wrapper.sh"]
+        )
+        self.assertEqual(len(gluetun["volumes"]), 2)
+        self.assertEqual(gluetun["depends_on"]["privateerr"]["condition"], "service_healthy")
+
     def test_fault_validation_requires_explicit_test_profile(self):
         """Expose the complete live test graph only when its profile is selected."""
 
@@ -108,10 +116,16 @@ class ComposeTests(unittest.TestCase):
         source = (ROOT / "docker-compose.yml").read_text()
         self.assertIsNone(re.search(r"\$\{[^}]+:-", source))
         services = self.model(
-            overrides="PRIVATEERR_AUTO_RECOVER=false\nQBITTORRENT_WEBUI_PORT=8090\n",
+            overrides="PRIVATEERR_AUTO_RECOVER=false\nQBITTORRENT_WEBUI_PORT=8090\n"
+            "GLUETUN_ENTRYPOINT_WRAPPER=/gluetun/scripts/custom-wrapper.sh\n",
             test_profile=True,
         )
         self.assertEqual(services["privateerr"]["environment"]["PRIVATEERR_AUTO_RECOVER"], "false")
+
+        self.assertEqual(
+            services["gluetun"]["entrypoint"],
+            ["/bin/sh", "/gluetun/scripts/custom-wrapper.sh"],
+        )
 
         # The published port, application listener, hook, and probes must move together.
         self.assertEqual(services["gluetun"]["ports"][0]["published"], "8090")

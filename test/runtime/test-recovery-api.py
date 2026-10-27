@@ -86,7 +86,10 @@ def main(env_file: Path | None = None, smoke: bool = False) -> None:
                     f"[Interface]\nPrivateKey = {private_key}\nAddress = 10.0.0.2/32\n"
                     f"[Peer]\nPublicKey = {public_key}\nEndpoint = 192.0.2.1:51820\n"
                 )
-                (wireguard / "privateerr.env").write_text("PIA_WG_SERVER_NAME=example-one\n")
+                (wireguard / "privateerr.env").write_text(
+                    "PIA_WG_SERVER_NAME=example-one\n"
+                    "PIA_WG_ENDPOINT_IP=192.0.2.1\nPIA_WG_ENDPOINT_PORT=51820\n"
+                )
             else:
                 resolved = docker(
                     "compose",
@@ -111,13 +114,7 @@ def main(env_file: Path | None = None, smoke: bool = False) -> None:
                 os.environ["VPN_PORT_FORWARDING_USERNAME"] = values["PIA_USER"]
                 os.environ["VPN_PORT_FORWARDING_PASSWORD"] = values["PIA_PASS"]
 
-            # Mount the production forwarding hook and an isolated application configuration.
-            scripts = config / "scripts"
-            scripts.mkdir()
-            shutil.copy(
-                ROOT / "config/gluetun/scripts/qbittorrent-port-forwarding.sh",
-                scripts / "qbittorrent-port-forwarding.sh",
-            )
+            # Application settings remain isolated; Gluetun scripts must come from the image.
             application = directory / "qbittorrent"
             (application / "qBittorrent").mkdir(parents=True)
             shutil.copyfile(
@@ -129,90 +126,94 @@ def main(env_file: Path | None = None, smoke: bool = False) -> None:
             )
             docker("pull", qbittorrent_image)
 
-            # Use the checked-out wrapper and a per-run API key for the isolated control server.
-            wrapper = directory / "wrapper.sh"
-            shutil.copyfile(ROOT / "config/gluetun/scripts/gluetun-entrypoint-wrapper.sh", wrapper)
+            # The wrapper creates recovery access with this per-run API key.
             os.environ["PRIVATEERR_GLUETUN_API_KEY"] = secrets.token_hex(24)
 
-            # Start real PIA generation only when the caller supplied a credential file.
-            if env_file is not None:
-                # Smoke mode models an image-only upgrade with the legacy container options.
-                isolation = (
-                    ["--privileged"]
-                    if smoke
-                    else [
-                        "--cap-drop",
-                        "ALL",
-                        "--security-opt",
-                        "no-new-privileges:true",
-                        "--sysctl",
-                        "net.ipv6.conf.all.disable_ipv6=1",
-                        "--sysctl",
-                        "net.ipv6.conf.default.disable_ipv6=1",
-                    ]
-                )
-                recovery_environment = [] if smoke else ["--env", "PRIVATEERR_AUTO_RECOVER=true"]
-                privateerr = docker(
-                    "create",
-                    "--name",
-                    f"{RUN_ID}-privateerr",
-                    *isolation,
-                    *recovery_environment,
-                    "--label",
-                    f"{LABEL}={RUN_ID}",
-                    "--network",
-                    RUN_ID,
-                    "--volume",
-                    f"{config}:/gluetun",
-                    "--env",
-                    "PIA_USER",
-                    "--env",
-                    "PIA_PASS",
-                    "--env",
-                    "PRIVATEERR_GLUETUN_API_KEY",
-                    "--env",
-                    "PRIVATEERR_KEEPALIVE=true",
-                    "--env",
-                    "VPN_PROTOCOL=wireguard",
-                    "--env",
-                    "PIA_CONNECT=false",
-                    "--env",
-                    "PIA_PF=true",
-                    "--env",
-                    "PIA_DNS=true",
-                    "--env",
-                    "DIP_TOKEN=no",
-                    "--env",
-                    "DISABLE_IPV6=yes",
-                    "--env",
-                    "AUTOCONNECT=false",
-                    "--env",
-                    "PRIVATEERR_RECOVERY_INTERVAL_SECONDS=2",
-                    "--env",
-                    "PRIVATEERR_RECOVERY_FAILURE_SECONDS=15",
-                    "--env",
-                    "PRIVATEERR_RECOVERY_COOLDOWN_SECONDS=30",
-                    IMAGE,
-                ).stdout.strip()
-                containers.append(privateerr)
-                docker("start", privateerr)
+            # Saved synthetic files exercise real startup without registering with PIA.
+            # Smoke mode models an image-only upgrade with the legacy container options.
+            isolation = (
+                ["--privileged"]
+                if smoke
+                else [
+                    "--cap-drop",
+                    "ALL",
+                    "--security-opt",
+                    "no-new-privileges:true",
+                    "--sysctl",
+                    "net.ipv6.conf.all.disable_ipv6=1",
+                    "--sysctl",
+                    "net.ipv6.conf.default.disable_ipv6=1",
+                ]
+            )
+            recovery_environment = [] if smoke else ["--env", "PRIVATEERR_AUTO_RECOVER=true"]
+            privateerr = docker(
+                "create",
+                "--name",
+                f"{RUN_ID}-privateerr",
+                *isolation,
+                *recovery_environment,
+                "--label",
+                f"{LABEL}={RUN_ID}",
+                "--network",
+                RUN_ID,
+                "--volume",
+                f"{config}:/gluetun",
+                "--env",
+                "PIA_USER",
+                "--env",
+                "PIA_PASS",
+                "--env",
+                "PRIVATEERR_GLUETUN_API_KEY",
+                "--env",
+                "PRIVATEERR_KEEPALIVE=true",
+                "--env",
+                "VPN_PROTOCOL=wireguard",
+                "--env",
+                "PIA_CONNECT=false",
+                "--env",
+                "PIA_PF=true",
+                "--env",
+                "PIA_DNS=true",
+                "--env",
+                "DIP_TOKEN=no",
+                "--env",
+                "DISABLE_IPV6=yes",
+                "--env",
+                "AUTOCONNECT=false",
+                "--env",
+                "PRIVATEERR_RECOVERY_INTERVAL_SECONDS=2",
+                "--env",
+                f"PRIVATEERR_RECOVERY_FAILURE_SECONDS={15 if env_file else 9999}",
+                "--env",
+                "PRIVATEERR_RECOVERY_COOLDOWN_SECONDS=30",
+                IMAGE,
+            ).stdout.strip()
+            containers.append(privateerr)
+            docker("start", privateerr)
 
-                # Configuration readiness must precede the Gluetun container startup.
-                for _ in range(100):
-                    if (
-                        docker("exec", privateerr, "privateerr-healthcheck", check=False).returncode
-                        == 0
-                    ):
-                        break
+            # Configuration readiness must precede the Gluetun container startup.
+            for _ in range(100):
+                if (
+                    docker("exec", privateerr, "privateerr-healthcheck", check=False).returncode
+                    == 0
+                ):
+                    break
 
-                    time.sleep(2)
-                else:
-                    raise RuntimeError("Privateerr did not generate an initial PIA configuration")
+                time.sleep(2)
+            else:
+                raise RuntimeError("Privateerr did not prepare scripts and VPN configuration")
 
-                print(
-                    "PASS: Privateerr generated a real PIA registration using the default ca region.",
-                    flush=True,
-                )
+            # Prove the image installed both scripts; no checkout script is mounted or copied.
+            docker(
+                "exec",
+                privateerr,
+                "/bin/sh",
+                "-ec",
+                "for name in gluetun-entrypoint-wrapper.sh qbittorrent-port-forwarding.sh; do "
+                'cmp "${PRIVATEERR_BIN_HOME}/gluetun/${name}" "/gluetun/scripts/${name}"; '
+                'test -x "/gluetun/scripts/${name}"; done',
+            )
+            print("PASS: Privateerr installed both Gluetun scripts from its image.", flush=True)
 
             # Keep Gluetun on the test network, with forwarding enabled only for the live test.
             forwarding = "on" if env_file else "off"
@@ -258,12 +259,10 @@ def main(env_file: Path | None = None, smoke: bool = False) -> None:
                 f"{config}:/gluetun",
                 "--volume",
                 f"{config}:/tmp/gluetun",
-                "--volume",
-                f"{wrapper}:/wrapper.sh:ro",
                 "--entrypoint",
                 "/bin/sh",
                 GLUETUN,
-                "/wrapper.sh",
+                "/gluetun/scripts/gluetun-entrypoint-wrapper.sh",
             ).stdout.strip()
             containers.append(gluetun)
             docker("start", gluetun)

@@ -15,7 +15,7 @@ import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
-HOOK = ROOT / "config/gluetun/scripts/qbittorrent-port-forwarding.sh"
+HOOK = ROOT / "docker/gluetun/qbittorrent-port-forwarding.sh"
 
 
 class ForwardingTests(unittest.TestCase):

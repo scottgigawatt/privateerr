@@ -12,7 +12,7 @@ make spellcheck
 
 `make test` runs Ruff lint and formatting, strict Pyright, ShellCheck, helper and workflow tests, and Python unit tests without starting the VPN stack or requiring PIA credentials. `make test-types` is also enforced by pre-commit and pull-request validation. Compose tests check the complete service graph and verify that Web UI port changes keep the host mapping, internal listener, healthcheck, and API clients synchronized.
 
-Python tests exercise environment validation, endpoint selection, bounded HTTP behavior, candidate publication, recovery timing, uncertain updates, and shutdown. They use controlled clocks and temporary state rather than real credentials. Filesystem regressions cover readable saved files with blocked writes, first-generation failure, failed publication after API acceptance, probe cleanup, safe region summaries, and credential-free error diagnostics. A Linux root-only test drops all capabilities in a disposable child process and verifies that UID 0 cannot write another user's directory; the parent retains cleanup access.
+Python tests exercise script installation and replacement failures, startup readiness, environment validation, endpoint selection, bounded HTTP behavior, candidate publication, recovery timing, uncertain updates, and shutdown. They use controlled clocks and temporary state rather than real credentials. Filesystem regressions cover readable saved files with blocked writes, first-generation failure, failed publication after API acceptance, probe cleanup, safe region summaries, and credential-free error diagnostics. A Linux root-only test drops all capabilities in a disposable child process and verifies that UID 0 cannot write another user's directory; the parent retains cleanup access.
 
 ## Run repository hooks
 
@@ -33,7 +33,7 @@ docker build --tag privateerr:recovery-review --file docker/Dockerfile docker
 PRIVATEERR_TEST_IMAGE=privateerr:recovery-review make test-recovery-api
 ```
 
-This suite runs the real Gluetun API and qBittorrent in isolated, labeled containers with disposable state. It checks authentication, settings updates, application port synchronization, and shutdown without needing PIA credentials.
+This suite starts the built Privateerr image with synthetic saved VPN files and an empty scripts directory, then runs the real Gluetun API and qBittorrent in isolated, labeled containers with disposable state. It verifies that Privateerr installed both scripts from its image before startup readiness; no script is copied from the checkout. It checks authentication, settings updates, application port synchronization, and shutdown without needing PIA credentials.
 
 The live suite needs real PIA credentials in the ignored local `.env` and deliberately interrupts its test endpoint. Use a disposable checkout and protect any needed configuration before running it:
 

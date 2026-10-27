@@ -2,6 +2,12 @@
 
 The main README stays focused on the shortest path: generate `wg0.conf`, inspect `privateerr.env`, and move on with your day. This page keeps the deeper project details.
 
+## Manage installed Gluetun scripts
+
+Privateerr packages the Gluetun startup wrapper and qBittorrent forwarding hook inside its image. Each startup installs them into `scripts/` beside the directory containing `wg0.conf`, normally `/gluetun/scripts/`. Both containers share the complete `/gluetun` directory; no individual script mount or download is needed. Installation failure prevents Privateerr from reporting ready.
+
+The two installed script names belong to Privateerr and are replaced automatically. Keep custom scripts under different names and configure their paths explicitly. Updating the images should recreate the complete Privateerr, Gluetun, and qBittorrent stack so the scripts and services start together. Privateerr's API-based tunnel recovery continues without restarting those containers.
+
 ## Run full-stack validation 🧪
 
 `make test` runs credential-free repository checks without starting the VPN stack. The separate end-to-end target enables the `test` profile and starts Privateerr, Gluetun, qBittorrent, and Buccaneerr. It generates live VPN files and deliberately blocks the active endpoint to test recovery. Use real PIA credentials in a disposable checkout, and preserve any needed configuration before running it:

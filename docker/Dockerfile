@@ -72,7 +72,7 @@ LABEL org.opencontainers.image.title="Privateerr" \
         org.opencontainers.image.base.name="docker.io/library/alpine:${ALPINE_TAG}"
 
 #
-# Copy license files, upstream PIA scripts, and Privateerr-owned helpers as one
+# Copy license files, upstream PIA scripts, Gluetun integration, and Privateerr helpers as one
 # reviewable source boundary before installing the runtime.
 #
 COPY LICENSE                        /LICENSE
@@ -81,6 +81,7 @@ COPY pia-manual-connections         ${PIA_BIN_HOME}
 COPY privateerr-entrypoint.sh       ${PRIVATEERR_BIN_HOME}/privateerr-entrypoint.sh
 COPY privateerr-generate.sh         ${PRIVATEERR_BIN_HOME}/privateerr-generate.sh
 COPY privateerr                     ${PRIVATEERR_BIN_HOME}/privateerr
+COPY gluetun                        ${PRIVATEERR_BIN_HOME}/gluetun
 COPY privateerr-healthcheck.sh      /usr/local/bin/privateerr-healthcheck
 COPY privateerr-date.sh             /usr/local/bin/date
 
@@ -118,7 +119,7 @@ RUN apk upgrade --no-cache libcrypto3 libssl3 && \
 WORKDIR ${PIA_BIN_HOME}
 
 #
-# Report healthy after the wrapper finishes generating the config and metadata.
+# Report healthy after the supervisor installs scripts and prepares config and metadata.
 #
 HEALTHCHECK CMD ["privateerr-healthcheck"]
 

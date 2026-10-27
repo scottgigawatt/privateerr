@@ -17,7 +17,9 @@ Privateerr's standard-library Python program coordinates PIA configuration gener
 | Filesystem diagnostics | Probe storage and explain failures without exposing configuration contents | `docker/privateerr/diagnostics.py` |
 | Supervisor | Select endpoints, manage generation, and reconcile recovery state | `docker/privateerr/supervisor.py` |
 | Generation adapter | Invoke upstream PIA scripts and collect their generated metadata | `docker/privateerr-generate.sh` |
-| Gluetun wrapper | Load saved metadata and configure the existing API and health listener | `config/gluetun/scripts/gluetun-entrypoint-wrapper.sh` |
+| Script installer | Install image-owned Gluetun scripts before startup readiness | `docker/privateerr/scripts.py` |
+| Gluetun wrapper | Load saved metadata and configure the existing API and health listener | `docker/gluetun/gluetun-entrypoint-wrapper.sh` |
+| Forwarding hook | Synchronize qBittorrent with Gluetun's port lease | `docker/gluetun/qbittorrent-port-forwarding.sh` |
 
 The Python package starts through `python3 -m privateerr`. The shell entrypoint supplies that command; `supervisor.main()` validates configuration, protects new files, installs shutdown handlers, and starts the supervisor. The [Python reference](reference/index.md) documents the source contracts.
 

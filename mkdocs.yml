@@ -46,6 +46,7 @@ nav:
       - Connection settings: development/privateerr/reference/settings.md
       - Filesystem diagnostics: development/privateerr/reference/diagnostics.md
       - Supervisor: development/privateerr/reference/supervisor.md
+      - Script installation: development/privateerr/reference/scripts.md
   - Project Guides:
       - Guide map: project-guides/index.md
       - Automatic recovery: automatic-recovery.md

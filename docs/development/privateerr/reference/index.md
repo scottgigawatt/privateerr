@@ -13,6 +13,7 @@ These pages render public names directly from `docker/privateerr` using mkdocstr
 | [JSON validation](data.md) | Runtime checks at dynamic data boundaries |
 | [Connection settings](settings.md) | Validated connection objects and recoverable file publication |
 | [Filesystem diagnostics](diagnostics.md) | Safe filesystem errors and disposable storage checks |
+| [Script installation](scripts.md) | Image-owned Gluetun scripts installed before readiness |
 | [Supervisor](supervisor.md) | Endpoint selection, generation, recovery decisions, and shutdown |
 
 Names beginning with `_` are excluded from the generated reference. Public here means visible to developer documentation, not a promise of a separately supported library API. The deployment contract remains environment settings, generated files, and container behavior.

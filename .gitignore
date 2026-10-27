@@ -17,6 +17,7 @@
 #
 # Generated Gluetun runtime and PIA port-forwarding state.
 #
+config/gluetun/scripts/
 config/gluetun/forwarded_port
 config/gluetun/ip
 config/gluetun/piaportforward.json
