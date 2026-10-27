@@ -116,10 +116,16 @@ class ComposeTests(unittest.TestCase):
         source = (ROOT / "docker-compose.yml").read_text()
         self.assertIsNone(re.search(r"\$\{[^}]+:-", source))
         services = self.model(
-            overrides="PRIVATEERR_AUTO_RECOVER=false\nQBITTORRENT_WEBUI_PORT=8090\n",
+            overrides="PRIVATEERR_AUTO_RECOVER=false\nQBITTORRENT_WEBUI_PORT=8090\n"
+            "GLUETUN_ENTRYPOINT_WRAPPER=/gluetun/scripts/custom-wrapper.sh\n",
             test_profile=True,
         )
         self.assertEqual(services["privateerr"]["environment"]["PRIVATEERR_AUTO_RECOVER"], "false")
+
+        self.assertEqual(
+            services["gluetun"]["entrypoint"],
+            ["/bin/sh", "/gluetun/scripts/custom-wrapper.sh"],
+        )
 
         # The published port, application listener, hook, and probes must move together.
         self.assertEqual(services["gluetun"]["ports"][0]["published"], "8090")
