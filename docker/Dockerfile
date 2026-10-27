@@ -40,11 +40,8 @@ ARG IMAGE_REVISION=unknown
 ARG IMAGE_VERSION=latest
 
 #
-# Set PIA scripts, Privateerr helper, and healthcheck locations.
-#
-
-#
-# This environment block publishes paths, not secrets.
+# Expose runtime paths for PIA scripts, Privateerr, and startup health checks.
+# These values contain installation paths rather than secrets.
 #
 # hadolint ignore=DL3064
 ENV PIA_BIN_HOME=${PIA_BIN_HOME} \

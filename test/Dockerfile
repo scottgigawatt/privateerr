@@ -12,7 +12,7 @@
 ARG ALPINE_TAG=3.24@sha256:be2656061b536c1883c4034790e21d0a09c5aaaf51968b89368a3c0371ea2c9a
 
 #
-# Stage 1 of 6: Obtain the same static ShellCheck binary for every supported CPU.
+# Stage 1 of 6: Obtain a static ShellCheck binary for every supported CPU.
 # The official image includes ARMv6, which also runs on ARMv7 where Alpine lacks the package.
 #
 FROM koalaman/shellcheck:v0.11.0@sha256:61862eba1fcf09a484ebcc6feea46f1782532571a34ed51fedf90dd25f925a8d AS shellcheck
@@ -93,10 +93,16 @@ RUN apk upgrade --no-cache && \
     printf '%s\n' "@pythonfix ${EDGE_APK_REPOSITORY}" >> /etc/apk/repositories && \
     apk add --no-cache "python3@pythonfix>=${PYTHON_APK_MIN_VERSION}"
 
+#
+# Copy the Python tool dependency lock for hash-verified installation.
+#
+COPY test/requirements-tools.txt /tmp/requirements-tools.txt
+
+#
 # Install pre-commit, virtualenv, and Ruff in an isolated, hash-verified environment.
 # The complete lockfile verifies every dependency and keeps these tools test-only.
 # Keep only active upstream seed wheels and remove temporary bootstrap packages together.
-COPY test/requirements-tools.txt /tmp/requirements-tools.txt
+#
 RUN apk add --no-cache --virtual .python-build-deps py3-pip && \
     python3 -m venv /opt/precommit && \
     /opt/precommit/bin/python -m pip install --no-cache-dir --disable-pip-version-check \
@@ -105,14 +111,21 @@ RUN apk add --no-cache --virtual .python-build-deps py3-pip && \
     /opt/precommit/bin/python -c 'import sys; from virtualenv.seed.wheels import embed; version = ".".join(map(str, sys.version_info[:2])); active = embed.BUNDLE_SUPPORT[version]; [embed.get_embed_wheel(package, version) for package in active]; [wheel.unlink() for wheel in embed.BUNDLE_FOLDER.glob("*.whl") if wheel.name not in active.values()]' && \
     apk del .python-build-deps && \
     rm /tmp/requirements-tools.txt
+
+#
+# Make the isolated Python checkers available to repository checks.
+#
 ENV PATH="/opt/precommit/bin:${PATH}"
 
+#
+# Copy tool binaries from digest-pinned upstream images.
+#
 COPY --from=shellcheck /bin/shellcheck /usr/local/bin/shellcheck
 COPY --from=docker-cli /usr/local/bin/docker /usr/local/bin/docker
 COPY --from=compose /docker-compose /usr/local/lib/docker/cli-plugins/docker-compose
 
 #
-# Copy the integrity-checked dependency manifests for the test tools.
+# Copy npm dependency manifests for integrity-verified installation.
 #
 COPY test/package.json test/package-lock.json /opt/tools/
 
@@ -133,14 +146,14 @@ ENV PATH="/opt/tools/node_modules/.bin:${PATH}"
 #
 # Copy the project license, Python validator, and developer checks into Buccaneerr.
 #
-COPY test/LICENSE                  /LICENSE
-COPY test/checks.sh                ${BUCCANEERR_BIN_HOME}/checks.sh
-COPY test/helpers                  ${BUCCANEERR_BIN_HOME}/helpers
-COPY test/policy                   ${BUCCANEERR_BIN_HOME}/policy
-COPY test/stubs                    ${BUCCANEERR_BIN_HOME}/stubs
-COPY test/examples                 ${BUCCANEERR_BIN_HOME}/examples
-COPY test/unit                     ${BUCCANEERR_BIN_HOME}/unit
-COPY test/runtime                  ${BUCCANEERR_BIN_HOME}/runtime
+COPY test/LICENSE    /LICENSE
+COPY test/checks.sh  ${BUCCANEERR_BIN_HOME}/checks.sh
+COPY test/helpers    ${BUCCANEERR_BIN_HOME}/helpers
+COPY test/policy     ${BUCCANEERR_BIN_HOME}/policy
+COPY test/stubs      ${BUCCANEERR_BIN_HOME}/stubs
+COPY test/examples   ${BUCCANEERR_BIN_HOME}/examples
+COPY test/unit       ${BUCCANEERR_BIN_HOME}/unit
+COPY test/runtime    ${BUCCANEERR_BIN_HOME}/runtime
 
 #
 # Run the Python validator directly so it owns preflight, logging, and fault cleanup.
@@ -153,14 +166,28 @@ CMD ["python3", "-m", "validate_stack"]
 #
 FROM tools AS docs
 
+#
 # Install documentation tools in an isolated environment without changing Alpine's Python packages.
+#
 RUN apk add --no-cache --virtual .docs-build-deps py3-pip && \
     python3 -m venv /opt/docs && \
     apk del .docs-build-deps
+
+#
+# Copy the locked documentation toolchain manifest into the test image.
+#
 COPY requirements-docs.txt /tmp/requirements-docs.txt
+
+#
+# Install the locked documentation toolchain in an isolated environment.
+#
 RUN /opt/docs/bin/python -m pip install --no-cache-dir --disable-pip-version-check \
     --require-hashes --requirement /tmp/requirements-docs.txt && \
     rm /tmp/requirements-docs.txt
+
+#
+# Use the documentation environment for site builds and API rendering.
+#
 ENV PATH="/opt/docs/bin:${PATH}"
 
 #

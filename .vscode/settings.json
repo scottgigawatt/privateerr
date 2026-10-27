@@ -71,6 +71,7 @@
         "ENOENT",
         "ENOSPC",
         "ENOTDIR",
+        "ensurepip",
         "EROFS",
         "esac",
         "esbenp",
