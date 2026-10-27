@@ -10,8 +10,8 @@ flowchart TD
   accDescr: Environment settings configure the Python supervisor. It invokes PIA through a bounded Python generator, validates the candidate files, and exchanges settings and health information with Gluetun. After confirmation it publishes the files. Gluetun owns the VPN namespace and updates qBittorrent's forwarded port.
 
   env["Environment"] -->|"Validate settings"| supervisor["🧭 Python supervisor"]
-  supervisor -->|"Bounded generation"| adapter["Python generator<br/>Unmodified PIA scripts"]
-  adapter -->|"Candidate files"| store["📁 Configuration store"]
+  supervisor -->|"Bounded generation"| generator["Python generator<br/>Unmodified PIA scripts"]
+  generator -->|"Candidate files"| store["📁 Configuration store"]
   supervisor <-->|"Validate and publish"| store
   supervisor <-->|"Settings API and health"| gluetun["🛡️ Gluetun"]
   gluetun -->|"VPN namespace and port"| app["qBittorrent"]
@@ -24,7 +24,7 @@ flowchart TD
 
   class env configuration
   class supervisor control
-  class adapter generation
+  class generator generation
   class store storage
   class gluetun,app connected
 ```

@@ -129,8 +129,9 @@ class StackCheck:
             except OSError:
                 raise RuntimeError(f"Cannot read required configuration file: {path}") from None
 
+            # Horizontal spacing must not let an empty value consume the next assignment.
             if not content.strip() or any(
-                re.search(rf"^{field}\s*=\s*\S+", content, re.MULTILINE) is None
+                re.search(rf"^{field}[ \t]*=[ \t]*\S+", content, re.MULTILINE) is None
                 for field in required
             ):
                 raise RuntimeError(f"Required configuration fields are missing from {path}")

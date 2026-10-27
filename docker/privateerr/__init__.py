@@ -10,5 +10,5 @@
 
 Configuration validation lives in config, HTTP requests in client, and connection
 validation and file publication in settings. The supervisor coordinates those
-pieces while the shell adapter runs the unmodified upstream PIA scripts.
+pieces while the Python generator invokes the unmodified upstream PIA scripts.
 """

@@ -39,7 +39,7 @@ class ConfigurationError(ValueError):
 class Config:
     """Keep validated deployment settings separate from changing recovery state."""
 
-    # Keep inherited credentials available to the adapter without exposing them in object output.
+    # Keep inherited credentials available to the generator without exposing them in object output.
     environment: dict[str, str] = field(repr=False)
     config_path: Path
     metadata_path: Path
@@ -73,7 +73,7 @@ class Config:
             ConfigurationError: If enabled recovery has incompatible or invalid settings.
         """
 
-        # Normalize a private copy so adapter defaults do not modify the caller's environment.
+        # Normalize a private copy so generator defaults do not modify the caller's environment.
         env = environment.copy()
 
         def value(name: str, default: str) -> str:
@@ -95,7 +95,7 @@ class Config:
         if recovery not in ("true", "false"):
             raise ConfigurationError("PRIVATEERR_AUTO_RECOVER must be true or false.")
 
-        # The adapter receives upstream variable names; Compose maps deployment names to them.
+        # The generator receives upstream variable names; Compose maps deployment names to them.
         env["PIA_BIN_HOME"] = value("PIA_BIN_HOME", "/pia")
         env["PREFERRED_REGION"] = value("PREFERRED_REGION", "ca")
         config_path = Path(value("PIA_CONF_PATH", "/gluetun/wireguard/wg0.conf"))

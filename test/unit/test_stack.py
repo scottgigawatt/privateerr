@@ -83,6 +83,33 @@ class StackTests(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, "Required configuration fields"):
             self.check.validate_files()
 
+    def test_preflight_rejects_empty_assignments_before_another_field(self):
+        """A later assignment cannot supply a value for an empty required field."""
+
+        files = {
+            "wg0.conf": "PrivateKey = example\nPublicKey = example\nEndpoint = example:1337\n",
+            "privateerr.env": (
+                "PIA_WG_SERVER_NAME=example\nPIA_WG_ENDPOINT_IP=192.0.2.1\n"
+                "PIA_PORT_FORWARDING_SUPPORTED=true\n"
+            ),
+        }
+
+        # Place the empty field before another populated line to exercise newline crossing.
+        for filename, field in (
+            ("wg0.conf", "PrivateKey"),
+            ("privateerr.env", "PIA_WG_SERVER_NAME"),
+        ):
+            with self.subTest(filename=filename):
+                for name, content in files.items():
+                    (self.root / name).write_text(content)
+
+                lines = files[filename].splitlines()
+                lines[0] = field + " = \t"
+                (self.root / filename).write_text("\n".join(lines) + "\n")
+
+                with self.assertRaisesRegex(RuntimeError, "Required configuration fields"):
+                    self.check.validate_files()
+
     def test_recovery_requires_published_matching_pair(self):
         """Require new registration, saved files, and completed publication together."""
 

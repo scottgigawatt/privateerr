@@ -114,7 +114,7 @@ def select_endpoint(
         if not is_list(wireguard_servers):
             continue
 
-        # Ignore malformed catalog entries instead of passing untrusted text to the shell adapter.
+        # Ignore malformed catalog entries instead of passing untrusted endpoint text to upstream scripts.
         for raw_server in wireguard_servers:
             try:
                 server = object_fields(raw_server)
