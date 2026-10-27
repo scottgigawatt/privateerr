@@ -59,6 +59,7 @@ ARG IMAGE_VERSION=latest
 #
 ENV BUCCANEERR_BIN_HOME=${BUCCANEERR_BIN_HOME} \
     PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONPATH=${BUCCANEERR_BIN_HOME}/runtime \
     RUFF_NO_CACHE=true
 
 #
@@ -149,10 +150,9 @@ RUN apk add --no-cache --virtual .node-build-deps npm && \
 ENV PATH="/opt/tools/node_modules/.bin:${PATH}"
 
 #
-# Copy over the project license and Buccaneerr script, then make the script executable.
+# Copy the project license, Python validator, and developer checks into Buccaneerr.
 #
 COPY test/LICENSE                  /LICENSE
-COPY test/buccaneerr-entrypoint.sh ${BUCCANEERR_BIN_HOME}/buccaneerr-entrypoint.sh
 COPY test/checks.sh                ${BUCCANEERR_BIN_HOME}/checks.sh
 COPY test/helpers                  ${BUCCANEERR_BIN_HOME}/helpers
 COPY test/policy                   ${BUCCANEERR_BIN_HOME}/policy
@@ -162,14 +162,9 @@ COPY test/unit                     ${BUCCANEERR_BIN_HOME}/unit
 COPY test/runtime                  ${BUCCANEERR_BIN_HOME}/runtime
 
 #
-# Make the Buccaneerr entrypoint script executable.
+# Run the Python validator directly so it owns preflight, logging, and fault cleanup.
 #
-RUN chmod +x "${BUCCANEERR_BIN_HOME}/buccaneerr-entrypoint.sh"
-
-#
-# Run Buccaneerr.
-#
-CMD [ "bash", "-lc", "${BUCCANEERR_BIN_HOME}/buccaneerr-entrypoint.sh" ]
+CMD ["python3", "-m", "validate_stack"]
 
 #
 # Stage 5 of 6: Extend Buccaneerr with the locked developer documentation toolchain.

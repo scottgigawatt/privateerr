@@ -7,11 +7,11 @@ Privateerr separates configuration generation from tunnel ownership. Its single-
 ```mermaid
 flowchart TD
   accTitle: Privateerr supervisor boundaries
-  accDescr: Environment settings configure the Python supervisor. It invokes PIA through a bounded shell adapter, validates the candidate files, and exchanges settings and health information with Gluetun. After confirmation it publishes the files. Gluetun owns the VPN namespace and updates qBittorrent's forwarded port.
+  accDescr: Environment settings configure the Python supervisor. It invokes PIA through a bounded Python generator, validates the candidate files, and exchanges settings and health information with Gluetun. After confirmation it publishes the files. Gluetun owns the VPN namespace and updates qBittorrent's forwarded port.
 
   env["Environment"] -->|"Validate settings"| supervisor["🧭 Python supervisor"]
-  supervisor -->|"Bounded generation"| adapter["PIA shell adapter"]
-  adapter -->|"Candidate files"| store["📁 Configuration store"]
+  supervisor -->|"Bounded generation"| generator["Python generator<br/>Unmodified PIA scripts"]
+  generator -->|"Candidate files"| store["📁 Configuration store"]
   supervisor <-->|"Validate and publish"| store
   supervisor <-->|"Settings API and health"| gluetun["🛡️ Gluetun"]
   gluetun -->|"VPN namespace and port"| app["qBittorrent"]
@@ -24,14 +24,14 @@ flowchart TD
 
   class env configuration
   class supervisor control
-  class adapter generation
+  class generator generation
   class store storage
   class gluetun,app connected
 ```
 
 Blue marks the supervisor, amber marks upstream generation, purple marks saved and staged files, and green marks the VPN and application. The two-way API arrow covers authenticated settings updates, settings readback, and health probes. The storage arrow covers reading validated candidates and publishing them after confirmation.
 
-The supervisor reads environment settings once at startup. Configuration generation runs in a separate process group and a private staging directory. Only validated connection fields are sent to Gluetun; its unrelated DNS, firewall, and provider settings remain intact.
+The supervisor reads environment settings once at startup. Each upstream PIA invocation runs in a separate process group. Generated VPN files go to a private staging directory; combined stdout and stderr are piped to Python for redacted logging. Python owns generation orchestration, IPv6 adaptation, catalog enrichment, and metadata serialization. One monotonic work deadline covers upstream execution and metadata lookup; process cleanup can add up to five seconds of grace before remaining group members are killed. Chunked output reads remain bounded even when a child stays silent, omits a newline, or writes continuously. Only validated connection fields are sent to Gluetun; its unrelated DNS, firewall, and provider settings remain intact.
 
 ## Separate readiness from tunnel health
 
@@ -63,9 +63,19 @@ Each file replacement is atomic, but replacing the pair is not one filesystem tr
 
 ## Bound work and protect credentials
 
-HTTP requests have a total deadline and a response-size limit. Redirects are rejected, inherited HTTP proxies are ignored, and only control requests receive the API key. External JSON remains untrusted until its structure and fields are validated. Generated metadata is parsed as data rather than executed as shell code.
+HTTP requests have a total deadline and a response-size limit. Redirects are rejected, inherited HTTP proxies are ignored, and only control requests receive the API key. External JSON remains untrusted until its structure and fields are validated. Python parses generated metadata as data. Gluetun's shell wrapper sources the same file, so the generator validates scalar identities and escapes shell expansion characters in display labels before writing it.
 
 The supervisor measures outage and retry intervals with a **monotonic clock**: an elapsed-time counter that only moves forward and is unaffected by changes to the system date or time. Correcting the host clock therefore cannot shorten a recovery cooldown or make an outage appear older. These timers start afresh when the supervisor process restarts; retained candidate files are reconciled separately. PIA generation has a deadline; shutdown interrupts waiting and stops the generation process group. New files use a restrictive umask. Supervisor-authored diagnostic summaries omit credentials, keys, and response bodies; complete Docker or persistent logs can also contain upstream and application output. Inspect and redact the full excerpt before sharing it, including operational paths and region preferences.
+
+## Read consistent generation logs
+
+Console and persistent logs use UTC timestamps, severity, and a source label. `[privateerr]` identifies application messages; `[PIA/run_setup.sh]` identifies output from the unmodified setup invocation, including its children. Targeted recovery invokes and labels `get_token.sh` and `connect_to_wireguard_with_token.sh` separately. Invocation labels do not claim to identify every nested child script.
+
+Python replaces known credential values and recognized credential fields, removes ANSI CSI sequences and C0 controls except tabs, and then forwards upstream output to the logging handlers. This best-effort filter follows upstream output conventions; it cannot guarantee removal of unrecognized secret formats. Empty lines are omitted; oversized lines are discarded as a whole rather than exposing partially redacted fragments. Ordinary upstream output uses `INFO`; a nonzero process exit produces a separate application error with the script name and exit status. Both output destinations use the same formatter.
+
+The `.privateerr-stage.*` directory isolates each candidate from the saved pair. Its random suffix prevents attempt collisions. Published-path success messages are emitted only after a verified save; one-shot generation ends with `Generation complete.` rather than waiting for a Gluetun container that it did not start.
+
+The date compatibility shim translates PIA's GNU-style date arguments and delegates execution to BusyBox date. It remains necessary for PIA's `--date='1 day'` call; it does not install GNU coreutils. The healthcheck remains the existing readiness-marker shell check.
 
 ## Diagnose failures without disclosing secrets
 

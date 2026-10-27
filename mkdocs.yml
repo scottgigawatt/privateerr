@@ -47,6 +47,8 @@ nav:
       - Filesystem diagnostics: development/privateerr/reference/diagnostics.md
       - Supervisor: development/privateerr/reference/supervisor.md
       - Script installation: development/privateerr/reference/scripts.md
+      - Generation: development/privateerr/reference/generation.md
+      - Logging: development/privateerr/reference/log.md
   - Project Guides:
       - Guide map: project-guides/index.md
       - Automatic recovery: automatic-recovery.md

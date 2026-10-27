@@ -3,14 +3,15 @@
 #
 # Licensed under the Apache License, Version 2.0.
 #
-# test_generation.py: Exercise the real supervisor and shell adapter using isolated upstream fixtures.
+# test_generation.py: Exercise the real supervisor and Python generator using isolated upstream fixtures.
 #
 
-"""Exercise the real supervisor and shell adapter using isolated upstream fixtures."""
+"""Exercise the real supervisor and Python generator using isolated upstream fixtures."""
 
 import os
 import signal
 import subprocess
+import sys
 import tempfile
 import time
 import unittest
@@ -32,7 +33,7 @@ class GenerationTests(unittest.TestCase):
         self.pia.mkdir()
         (self.root / "catalog").write_text('{"regions":[]}\n')
 
-        # Replace only upstream PIA setup; run the real entrypoint, supervisor, and shell adapter.
+        # Replace only upstream PIA setup; run the real entrypoint, supervisor, and Python generator.
         setup = self.pia / "run_setup.sh"
         setup.write_text("""#!/bin/sh
 set -eu
@@ -76,7 +77,9 @@ printf 'WG_HOSTNAME=example-one\\nPIA_TOKEN=test-token-redact\\n'  # pragma: all
             "PRIVATEERR_BIN_HOME": str(ROOT / "docker"),
             "TEST_CHILD_PID": str(self.root / "child.pid"),
         }
-        self.command = ["sh", str(ROOT / "docker/privateerr-entrypoint.sh")]
+        self.env["PYTHONPATH"] = str(ROOT / "docker")
+        self.env["PYTHONDONTWRITEBYTECODE"] = "1"
+        self.command = [sys.executable, "-m", "privateerr"]
 
     def run_supervisor(self, **overrides: str) -> subprocess.CompletedProcess[bytes]:
         """Run one bounded supervisor process with optional scenario overrides."""
@@ -113,8 +116,8 @@ printf 'WG_HOSTNAME=example-one\\nPIA_TOKEN=test-token-redact\\n'  # pragma: all
 
         result = self.run_supervisor(PRIVATEERR_LOG_PATH=str(self.root))
         self.assertNotEqual(result.returncode, 0)
-        output = result.stderr.decode()
-        self.assertIn("ERROR Cannot open persistent log", output)
+        output = (result.stdout + result.stderr).decode()
+        self.assertIn("ERROR [privateerr] Cannot open persistent log", output)
         self.assertIn("expected a file", output)
         self.assertIn("(EISDIR)", output)
         self.assertNotIn("Traceback", output)
@@ -185,27 +188,17 @@ printf 'WG_HOSTNAME=example-one\\nPIA_TOKEN=test-token-redact\\n'  # pragma: all
                             process.kill()
                             process.wait()
 
-    def test_existing_ipv6_settings_preserve_legacy_and_operator_choices(self):
-        """Skip redundant writes only when both namespace settings satisfy an explicit request."""
+    def test_existing_ipv6_settings_preserve_operator_choices(self):
+        """Only Docker-applied settings may suppress an explicit upstream IPv6 request."""
 
-        binary = self.root / "bin"
-        binary.mkdir()
+        from privateerr.generation import prepare_ipv6
 
-        # Stub namespace reads so the test never changes kernel IPv6 settings.
-        sysctl = binary / "sysctl"
-        sysctl.write_text("""#!/bin/sh
-set -eu
-[ "$1" = -n ]
-case "$2" in
-    net.ipv6.conf.all.disable_ipv6) printf '%s' "$TEST_IPV6_ALL" ;;
-    net.ipv6.conf.default.disable_ipv6) printf '%s' "$TEST_IPV6_DEFAULT" ;;
-    *) exit 1 ;;
-esac
-""")
-        sysctl.chmod(0o700)
-        result_path = self.root / "ipv6-request"
+        # Simulate Docker-applied kernel flags without changing the test host's network state.
+        root = self.root / "proc"
 
-        # Only a fully disabled namespace may suppress a requested upstream sysctl write.
+        for interface in ("all", "default"):
+            (root / interface).mkdir(parents=True)
+
         cases = (
             ("yes", "1", "1", "no"),
             ("yes", "0", "0", "yes"),
@@ -217,12 +210,8 @@ esac
 
         for request, current, default, expected in cases:
             with self.subTest(request=request, current=current, default=default):
-                result = self.run_supervisor(
-                    DISABLE_IPV6=request,
-                    PATH=str(binary) + os.pathsep + os.environ["PATH"],
-                    TEST_IPV6_ALL=current,
-                    TEST_IPV6_DEFAULT=default,
-                    TEST_IPV6_RESULT=str(result_path),
-                )
-                self.assertEqual(result.returncode, 0, result.stderr)
-                self.assertEqual(result_path.read_text(), expected)
+                (root / "all/disable_ipv6").write_text(current)
+                (root / "default/disable_ipv6").write_text(default)
+                environment = {"DISABLE_IPV6": request}
+                prepare_ipv6(environment, root)
+                self.assertEqual(environment["DISABLE_IPV6"], expected)

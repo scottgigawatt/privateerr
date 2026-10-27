@@ -8,6 +8,14 @@ Privateerr packages the Gluetun startup wrapper and qBittorrent forwarding hook 
 
 The two installed script names belong to Privateerr and are replaced automatically. Keep custom scripts under different names and configure their paths explicitly. Updating the images should recreate the complete Privateerr, Gluetun, and qBittorrent stack so the scripts and services start together. Privateerr's API-based tunnel recovery continues without restarting those containers.
 
+## Read container logs
+
+Privateerr emits records such as `2026-10-27T02:11:06Z INFO [privateerr] Configuration directory check passed: /gluetun/wireguard (create, write, replace, and remove).` The timestamp is UTC, the level describes severity, and the bracketed source identifies Privateerr or a PIA invocation. The directory check uses disposable files and does not alter saved configuration.
+
+PIA messages use labels such as `[PIA/run_setup.sh]`; that label includes output from scripts launched by the named invocation. Python redacts credentials before writing the console or persistent log. Inspect complete logs before sharing them because paths, region choices, and other operational details can still be private. Final save messages report the published paths; temporary candidate directories are part of safe generation.
+
+Buccaneerr performs its own preflight and validation through one Python program and uses the same UTC timestamp and severity layout with a `[buccaneerr]` source.
+
 ## Run full-stack validation 🧪
 
 `make test` runs credential-free repository checks without starting the VPN stack. The separate end-to-end target enables the `test` profile and starts Privateerr, Gluetun, qBittorrent, and Buccaneerr. It generates live VPN files and deliberately blocks the active endpoint to test recovery. Use real PIA credentials in a disposable checkout, and preserve any needed configuration before running it:

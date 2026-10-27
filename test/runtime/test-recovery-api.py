@@ -763,7 +763,7 @@ def live_recovery(
         logs = docker("logs", privateerr, check=False)
 
         for line in (logs.stdout + logs.stderr).splitlines():
-            if line.startswith("[privateerr-entrypoint.sh]"):
+            if " [privateerr] " in line:
                 print(line)
 
         raise RuntimeError("Privateerr did not recover the blocked PIA endpoint")

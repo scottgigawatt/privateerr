@@ -1,0 +1,3 @@
+# Logging API
+
+::: privateerr.log

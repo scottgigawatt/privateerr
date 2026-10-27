@@ -62,6 +62,54 @@ class StackTests(unittest.TestCase):
             with self.subTest(field=field), patch.dict(self.preferences, {field: value}):
                 self.assertFalse(self.check.application_ready())
 
+    def test_preflight_validates_saved_files_and_forwarding_choice(self):
+        """Python preflight replaces the shell checks and respects forwarding opt-out."""
+
+        (self.root / "wg0.conf").write_text(
+            "PrivateKey = example\nPublicKey = example\nEndpoint = example:1337\n"
+        )
+        (self.root / "privateerr.env").write_text(
+            "PIA_WG_SERVER_NAME=example\nPIA_WG_ENDPOINT_IP=192.0.2.1\nPIA_PORT_FORWARDING_SUPPORTED=false\n"
+        )
+
+        with self.assertRaisesRegex(RuntimeError, "does not support port forwarding"):
+            self.check.validate_files()
+
+        # Opting out skips forwarding eligibility, but required connection fields still matter.
+        self.check.require_forwarding = False
+        self.check.validate_files()
+        (self.root / "wg0.conf").write_text("incomplete\n")
+
+        with self.assertRaisesRegex(RuntimeError, "Required configuration fields"):
+            self.check.validate_files()
+
+    def test_preflight_rejects_empty_assignments_before_another_field(self):
+        """A later assignment cannot supply a value for an empty required field."""
+
+        files = {
+            "wg0.conf": "PrivateKey = example\nPublicKey = example\nEndpoint = example:1337\n",
+            "privateerr.env": (
+                "PIA_WG_SERVER_NAME=example\nPIA_WG_ENDPOINT_IP=192.0.2.1\n"
+                "PIA_PORT_FORWARDING_SUPPORTED=true\n"
+            ),
+        }
+
+        # Place the empty field before another populated line to exercise newline crossing.
+        for filename, field in (
+            ("wg0.conf", "PrivateKey"),
+            ("privateerr.env", "PIA_WG_SERVER_NAME"),
+        ):
+            with self.subTest(filename=filename):
+                for name, content in files.items():
+                    (self.root / name).write_text(content)
+
+                lines = files[filename].splitlines()
+                lines[0] = field + " = \t"
+                (self.root / filename).write_text("\n".join(lines) + "\n")
+
+                with self.assertRaisesRegex(RuntimeError, "Required configuration fields"):
+                    self.check.validate_files()
+
     def test_recovery_requires_published_matching_pair(self):
         """Require new registration, saved files, and completed publication together."""
 

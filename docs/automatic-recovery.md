@@ -91,7 +91,7 @@ Recovery tries another advertised endpoint in the selected region. A pinned regi
 
 ## How the supervisor runs
 
-A small Python supervisor runs in the existing Privateerr container. It uses the standard library to manage recovery state, validate connection settings, and call Gluetun. A shell adapter invokes the unmodified upstream PIA scripts; Gluetun's startup wrapper remains shell. There is no additional container, web server, or production Docker socket.
+A small Python supervisor runs in the existing Privateerr container. It uses the standard library to manage recovery state, validate connection settings, and call Gluetun. Python invokes the unmodified upstream PIA scripts directly, prepares metadata, and formats their redacted output. Gluetun's startup wrapper remains shell. There is no additional container, web server, or production Docker socket.
 
 The supervisor measures elapsed time independently of the system date and time, so host clock corrections do not change outage thresholds or retry delays. It also bounds HTTP requests and PIA generation. See [recovery timing and resource limits](development/privateerr/architecture.md#bound-work-and-protect-credentials) for the implementation details. Container shutdown interrupts waits and stops the active generation process group. Python test and lint tools stay in Buccaneerr.
 

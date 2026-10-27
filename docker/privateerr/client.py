@@ -204,12 +204,31 @@ class Client:
         except APIUnavailable:
             return False
 
-    def catalog(self) -> dict[str, object]:
-        """Read PIA's advertised regions and WireGuard servers for endpoint selection."""
+    def catalog(self, *, timeout: float = 20) -> dict[str, object]:
+        """Read PIA's advertised regions and WireGuard servers without API credentials.
+
+        Args:
+            timeout: Maximum total request seconds; generation can supply its
+                remaining budget instead of starting another full request window.
+
+        Returns:
+            Catalog object with a regions list. Nested fields remain untrusted
+                and must be validated by the endpoint selector or metadata generator.
+
+        Raises:
+            APIUnavailable: If retrieval fails or the first response line is not
+                a JSON object containing a regions list.
+
+        Note:
+            Only the first line is parsed; trailing catalog signature data is not
+            verified by this method. Transport uses the configured catalog URL.
+        """
 
         # PIA serves JSON on the first line followed by signature data outside that JSON document.
         try:
-            result = json.loads(self.request(self.config.catalog_url, timeout=20).splitlines()[0])
+            result = json.loads(
+                self.request(self.config.catalog_url, timeout=timeout).splitlines()[0]
+            )
 
             result = object_fields(result)
 
