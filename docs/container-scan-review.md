@@ -17,6 +17,8 @@ The counts below are the same on all three platforms. Trivy counts package findi
 | Buccaneerr | `edge` | 11 | 39 | 34 |
 | Buccaneerr | `candidate` | 10 | 35 | 31 |
 
+These totals describe whole-image scanner reports; they do not establish coverage of every embedded archive. Python's retained `ensurepip` bootstrap wheel requires the separate inspection described below.
+
 The production candidate removes the three Python advisories reported by Scout against both published production tags. Its remaining musl report is a stable-versus-edge revision mismatch described below. Buccaneerr still has real upstream tool and installer dependency findings; this review does not declare it free of vulnerabilities. The normal CI gate is narrower than this audit: it rejects fixed HIGH/CRITICAL findings, uses precise detection by default, and applies the one exact-path Compose exception.
 
 ## Production runtime updates
@@ -25,7 +27,7 @@ Both candidates install Python `3.14.10-r0`, including the [October 26 upstream 
 
 Alpine 3.24 stable still supplies Python `3.14.8-r0`. A tagged `@pythonfix` edge repository supplies only Python and its matching bytecode package family, with a `3.14.10-r0` minimum. Installed APK databases on all six candidate platforms confirm that every other package version matches the stable repository indexes. Remove this targeted repository exception when stable supplies the fixed Python release; do not perform a general edge upgrade.
 
-The pinned Alpine 3.24 image already resolves to 3.24.3 and remains current. Builds refresh its stable packages rather than carrying separate historical OpenSSL, musl, zlib, or Expat floors. The candidates retain stable musl `1.2.6-r3`, OpenSSL libraries `3.5.9-r0`, zlib `1.3.2-r1`, libexpat `2.9.0-r0`, and curl/libcurl `8.23.0-r0` on every platform. Production keeps only the Python standard library and PIA runtime tools; lint, installer, and documentation dependencies stay in Buccaneerr.
+The pinned Alpine 3.24 image already resolves to 3.24.3 and remains current. Builds refresh its stable packages rather than carrying separate historical OpenSSL, musl, zlib, or Expat floors. The candidates retain stable musl `1.2.6-r3`, OpenSSL libraries `3.5.9-r0`, zlib `1.3.2-r1`, libexpat `2.9.0-r0`, and curl/libcurl `8.23.0-r0` on every platform. Privateerr application code uses only the Python standard library. Separately installed lint, installer, and documentation toolchains stay in Buccaneerr; Alpine's Python package also retains its bundled [`ensurepip` bootstrap wheel](https://docs.python.org/3.14/library/ensurepip.html) in both images.
 
 ## Workaround decisions
 
@@ -33,12 +35,12 @@ The pinned Alpine 3.24 image already resolves to 3.24.3 and remains current. Bui
 | --- | --- |
 | Curl edge repository and version floor | Removed. [Stable curl 8.23.0](https://pkgs.alpinelinux.org/package/v3.24/main/aarch64/curl) and matching libcurl are available in all three stable indexes. |
 | Separate OpenSSL upgrade and musl/zlib/Expat floors | Replaced by a stable-package refresh. The pinned base and stable packages already contain those fixes; actual installed versions were checked on every architecture. |
-| System setuptools edge install | Removed. Pip is a temporary build dependency, removed with its dependency group. No system pip or setuptools remains in the ordinary Buccaneerr image; the active upstream seed wheel is setuptools 84.2.1. |
+| System setuptools edge install | Removed. Pip is a temporary build dependency, removed with its dependency group. No separately installed system pip or setuptools distribution remains in ordinary Buccaneerr; Python's bootstrap wheel is retained, and virtualenv's active setuptools seed wheel is 84.2.1. |
 | Python security floor | Required as a narrow `@pythonfix` exception until stable includes Python 3.14.10. Its interpreter and bytecode packages are the only installed versions outside stable. |
 | markdown-it and smol-toml npm overrides | Removed. markdownlint-cli2 0.24.0 already requires the same fixed versions, 15.0.3 and 1.9.1. Regenerating the lockfile preserves its resolved graph. |
 | KaTeX npm override | Retained at 0.19.1. Removing it resolves the math extension's `^0.16.0` dependency to 0.16.47 and restores [CVE-2026-103923](https://github.com/advisories/GHSA-238p-pmpm-9mq7). The final npm audit reports zero findings. |
 | Ruff packaging | Updated to 0.17.3 in the hash-verified tool and documentation locks. Official wheels cover all three Linux targets; Alpine's older Ruff package is unnecessary. |
-| Inactive virtualenv seed-wheel cleanup | Retained. Only the active upstream pip 26.2.2 and setuptools 84.2.1 wheels are needed for Python 3.14; upstream wheel integrity checks remain intact. |
+| Inactive virtualenv seed-wheel cleanup | Retained. Only virtualenv's active upstream pip 26.2.2 and setuptools 84.2.1 wheels are retained for Python 3.14; upstream wheel integrity checks remain intact. |
 | Compose CVE exception | Retained at its existing path and expiry; see the next section. No exception is added or broadened. |
 | Date compatibility shim | Retained. Current upstream PIA still calls `date --date='1 day'`; BusyBox rejects that syntax, while the shim translates it and delegates to BusyBox. No GNU coreutils package is introduced. |
 | Hadolint DL3018 package-version exception | Retained for APK installation. Stable package refreshes deliberately accept current security revisions rather than pinning each APK forever; immutable image pins and scans identify the built result. Removing the existing lint flag still produces DL3018. |
@@ -64,11 +66,19 @@ Alpine actionlint `1.7.12-r3` embeds Go 1.26.9 and still reports CVE-2026-111943
 
 Compose retains the HTTP/2 finding, four MEDIUM x/net reports, and the [OpenPGP module advisory](https://pkg.go.dev/vuln/GO-2026-5932). Scout additionally reports the Windows plugin-discovery advisory [CVE-2025-15558](https://github.com/docker/cli/security/advisories/GHSA-p436-gjf2-799p). Module metadata does not prove that every affected package is invoked by supported commands. This review preserves those reports and does not claim all tool behavior is non-exploitable.
 
+### Python bootstrap wheel
+
+The candidates retain `/usr/lib/python3.14/ensurepip/_bundled/pip-26.2.2-py3-none-any.whl` from Alpine's Python package. There is no separately installed system pip or setuptools distribution, but this archive contains actual installer modules, including pip-vendored msgpack 1.1.2, urllib3 2.7.0, and `pkg_resources` recorded as setuptools 70.3.0. The wheel is available to `python3 -m ensurepip`; Privateerr does not invoke it.
+
+The retained wheel is byte-identical across all three production candidate architectures (SHA-256 `fd7f4dfa8190e014013b9f08f3e973f4e4c26ffd179a204895533a7254813a70`). The production whole-image reports do not inventory its nested modules. Even after expanding the wheel, an unfiltered Trivy 0.76.1 filesystem scan with the same database detected no Python package manifests; its zero findings do not establish vendored-component coverage.
+
+A separate metadata-guided Trivy 0.76.1 scan of the wheel's unchanged `pip/_vendor/vendor.txt`, using an explicit parser selection, reports seven version-level advisory entries for msgpack, urllib3, and the setuptools label used for bundled `pkg_resources`. These are additional dependency-version findings, outside the whole-image totals. They do not establish that every advisory affects the included code or Privateerr's supported execution path; in particular, `pkg_resources` is only part of setuptools. Preserve the upstream Python assets and SBOM, track complete upstream pip fixes, and assess relevant code paths separately.
+
 ### Installer code and upstream inventory
 
 Scout also reads `virtualenv-21.14.13.dist-info/sboms/virtualenv.cdx.json`. That upstream inventory still lists older wheels and vendored versions after inactive wheel archives are removed. Direct inspection confirms that the retained pip 26.2.2 wheel vendors requests 2.34.2, certifi 2026.10.19, idna 3.18, and Pygments 2.20.0. Reports for older versions of those components, pip 26.0.1, and setuptools 82.0.1 describe inventory entries rather than the retained versions. In particular, the reported certifi 2026.1.4 trust-store advisory does not describe the retained certifi 2026.10.19 code.
 
-The active pip wheel still vendors msgpack 1.1.2, urllib3 2.7.0, and the pkg_resources portion recorded as setuptools 70.3.0. Version-level findings for those components require separate code-path assessment; inventory for the complete setuptools distribution is not proof that all its modules exist inside pip. The latest upstream pip remains 26.2.2, so there is no newer complete upstream wheel to adopt. Standalone package upgrades do not replace vendored code. Keep the reports visible and the upstream SBOM intact; do not rewrite inventory or partially patch the wheel to reduce scanner counts. Production contains none of these tools.
+The active pip wheel still vendors msgpack 1.1.2, urllib3 2.7.0, and the pkg_resources portion recorded as setuptools 70.3.0. Version-level findings for those components require separate code-path assessment; inventory for the complete setuptools distribution is not proof that all its modules exist inside pip. The latest upstream pip remains 26.2.2, so there is no newer complete upstream wheel to adopt. Standalone package upgrades do not replace vendored code. Keep the reports visible and the upstream SBOM intact; do not rewrite inventory or partially patch the wheel to reduce scanner counts.
 
 The [braces advisory CVE-2026-93687](https://github.com/advisories/GHSA-vfj7-8cjw-p6xm) was withdrawn upstream on October 23. It is absent from the fresh reports and final npm audit; no project exception hides it.
 
@@ -83,7 +93,7 @@ These immutable published indices identify the `latest` and `edge` snapshots use
 | Buccaneerr | `latest` | `sha256:f4634ed5656950b18d6592ef11939160da35659c3ec2d2bef971f6a7c8f2e0d9` |
 | Buccaneerr | `edge` | `sha256:78e13b2aaad73970889000957a6bc9a39cb6ac9b547c148e742ea4ee7a8a51ee` |
 
-The local candidate runtime manifests below identify the exact built and scanned artifacts. All three platforms have the same reviewed runtime and tool versions and advisory sets described above. The checks verify Python 3.14.10, stable library versions, absent bootstrap packages, and unchanged upstream seed-wheel contents. Published release images must be checked separately after their normal build and publication workflow.
+The local candidate runtime manifests below identify the exact built and scanned artifacts. All three platforms have the same reviewed runtime and tool versions and advisory sets described above. The checks verify Python 3.14.10, stable library versions, removed temporary pip/setuptools APK packages, and unchanged upstream seed-wheel contents. Published release images must be checked separately after their normal build and publication workflow.
 
 | Candidate | Platform | Runtime manifest digest |
 | --- | --- | --- |
@@ -109,3 +119,11 @@ docker scout cves registry://ghcr.io/scottgigawatt/privateerr@sha256:IMAGE-DIGES
 ```
 
 Repeat for all supported platforms, retain scanner versions and database timestamps, and inspect the installed files behind remaining reports. A multi-platform OCI archive is not a Docker image archive: extract the layout and select one runtime manifest for Trivy, or prepare a Docker archive preserving that manifest's configuration and layers. Verify the reported architecture; a requested platform flag alone does not establish what was scanned.
+
+To repeat the metadata-guided bootstrap dependency check, extract the retained wheel into a disposable directory. Replace `EXTRACTED-WHEEL-DIRECTORY` with that directory and `TRIVY-CACHE-DIRECTORY` with the cache containing the recorded database. The parser selection reads the existing vendoring manifest without changing it:
+
+```sh
+trivy fs --scanners vuln --detection-priority comprehensive \
+    --ignorefile /dev/null --file-patterns 'pip:(^|/)vendor\.txt$' \
+    --cache-dir "TRIVY-CACHE-DIRECTORY" --skip-db-update "EXTRACTED-WHEEL-DIRECTORY"
+```
