@@ -43,8 +43,6 @@ ARG ALPINE_TAG=3.24@sha256:be2656061b536c1883c4034790e21d0a09c5aaaf51968b89368a3
 # Default install locations and image metadata.
 #
 ARG BUCCANEERR_BIN_HOME=/buccaneerr
-ARG EDGE_APK_REPOSITORY=https://dl-cdn.alpinelinux.org/alpine/edge/main
-ARG PYTHON_APK_MIN_VERSION=3.14.10-r0
 ARG IMAGE_CREATED=unknown
 ARG IMAGE_REVISION=unknown
 ARG IMAGE_VERSION=latest
@@ -74,7 +72,7 @@ LABEL org.opencontainers.image.title="Buccaneerr" \
         org.opencontainers.image.base.name="docker.io/library/alpine:${ALPINE_TAG}"
 
 #
-# Refresh validation tools from stable Alpine; tag only Python for its security update.
+# Refresh the patched Python interpreter and validation tools from stable Alpine.
 # BusyBox supplies portable AWK and core utilities; Python checker versions are
 # locked separately so linting and documentation use the same current Ruff release.
 #
@@ -89,9 +87,8 @@ RUN apk upgrade --no-cache && \
         grep \
         jq \
         iptables \
-        nodejs && \
-    printf '%s\n' "@pythonfix ${EDGE_APK_REPOSITORY}" >> /etc/apk/repositories && \
-    apk add --no-cache "python3@pythonfix>=${PYTHON_APK_MIN_VERSION}"
+        nodejs \
+        python3
 
 #
 # Copy the Python tool dependency lock for hash-verified installation.
