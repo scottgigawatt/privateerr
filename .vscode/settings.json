@@ -150,7 +150,6 @@
         "pyrightconfig",
         "pytest",
         "PYTHONDONTWRITEBYTECODE",
-        "pythonfix",
         "PYTHONPATH",
         "pyyaml",
         "qbittorrent",

@@ -33,8 +33,6 @@ ARG PIA_BIN_HOME=/pia
 #
 # hadolint ignore=DL3064
 ARG PRIVATEERR_BIN_HOME=/privateerr
-ARG EDGE_APK_REPOSITORY=https://dl-cdn.alpinelinux.org/alpine/edge/main
-ARG PYTHON_APK_MIN_VERSION=3.14.10-r0
 ARG IMAGE_CREATED=unknown
 ARG IMAGE_REVISION=unknown
 ARG IMAGE_VERSION=latest
@@ -81,8 +79,7 @@ COPY privateerr-date.sh             /usr/local/bin/date
 
 #
 # Refresh the pinned base from its stable repositories, then install the runtime.
-# Stable Alpine supplies the runtime libraries and PIA tools. Only Python uses
-# a tagged edge repository until stable includes the 3.14.10 security release.
+# Stable Alpine supplies the patched Python interpreter, runtime libraries, and PIA tools.
 #
 RUN apk upgrade --no-cache && \
     apk add --no-cache \
@@ -91,9 +88,8 @@ RUN apk upgrade --no-cache && \
         curl \
         jq \
         openresolv \
+        python3 \
         wireguard-tools && \
-    printf '%s\n' "@pythonfix ${EDGE_APK_REPOSITORY}" >> /etc/apk/repositories && \
-    apk add --no-cache "python3@pythonfix>=${PYTHON_APK_MIN_VERSION}" && \
     chmod +x \
         /usr/local/bin/privateerr-healthcheck \
         /usr/local/bin/date
