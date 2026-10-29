@@ -10,6 +10,9 @@
         "pyright": "1.1.414"
     },
     "overrides": {
-        "katex": "0.19.1"
+        "katex": "0.19.1",
+        "markdownlint": {
+            "re2js": "2.8.7"
+        }
     }
 }
