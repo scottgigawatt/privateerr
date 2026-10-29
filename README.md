@@ -160,11 +160,11 @@ Confirm `Automatic recovery enabled` and then `Gluetun tunnel is healthy`. Priva
 
 Long-running Privateerr installs both integration scripts into the shared `config/gluetun/scripts/` directory before reporting ready, even with recovery disabled. No script copying is needed. UID 0 needs write and traverse access to the shared paths. The two installed filenames are replaced at startup; keep custom scripts under other names. Recreate all three services together when updating images.
 
-Use `make up-build` for a source build; `make up-pull` aliases `make up`. [Direct Compose startup](docs/advanced-usage.md#start-without-make) is available without Make. Buccaneerr stays out of normal startup; its live tests deliberately interrupt a disposable VPN.
+Use `make up-build` for a source build. [Direct Compose startup](docs/advanced-usage.md#start-without-make) is available without Make. Buccaneerr stays out of normal startup; its live tests deliberately interrupt a disposable VPN.
 
 ## Select a PIA region 🧭
 
-Automatic selection is the default. To pin a region, set `PIA_AUTOCONNECT=false` and `PIA_PREFERRED_REGION=ca`, replacing `ca` with your chosen PIA region ID. Recovery-enabled startup reuses valid saved files; changing these values alone does not replace a healthy connection. Follow the [safe regeneration procedure](docs/automatic-recovery.md#choose-a-region).
+Automatic selection is the default. To pin a region, set `PIA_AUTOCONNECT=false` and `PIA_PREFERRED_REGION=YOUR-CHOSEN-PIA-REGION-ID`, replacing the placeholder with an `id` from [PIA's region list (JSON)](https://serverlist.piaservers.net/vpninfo/servers/v6). Recovery-enabled startup reuses valid saved files; changing these values alone does not replace a healthy connection. Follow the [safe regeneration procedure](docs/automatic-recovery.md#choose-a-region).
 
 ## Find commands and image channels ⚙️
 
