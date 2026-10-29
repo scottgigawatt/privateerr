@@ -102,12 +102,35 @@ class ConfigTests(unittest.TestCase):
             ("PRIVATEERR_GENERATION_TIMEOUT_SECONDS", "0"),
             ("PRIVATEERR_GENERATION_TIMEOUT_SECONDS", "10000"),
             ("PRIVATEERR_AUTO_RECOVER", "yes"),
+            ("PRIVATEERR_KEEPALIVE", "yes"),
         ):
             with (
                 self.subTest(variable=variable, value=value),
                 self.assertRaises(ConfigurationError),
             ):
                 Config.from_environment({variable: value})
+
+    def test_one_shot_mode_preserves_long_running_defaults(self):
+        """Only explicitly disabled keepalive and recovery select configuration-only startup."""
+
+        self.assertFalse(Config.from_environment({}).one_shot)
+        self.assertTrue(Config.from_environment({"PRIVATEERR_KEEPALIVE": "false"}).one_shot)
+        self.assertFalse(
+            Config.from_environment(
+                {"PRIVATEERR_KEEPALIVE": "true", "PRIVATEERR_AUTO_RECOVER": "false"}
+            ).one_shot
+        )
+
+    def test_generation_validation_preserves_literal_credentials(self):
+        """Accept upstream username case and literal password characters without normalization."""
+
+        for username in ("p0000000", "P0000000"):
+            with self.subTest(username_case=username[0]):
+                environment = {"PIA_USER": username, "PIA_PASS": '"example-password"'}
+                config = Config.from_environment(environment)
+                config.validate_generation_inputs()
+                self.assertEqual(config.environment["PIA_USER"], username)
+                self.assertEqual(config.environment["PIA_PASS"], environment["PIA_PASS"])
 
     def test_recovery_requires_compatible_mode_and_valid_urls(self):
         """Validate recovery prerequisites and keep the API key out of configuration repr."""
@@ -457,6 +480,8 @@ class RecoveryTests(unittest.TestCase):
 
         self.generator.generate.assert_not_called()
         self.client.get.assert_not_called()
+        self.assertNotIn("PIA_USER", self.config.environment)
+        self.assertNotIn("PIA_PASS", self.config.environment)
 
     def test_unwritable_reused_pair_warns_without_blocking_readiness(self):
         """Existing deployments can start Gluetun while reporting degraded recovery."""
@@ -600,6 +625,18 @@ class RecoveryTests(unittest.TestCase):
             self.supervisor.resolve_pending()
 
         self.assertIn("VPN region: ca_toronto", "\n".join(logged.output))
+
+    def test_recovery_input_error_does_not_expose_exception_values(self):
+        """Give an actionable generation diagnostic without serializing a credential-bearing error."""
+
+        with self.assertLogs("privateerr", level="WARNING") as captured:
+            self.supervisor.failure(
+                "Recovery preparation failed", ConfigurationError("secret-detail")
+            )
+
+        output = "\n".join(captured.output)
+        self.assertIn("PIA_USER and PIA_PASS", output)
+        self.assertNotIn("secret-detail", output)
 
     def test_one_shot_regenerates_even_with_valid_saved_pair(self):
         """Preserve legacy one-shot behavior even when a valid configuration already exists."""

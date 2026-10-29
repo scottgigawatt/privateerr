@@ -59,6 +59,30 @@ class Config:
     api_key: str = field(default="", repr=False)
     catalog_url: str = "https://serverlist.piaservers.net/vpninfo/servers/v6"
 
+    @property
+    def one_shot(self) -> bool:
+        """Generate files and exit without installing Gluetun integration scripts."""
+        return not self.keepalive and not self.recover
+
+    def validate_generation_inputs(self) -> None:
+        """Reject inputs that would prompt upstream without displaying their values.
+
+        Raises:
+            ConfigurationError: If credentials do not meet the bundled setup script's input rules.
+        """
+        # Docker's env-file values are literal; never silently unquote a credential.
+        if not re.fullmatch(r"[Pp][0-9]{7}", self.environment.get("PIA_USER", "")):
+            raise ConfigurationError(
+                "PIA_USER must be p or P followed by seven digits. "
+                "Docker --env-file preserves quotes; do not add wrapping quotes."
+            )
+
+        if len(self.environment.get("PIA_PASS", "")) < 8:
+            raise ConfigurationError(
+                "PIA_PASS must contain at least eight characters. "
+                "Set the literal password in your private environment file."
+            )
+
     @classmethod
     def from_environment(cls, environment: dict[str, str]) -> Config:
         """Preserve existing defaults and validate recovery-only settings when enabled.
@@ -70,7 +94,7 @@ class Config:
             Validated settings with credentials omitted from their object representation.
 
         Raises:
-            ConfigurationError: If enabled recovery has incompatible or invalid settings.
+            ConfigurationError: If a startup flag or enabled recovery setting is invalid.
         """
 
         # Normalize a private copy so generator defaults do not modify the caller's environment.
@@ -100,7 +124,12 @@ class Config:
         env["PREFERRED_REGION"] = value("PREFERRED_REGION", "ca")
         config_path = Path(value("PIA_CONF_PATH", "/gluetun/wireguard/wg0.conf"))
         metadata_path = Path(value("PRIVATEERR_METADATA_PATH", "/gluetun/wireguard/privateerr.env"))
-        keepalive = value("PRIVATEERR_KEEPALIVE", "true") == "true"
+        keepalive_value = value("PRIVATEERR_KEEPALIVE", "true")
+
+        if keepalive_value not in ("true", "false"):
+            raise ConfigurationError("PRIVATEERR_KEEPALIVE must be true or false.")
+
+        keepalive = keepalive_value == "true"
         options: RecoveryOptions = {}
 
         # Gluetun must own the tunnel while Privateerr remains available to monitor it.

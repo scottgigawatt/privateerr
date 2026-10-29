@@ -12,6 +12,7 @@
     // Accept project names, dependencies, and intentional pirate vocabulary.
     //
     "cSpell.words": [
+        "absmiddle",
         "accDescr",
         "actionlint",
         "adjustin",
@@ -79,6 +80,7 @@
         "filelock",
         "fontawesome",
         "foss",
+        "fromjson",
         "generatin",
         "geolocated",
         "getegid",
@@ -118,6 +120,7 @@
         "missin",
         "mkdocs",
         "mkdocstrings",
+        "mktemp",
         "multiarch",
         "Navigatin",
         "newurl",

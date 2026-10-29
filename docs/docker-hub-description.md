@@ -1,64 +1,28 @@
 # Privateerr ⚓
 
-Privateerr packages the original, unmodified [PIA manual-connection scripts](https://github.com/pia-foss/manual-connections) in a small Docker image.
+Privateerr packages PIA's official, unmodified [manual-connection scripts](https://github.com/pia-foss/manual-connections) to generate WireGuard configuration and server metadata. Its optional Python supervisor refreshes stale settings through Gluetun's authenticated API. Gluetun owns the VPN tunnel.
 
-> [!IMPORTANT]
-> Privateerr is not a VPN client. It generates a PIA WireGuard configuration and server metadata. Its Python supervisor can monitor Gluetun and recover sustained tunnel failures through the authenticated API. Gluetun owns the VPN tunnel.
-
-## Generate configuration ⚡
-
-You need an active Private Internet Access (PIA) subscription, Git, Docker with Compose, and Make. The repository supplies the Compose file and configuration directories:
-
-```sh
-git clone --recurse-submodules https://github.com/scottgigawatt/privateerr.git
-cd privateerr
-cp example.env .env
-```
-
-Set `PIA_USER` and `PIA_PASS` in the private `.env` file. The example enables port forwarding with `PIA_PF=true`.
-
-One-shot generation replaces saved VPN files. Preserve any files you need and stop a supervisor using the destination directory before running:
-
-```sh
-make run-privateerr
-```
-
-The command builds the checked-out source, disables recovery and keepalive for that disposable run, and exits after writing:
-
-| File | Purpose |
-| --- | --- |
-| `config/gluetun/wireguard/wg0.conf` | WireGuard configuration for Gluetun or another compatible client |
-| `config/gluetun/wireguard/privateerr.env` | Selected PIA endpoint and port-forwarding metadata |
-
-> [!WARNING]
-> Keep `.env` and generated VPN files private. They contain credentials, connection material, or deployment-specific metadata.
-
-## Pair Privateerr with Gluetun 🧭
-
-Privateerr automatically installs its Gluetun startup wrapper and qBittorrent forwarding hook into the shared `config/gluetun/scripts/` directory before reporting ready. No separate script download or copy is needed. Keep that directory writable by Privateerr and recreate the application stack together when updating images.
-
-The installed Gluetun wrapper reads `PIA_WG_SERVER_NAME` from the generated metadata and sets `SERVER_NAMES` for PIA port forwarding. With recovery enabled, Privateerr reuses valid saved files, checks recovery write access, and monitors Gluetun. After a sustained outage, it applies replacement settings and saves them only after confirmation. Startup readiness is separate from tunnel health and future recovery write access.
-
-The Compose example enables recovery after you configure a shared API key. Custom deployments must explicitly set `PRIVATEERR_AUTO_RECOVER=true` to enable it. Privateerr runs as UID 0 because upstream scripts require it; the supplied Compose drops all Linux capabilities and enables `no-new-privileges`.
-
-Follow the [normal startup instructions](https://github.com/scottgigawatt/privateerr#start-privateerr-with-gluetun-) to start only Privateerr, Gluetun, and qBittorrent. The normal `make up` target pulls and starts those three published images; `make up-build` builds Privateerr locally instead. Buccaneerr is a separate service in the `test` profile that deliberately interrupts the VPN only during explicit live validation. The [recovery guide](https://github.com/scottgigawatt/privateerr/blob/main/docs/automatic-recovery.md) covers API authentication, storage diagnostics, region selection, and safe regeneration.
-
-## Choose an image 📦
-
-To pull the stable image directly:
+## Pull the image
 
 ```sh
 docker pull scottgigawatt/privateerr:latest
 ```
 
-Use `latest` for the newest stable release or `edge` for successful `main` builds. Exact semantic-version and `sha-*` tags select a release or commit build; pin an image digest when you need its exact content. See [image channels and publishing](https://github.com/scottgigawatt/privateerr/blob/main/docs/advanced-usage.md#registry-publishing) for the complete tag policy.
+Privateerr supports `linux/amd64`, `linux/arm64`, and `linux/arm/v7`. Docker selects your host architecture. The supplied qBittorrent application example supports amd64 and arm64.
 
-Privateerr supports `linux/amd64`, `linux/arm64`, and `linux/arm/v7`. Docker selects the host architecture automatically. The qBittorrent application example supports amd64 and arm64.
+Use `latest` for stable releases, `edge` for successful `main` builds, or an exact version for a selected release. Pin a digest for exact contents.
 
-Images use pinned Alpine bases and pass scan gates before publication. APK packages can change during an uncached rebuild; passing a scan gate is not a claim of zero findings. See the [security policy](https://github.com/scottgigawatt/privateerr/blob/main/docs/SECURITY.md) for the current process and dated scan evidence.
+## Generate configuration or run the example
 
-## Read more 🔗
+You need an active Private Internet Access (PIA) subscription. Follow the [repository setup](https://github.com/scottgigawatt/privateerr#readme) to generate files only or start the supplied Privateerr, Gluetun, and qBittorrent stack.
 
-- [Privateerr repository and quickstart](https://github.com/scottgigawatt/privateerr)
-- [Official PIA scripts](https://github.com/pia-foss/manual-connections)
-- [Gluetun documentation](https://github.com/qdm12/gluetun-wiki)
+Long-running Privateerr installs the Gluetun startup wrapper and forwarding hook from its image into the shared configuration directory before reporting ready. No script download is needed. The recovery-enabled Compose example requires a shared API key. Image-only deployments leave recovery disabled unless explicitly enabled.
+
+> [!WARNING]
+> Keep credentials and generated VPN files private. Generation can replace saved files; stop other writers and preserve needed state first.
+
+Privateerr retains UID 0 for upstream scripts; the supplied Compose drops all Linux capabilities and enables `no-new-privileges`. Startup readiness does not certify tunnel health or future recovery write access.
+
+See [automatic recovery](https://github.com/scottgigawatt/privateerr/blob/main/docs/automatic-recovery.md), [image channels](https://github.com/scottgigawatt/privateerr/blob/main/docs/advanced-usage.md#registry-publishing), and the [security policy](https://github.com/scottgigawatt/privateerr/blob/main/docs/SECURITY.md). Published scan gates do not establish zero vulnerabilities.
+
+Privateerr is Apache-2.0 licensed; the bundled PIA scripts retain their MIT license.

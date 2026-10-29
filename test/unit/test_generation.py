@@ -67,6 +67,8 @@ printf 'WG_HOSTNAME=example-one\\nPIA_TOKEN=test-token-redact\\n'  # pragma: all
         self.env = {
             **os.environ,
             "PIA_BIN_HOME": str(self.pia),
+            "PIA_USER": "p0000000",
+            "PIA_PASS": "example-password",  # pragma: allowlist secret
             "PIA_CONF_PATH": str(self.root / "wireguard/wg0.conf"),
             "PRIVATEERR_METADATA_PATH": str(self.root / "wireguard/privateerr.env"),
             "PRIVATEERR_LOG_PATH": str(self.root / "privateerr.log"),
@@ -110,6 +112,69 @@ printf 'WG_HOSTNAME=example-one\\nPIA_TOKEN=test-token-redact\\n'  # pragma: all
         self.assertFalse((self.root / "ready").exists())
         self.assertEqual(list((self.root / "wireguard").glob(".privateerr-stage.*")), [])
         self.assertEqual(Path(self.env["PIA_CONF_PATH"]).stat().st_mode & 0o777, 0o600)
+
+    def test_one_shot_leaves_integration_scripts_untouched(self):
+        """Fresh generation needs no scripts directory and preserves an existing linked directory."""
+
+        # A missing packaged-script directory must not block configuration-only output.
+        overrides = {"PRIVATEERR_BIN_HOME": str(self.root / "no-integration")}
+        result = self.run_supervisor(**overrides)
+        self.assertEqual(result.returncode, 0, result.stderr.decode())
+        output = result.stdout + result.stderr
+        self.assertIn(b"Generation complete.", output)
+        self.assertNotIn(b"integration scripts are ready", output)
+        scripts = self.root / "scripts"
+        self.assertFalse(scripts.exists())
+        self.assertTrue((self.root / "ready").exists())
+
+        # One-shot runs must not replace operator scripts, even through a directory link.
+        destination = self.root / "operator-scripts"
+        destination.mkdir()
+        for name in (
+            "gluetun-entrypoint-wrapper.sh",
+            "qbittorrent-port-forwarding.sh",
+            "custom.sh",
+        ):
+            (destination / name).write_text("operator script\n")
+            (destination / name).chmod(0o700)
+        scripts.symlink_to(destination, target_is_directory=True)
+        before = {p.name: (p.read_bytes(), p.stat().st_mtime_ns) for p in destination.iterdir()}
+
+        self.assertEqual(self.run_supervisor(**overrides).returncode, 0)
+        self.assertTrue(scripts.is_symlink())
+        self.assertEqual(
+            before,
+            {p.name: (p.read_bytes(), p.stat().st_mtime_ns) for p in destination.iterdir()},
+        )
+
+    def test_invalid_credentials_fail_before_upstream_and_preserve_saved_pair(self):
+        """Reject absent or quoted inputs once, without invoking upstream or changing saved output."""
+
+        self.assertEqual(self.run_supervisor().returncode, 0)
+        saved = self.saved()
+        invoked = self.root / "upstream-invoked"
+        (self.pia / "run_setup.sh").write_text(f"#!/bin/sh\ntouch '{invoked}'\nexit 99\n")
+
+        for name, invalid in (
+            ("PIA_USER", ""),
+            ("PIA_USER", '"p0000000"'),
+            ("PIA_USER", "invalid-user"),
+            ("PIA_PASS", ""),
+            ("PIA_PASS", "short"),
+        ):
+            with self.subTest(variable=name, kind="empty" if not invalid else "malformed"):
+                result = self.run_supervisor(**{name: invalid})
+                output = (result.stdout + result.stderr).decode()
+                self.assertEqual(result.returncode, 1)
+                self.assertIn(name + " must", output)
+                self.assertLess(len(output), 2048)
+                if invalid:
+                    self.assertNotIn(invalid, output)
+                self.assertNotIn(self.env["PIA_PASS"], output)
+                self.assertFalse(invoked.exists())
+                self.assertEqual(self.saved(), saved)
+                self.assertFalse((self.root / "ready").exists())
+                self.assertEqual(list((self.root / "wireguard").glob(".privateerr-stage.*")), [])
 
     def test_log_open_failure_is_visible_in_container_output(self):
         """An unusable persistent log must explain itself even before file logging starts."""
@@ -176,6 +241,13 @@ printf 'WG_HOSTNAME=example-one\\nPIA_TOKEN=test-token-redact\\n'  # pragma: all
                             time.sleep(0.05)
 
                         self.assertTrue(ready.exists())
+                        if not active:
+                            self.assertTrue(
+                                (self.root / "scripts/gluetun-entrypoint-wrapper.sh").is_file()
+                            )
+                            self.assertTrue(
+                                (self.root / "scripts/qbittorrent-port-forwarding.sh").is_file()
+                            )
                         process.send_signal(signal.SIGTERM)
                         self.assertEqual(process.wait(timeout=7), 0)
 

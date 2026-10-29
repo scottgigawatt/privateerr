@@ -194,7 +194,7 @@ class Generator:
                 not proof that the name belongs to the registered endpoint.
 
         Raises:
-            GenerationFailed: If the script fails or the shared deadline expires.
+            GenerationFailed: If the script fails, requests interactive input, or exceeds the deadline.
             privateerr.diagnostics.FileOperationError: If the upstream process cannot be launched.
             OSError: If reading output, logging, or process cleanup fails.
 
@@ -214,6 +214,13 @@ class Generator:
 
             nonlocal hostname
             line = ANSI.sub("", raw.decode("utf-8", errors="replace"))
+
+            # The upstream prompt loops on EOF; fail before it can flood non-interactive logs.
+            if line.strip() == "You must provide input.":
+                raise GenerationFailed(
+                    "PIA setup requested interactive input; check the required environment settings."
+                )
+
             matches = re.findall(r"\bWG_HOSTNAME=([A-Za-z0-9][A-Za-z0-9.-]{0,252})(?=\s|$)", line)
 
             if matches:
@@ -382,6 +389,7 @@ class Generator:
                 Its lifetime is limited to this context; callers own publication.
 
         Raises:
+            privateerr.config.ConfigurationError: If generation credentials are missing or malformed.
             GenerationFailed: If registration fails, its token is unusable, or
                 the shared work deadline expires.
             InvalidSettings: If candidate files fail connection validation.
@@ -396,6 +404,8 @@ class Generator:
             never publishes files or applies settings to Gluetun.
         """
 
+        # Validate only when generating: saved-file reuse needs no new PIA registration.
+        self.config.validate_generation_inputs()
         until = time.monotonic() + self.config.generation_timeout
 
         with (

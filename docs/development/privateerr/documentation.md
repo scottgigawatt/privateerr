@@ -1,64 +1,38 @@
 # Python documentation style 📚
 
-Privateerr documentation should explain contracts and intent without duplicating the implementation. Type annotations remain the source of truth for types; docstrings describe meaning, side effects, invariants, and failure behavior.
+Document contracts and intent. Type annotations own types; docstrings explain meaning, side effects, invariants, and failure behavior. General prose and Markdown follow the mandatory [documentation standards](../../documentation-style.md).
 
 ## Document public APIs
 
-Public modules, classes, methods, and functions use Google-style sections when they add useful information:
+Use Google-style sections only when they add useful information:
 
 ```python
 def connection_settings(config: Path, metadata: Path) -> ConnectionSettings:
-    """Build only connection fields so Gluetun preserves unrelated settings.
+    """Build connection fields while preserving unrelated Gluetun settings.
 
     Args:
-        config: Generated WireGuard configuration to validate.
+        config: WireGuard configuration to validate.
         metadata: PIA metadata naming the same endpoint and port.
 
     Returns:
-        The minimal connection update accepted by Gluetun's control API.
+        The connection update accepted by Gluetun's control API.
 
     Raises:
-        InvalidSettings: If required fields are missing, malformed, or inconsistent.
+        InvalidSettings: If fields are missing, malformed, or inconsistent.
         OSError: If either source file cannot be read.
     """
 ```
 
-Use `Args`, `Returns`, `Raises`, `Attributes`, or `Note` only when applicable. Do not add an empty section, restate a parameter name as its description, or repeat a type already expressed by the signature.
+Use `Args`, `Returns`, `Raises`, `Attributes`, and `Note` where applicable. Omit empty sections, repeated signature types, and descriptions that merely restate parameter names.
 
-Indent continuation lines in `Returns` and `Yields` descriptions four spaces beyond the first description line; otherwise the parser can render separate table entries for each source line. For a context manager, document the yielded value and its lifetime. Supply the yielded element type when the renderer would otherwise show the generator container as that value's type, and verify the generated table.
+Indent continuation lines in `Returns` and `Yields` four spaces beyond the first description line so the renderer does not create separate table entries. For context managers, describe the yielded value and lifetime. Supply the element type when needed to avoid displaying the generator container as the yielded type, and inspect the rendered table.
 
-## Document private helpers
+## Explain non-obvious private helpers
 
-Private helpers are filtered out of the generated API reference, but they are not undocumented. Give every non-obvious helper a concise docstring that states its transformation or safety rule. Add inline comments at decision points where the reason cannot be inferred from the code.
+State the transformation or safety rule, such as why uncertain API updates must be reconciled before another registration. Add comments at decisions whose reason is unclear from the code. Avoid translating expressions into prose.
 
-Good private-helper documentation explains matters such as:
+## Preserve generated reference
 
-- Why startup readiness depends on saved files rather than tunnel health.
-- Why an uncertain API response must be reconciled before another registration.
-- Why a pending candidate is retained across process restarts.
-- Why only connection fields are sent to Gluetun.
-- Why health and catalog requests omit the control API key.
+Mkdocstrings renders names that do not begin with `_`. Keep API reference in source docstrings instead of maintaining a handwritten duplicate. Public documentation visibility is not a separately supported library API.
 
-Avoid comments that merely translate the following expression into English.
-
-## Use Markdown alerts sparingly
-
-Write alerts once using GitHub's supported blockquote syntax:
-
-```text
-> [!IMPORTANT]
-> Explain the required action here.
-```
-
-GitHub renders that syntax natively. MkDocs enables `pymdownx.quotes` with callout processing, which converts the same source into Material admonitions. The project stylesheet supplies Material treatments for GitHub's `important` and `caution` types. Do not duplicate alerts with MkDocs-only `!!!` syntax.
-
-Reserve alerts for information whose meaning would materially change if the reader skipped it. Most pages should need no more than one or two. Put routine commands in ordinary `sh` fences, then put the first quoted prose line immediately below any alert marker without an empty `>` separator. Retain one empty quoted line when the alert begins with a fenced code block or list because Markdown requires it to delimit that block. Keep later empty quoted lines only where they intentionally separate paragraphs or blocks inside the alert. Write ordinary Markdown prose paragraphs on one physical source line and rely on visual editor wrapping.
-
-> [!CAUTION]
-> GitHub recognizes only `NOTE`, `TIP`, `IMPORTANT`, `WARNING`, and `CAUTION`. Other labels fall back to an ordinary blockquote instead of an alert.
-
-## Preserve the generated reference boundary
-
-The MkDocs configuration renders names that do not begin with `_`. This keeps the published reference focused on reusable interfaces while source links and the architecture guide preserve visibility into implementation details.
-
-Run `make docs` after changing Python signatures or docstrings. Strict mode treats malformed cross-references, invalid navigation, and documentation warnings as build failures.
+Run `make docs` after changing signatures or docstrings, then inspect generated tables and cross-references. Strict compilation detects warnings; it does not establish plain-language usability.

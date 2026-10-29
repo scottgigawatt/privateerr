@@ -1,10 +1,10 @@
 # Security policy 🛡️🏴‍☠️
 
-Ahoy, security-minded sailor. If ye spot a cursed leak, a leaky hull, or a suspicious barnacle clingin' to Privateerr, this be the proper chart for reportin' it.
+Use this policy to report vulnerabilities privately and understand supported versions and image-security limits.
 
 ## Supported versions ⚓
 
-Privateerr sails by the stable `latest` image and the `edge` image built from `main`. Since this project be a small vessel, security fixes target those newest charts instead of older treasure maps.
+Security fixes target the newest stable `latest` image and `edge` image built from `main`, rather than older releases.
 
 | Version                             | Supported |
 | ----------------------------------- | --------- |
@@ -14,11 +14,11 @@ Privateerr sails by the stable `latest` image and the `edge` image built from `m
 | Forked or modified PIA scripts      | ❌        |
 
 > [!IMPORTANT]
-> 🧭 Privateerr uses the official PIA manual connection scripts as a submodule. Security issues in those upstream scripts should also be reported to the PIA project, because Privateerr keeps those scrolls untouched.
+> Privateerr uses unmodified official PIA scripts as a submodule. Also report vulnerabilities in those scripts to PIA.
 
 ## Report a vulnerability 🦜
 
-Please do not open a public GitHub issue for secrets, credential leaks, auth bypasses, or anything that could help another scallywag attack a user.
+Do not open public issues for credential leaks, authentication bypasses, or other vulnerability details.
 
 Report vulnerabilities using [GitHub's private vulnerability reporting form](https://github.com/scottgigawatt/privateerr/security/advisories/new). To find it from the repository:
 
@@ -34,18 +34,18 @@ If private vulnerability reporting is unavailable, open a GitHub issue containin
 
 Helpful reports include:
 
-- What ye found.
+- What you found.
 - How to reproduce it.
-- What version, branch, image tag, or commit ye tested.
+- The version, branch, image tag, or commit you tested.
 - Whether it affects Privateerr code, the Docker image, Gluetun integration, or upstream PIA scripts.
 - Any safe logs with secrets removed.
 
 > [!WARNING]
-> 💣 Never include real PIA usernames, passwords, WireGuard private keys, generated `wg0.conf` files, or live `privateerr.env` metadata in a public report.
+> Never include PIA credentials, WireGuard private keys, live `wg0.conf`, or live `privateerr.env` metadata in public reports.
 
 ## Understand response expectations 🕰️
 
-This be a small maintainer ship, not a giant navy. I will do my best to:
+This is a small maintainer project. I aim to:
 
 - Acknowledge valid private reports within 7 days.
 - Triage severity and scope as soon as possible.
@@ -53,7 +53,7 @@ This be a small maintainer ship, not a giant navy. I will do my best to:
 - Publish a stable semantic-version release when the fix is ready for `latest`.
 - Credit reporters when requested and safe to do so.
 
-If a report is declined, I will try to explain why without leakin' dangerous details into open waters.
+If a report is declined, I will try to explain why without exposing sensitive details.
 
 ## Understand container image security 🔎
 
@@ -77,9 +77,6 @@ The remaining exact-path Compose exception for CVE-2026-78669 expires on Novembe
 
 See the [dated container scan review](container-scan-review.md) for the reviewed image identities, dependency-fix scope, and upstream evidence behind remaining package-level alerts. Its scan dates and image revisions matter; results for an `edge` image do not describe every stable release.
 
-> [!TIP]
-> 🏴‍☠️ Pull `latest` for the newest stable patched hull. Pull `edge` only when ye intentionally want the newest successful `main` build.
+Use `latest` for stable releases or `edge` to preview successful `main` builds.
 
 Use the [support guide](SUPPORT.md) for non-sensitive setup questions and reproducible bugs.
-
-Fair winds, sharp eyes, and may yer secrets stay below deck. ☠️

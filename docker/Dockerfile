@@ -100,7 +100,7 @@ RUN apk upgrade --no-cache && \
 WORKDIR ${PIA_BIN_HOME}
 
 #
-# Report healthy after the supervisor installs scripts and prepares config and metadata.
+# Report healthy after the supervisor prepares the files required by its startup mode.
 #
 HEALTHCHECK CMD ["privateerr-healthcheck"]
 

@@ -1,17 +1,7 @@
-# Privateerr configuration 🏴‍☠️
+# Privateerr logs 🏴‍☠️
 
-Privateerr writes supervisor and redacted upstream-generation logs to this directory. With recovery enabled, logs continue while the supervisor monitors Gluetun. This directory must be writable by the container's UID 0; a failure to open the persistent log is reported in container output.
+The supervisor writes `logs/privateerr.log` here. Container UID 0 needs write access; persistent-log open failures appear in container output.
 
-```text
-config/privateerr/logs/privateerr.log
-```
+Logs include failure categories, retry delays, and region preferences. Redaction is best effort: inspect and sanitize excerpts before sharing. Logs are ignored by Git. See [diagnostics](../../docs/automatic-recovery.md#read-diagnostics-and-check-storage).
 
-The log is ignored by Git because it can contain live connection details. Supervisor messages include severity, filesystem/API failure categories, retry delays, and selected VPN region labels. Region labels describe configured destinations, not the operator's location; review logs before sharing. See [diagnostics and storage checks](../../docs/automatic-recovery.md#read-diagnostics-and-check-storage). The generated WireGuard files land in Gluetun's shared directory:
-
-```text
-config/gluetun/wireguard/wg0.conf
-config/gluetun/wireguard/privateerr.env
-```
-
-> [!CAUTION]
-> Live `wg0.conf` and `privateerr.env` can contain sensitive connection details. Example restoration overwrites both files. Stop the supervisor first and restore examples only in a disposable test checkout, never in an active deployment. Follow [safe example restoration](../../docs/advanced-usage.md#restore-vpn-examples).
+Generated VPN files belong to the [shared Gluetun directory](../gluetun/README.md), not this log directory.

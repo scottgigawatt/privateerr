@@ -1,59 +1,71 @@
 # Test Privateerr 🧪
 
-Choose the smallest check that proves the changed boundary, then broaden for generation, networking, image, workflow, or documentation changes. Test and documentation tools run inside Buccaneerr; the host needs Docker and Make.
+Choose the smallest check that proves the changed behavior. The host needs Docker and Make; Buccaneerr provides the pinned tools. Image and hook preparation can download dependencies. No live VPN is needed for prose or Markdown changes.
 
 ## Run offline checks
 
 ```sh
 make test
-make test-types
 make spellcheck
 ```
 
-`make test` runs Ruff lint and formatting, strict Pyright, ShellCheck, helper and workflow tests, and Python unit tests without starting the VPN stack or requiring PIA credentials. `make test-types` is also enforced by pre-commit and pull-request validation. Ruff is installed from the exact, hash-verified Python tool lock; the documentation environment selects the same version. Compose tests check the complete service graph and verify that Web UI port changes keep the host mapping, internal listener, healthcheck, and API clients synchronized.
+`make test` runs Ruff lint/format checks, strict Pyright, ShellCheck, helper/workflow policies, and Python units without PIA credentials or application startup. `make test-types`, `make test-recovery`, `make test-make-helpers`, and `make test-workflows` select narrower suites.
 
-Python tests exercise script installation and replacement failures, startup readiness, bounded upstream log streaming, credential redaction, metadata escaping, environment validation, endpoint selection, bounded HTTP behavior, candidate publication, recovery timing, uncertain updates, and shutdown. They use controlled clocks and temporary state rather than real credentials. Filesystem regressions cover readable saved files with blocked writes, first-generation failure, failed publication after API acceptance, probe cleanup, safe region summaries, and credential-free error diagnostics. A Linux root-only test drops all capabilities in a disposable child process and verifies that UID 0 cannot write another user's directory; the parent retains cleanup access.
+After building the tool image, these suites use networking-disabled containers and read-only source. Fixtures test generation deadlines and output, script installation, safe diagnostics/redaction, endpoint selection, timing, uncertain API updates, interrupted publication, and shutdown. Compose fixtures check the service graph and synchronized qBittorrent ports. They do not prove a live tunnel works.
 
-The generator invokes controlled PIA fixtures directly. Tests cover silent and continuously writing processes, partial final lines, oversized lines, exact recovery invocation labels, token cleanup, IPv6 choices, and literal shell metadata. Buccaneerr's Python preflight is checked with forwarding enabled and disabled.
+For Python changes, use `make lint`; `make format` intentionally applies Ruff import/format fixes. The root Ruff and strict Pyright configurations also drive editors and CI.
 
 ## Run repository hooks
 
-Pre-commit can download pinned hook environments, modify the checkout, and access the local Docker socket for nested checks; inspect its diff afterward. Run it separately from the offline, read-only suites:
+Pre-commit can download hook environments, modify files, and use the local Docker socket for nested checks. Inspect its resulting diff:
 
 ```sh
 make test-precommit
 ```
 
-The offline suites above run with networking disabled and read-only source after their tool image is built; that initial image build can still download dependencies.
-
 ## Check the integration
 
-The credential-free runtime suite requires a local Unix Docker socket and a built Privateerr test image. Initialize the pinned PIA submodule before building; the [contributor setup](../../CONTRIBUTING.md#development-checkout) uses a recursive clone. Build the image explicitly, then name that same image when running the suite:
+The credential-free runtime suite needs a local Unix Docker socket and a built Privateerr image. Initialize the pinned PIA submodule using the [contributor setup](../../CONTRIBUTING.md#development-checkout), then build and select the same image:
 
 ```sh
 docker build --tag privateerr:recovery-review --file docker/Dockerfile docker
 PRIVATEERR_TEST_IMAGE=privateerr:recovery-review make test-recovery-api
 ```
 
-This suite starts the built Privateerr image with synthetic saved VPN files and an empty scripts directory, then runs the real Gluetun API and qBittorrent in isolated, labeled containers with disposable state. It verifies that Privateerr installed both scripts from its image before startup readiness; no script is copied from the checkout. It checks authentication, settings updates, application port synchronization, and shutdown without needing PIA credentials.
+The suite runs Buccaneerr with Docker socket access and starts real Gluetun v3.41.3 and qBittorrent in uniquely named, labeled containers. Synthetic VPN files and an empty scripts directory verify image-owned script installation before readiness, authentication, connection-field updates, unrelated-setting preservation, invalid-update rejection, application port/interface synchronization, and unchanged network/container identity. It cleans up only its verified resources and does not establish a PIA tunnel.
 
-The live suite needs real PIA credentials in the ignored local `.env` and deliberately interrupts its test endpoint. Use a disposable checkout and protect any needed configuration before running it:
+Ordinary offline suites have no Docker socket. Runtime suites require a shared temporary directory visible to their driver and Docker daemon.
+
+## Run live recovery checks
+
+> [!CAUTION]
+> Live checks use real PIA credentials and deliberately interrupt a test endpoint. Use a disposable checkout, protect needed configuration first, and keep generated files and logs private.
 
 ```sh
 make test-recovery-live
 ```
 
-The live suite verifies VPN egress, matching saved settings, recovery after a deliberate endpoint outage, qBittorrent preferences, and incoming TCP through the PIA lease. It does not measure torrent throughput or claim UDP reachability. Never publish credentials, generated WireGuard files, or application logs.
+This isolated suite reads the required credentials from Compose's resolved `.env`, retains the supplied environment file, and cleans up its labeled resources on exit. It verifies VPN egress, endpoint-failure recovery, matching saved settings, qBittorrent preferences, dependent-client connectivity, traffic blocking outside the VPN, and incoming TCP through the PIA lease. It does not measure UDP reachability or torrent throughput.
+
+Normal recovery runs with capabilities dropped, Docker-applied IPv6 settings, and `no-new-privileges`. The separate `scripts/compose/test.sh smoke` suite checks recovery-disabled generation using a disposable privileged compatibility fixture; that fixture is not a deployment recommendation.
+
+Use `PRIVATEERR_TEST_IMAGE` to select another built image or `PRIVATEERR_TEST_ENV_FILE` for another credential file.
 
 ## Validate the complete example
 
-This test needs real PIA credentials and deliberately interrupts the active endpoint. Use a disposable checkout and preserve any configuration you need before starting:
+The same live-test warning applies: this starts the selected Compose project, replaces VPN files, and deliberately interrupts its endpoint. Preserve needed state and use a disposable checkout:
 
 ```sh
 make test-e2e
 ```
 
-The target enables Buccaneerr's `test` profile and starts Privateerr, Gluetun, qBittorrent, and Buccaneerr. Normal `make up` and `make up-build` do not start Buccaneerr. After the voyage, [use `make clean-test` in the disposable checkout](../../advanced-usage.md#restore-vpn-examples); it stops the project before restoring examples and stops on shutdown failure. Do not overwrite an active deployment's VPN files.
+It enables the `test` profile and starts Privateerr, Gluetun, qBittorrent, and Buccaneerr. The validator removes its temporary firewall rule on completion or failure. `BUCCANEERR_TEST_RECOVERY=false` selects connectivity-only validation; the default recovery deadline is 600 seconds.
+
+Afterward, [stop the test stack and restore examples](../../advanced-usage.md#restore-vpn-examples). `make clean-test` waits for successful shutdown before replacing files. Never restore examples against an active deployment.
+
+## Check lifecycle ownership
+
+After changing cleanup behavior, run `test/runtime/test-compose-cleanup-live.sh` only with authorization to create disposable Docker resources. It creates unique projects and unrelated sentinels, proving that `down` retains volumes/images and `nuke` removes only its owned resources and builder. It does not use repository credentials, config, or backups.
 
 ## Build the images
 
@@ -63,17 +75,20 @@ make build-buccaneerr
 make build-platforms
 ```
 
-Published Privateerr and Buccaneerr images support amd64, arm64, and arm/v7. The LinuxServer qBittorrent example supports amd64 and arm64. Documentation tooling is an optional Buccaneerr build target used on development hosts and GitHub's amd64 runner, not part of the published runtime images.
+These build images without starting the application stack. Privateerr and Buccaneerr support amd64, arm64, and arm/v7; qBittorrent supports amd64 and arm64. The [test tree](https://github.com/scottgigawatt/privateerr/blob/main/test/README.md) maps source locations.
 
 ## Validate documentation
 
 ```sh
+scripts/compose/test.sh markdown
+make spellcheck
+make test-precommit
 make docs
-make docs-serve
+git diff --check
 ```
 
-Both targets build the cached `docs` target in `test/Dockerfile`, installing exact, SHA-256-verified dependencies from `requirements-docs.txt` into its isolated Python environment. No host Python installation is required. Source is mounted read-only; `make docs` writes the ignored `site/` directory with the host user's ownership and builds without network access.
+The docs target installs exact, SHA-256-verified dependencies in Buccaneerr's optional `docs` target. It mounts source read-only, builds without network access using `mkdocs build --strict`, and writes ignored `site/` output as the host user. It does not start the VPN stack or receive a Docker socket.
 
-The preview listens at `http://127.0.0.1:8000`. Set `DOCS_SERVE_ADDRESS=127.0.0.1:8001` if that host port is occupied. Stop the preview with Ctrl+C. Neither command starts the VPN stack or receives a Docker socket inside the documentation container.
+Use `make docs-serve` for preview at `http://127.0.0.1:8000`; override `DOCS_SERVE_ADDRESS=127.0.0.1:8001` for a port conflict. Stop with Ctrl+C. Inspect changed GitHub and Material rendering, links, anchors, tables, alerts, diagrams, and narrow layouts. Lint and strict compilation do not establish external-link validity or reader usability.
 
-PR validation performs the same strict documentation build without write permissions. The Pages workflow builds a fresh artifact from `main` or a release tag whose commit belongs to `main`, then deploys it in a separate job. Generated HTML stays out of Git.
+PR documentation builds are read-only. Pages deploys separately from `main` or an eligible release tag; this validation does not authorize deployment.

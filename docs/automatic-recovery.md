@@ -1,25 +1,23 @@
 # Automatic Gluetun recovery 🧭
 
-Privateerr can refresh a stale PIA WireGuard connection after a sustained tunnel outage. The supplied environment example enables it by default; configure its shared API key before starting. Privateerr remains a configuration generator; Gluetun still owns the tunnel, firewall, DNS, and port forwarding.
-
-Recovery runs inside the existing Privateerr container and uses Gluetun's authenticated control API. It needs no additional service or Docker socket. The Gluetun container stays running, preserving the network namespace shared by applications such as qBittorrent. Existing connections may still disconnect while the tunnel changes.
+Privateerr refreshes stale PIA WireGuard settings after a sustained tunnel outage. Gluetun owns the tunnel, firewall, DNS, and forwarded port. Recovery uses its authenticated API without replacing the container or application network namespace. Existing connections can still disconnect while the tunnel changes.
 
 ## Configure recovery
 
-Use the supplied Compose file. Privateerr installs its Gluetun entrypoint wrapper and qBittorrent forwarding hook into the shared `/gluetun/scripts/` directory before reporting ready; no manual script copying is needed. The integration is tested against Gluetun **v3.41.3**; other versions must support the same authenticated control API routes and settings schema.
+Use the supplied Compose file and complete the [repository setup](https://github.com/scottgigawatt/privateerr#readme). Integration is tested against Gluetun **v3.41.3**; other versions need the same authenticated routes and settings schema.
+
+Privateerr installs its Gluetun wrapper and qBittorrent hook into the shared `/gluetun/scripts/` directory before readiness. No manual script copying is needed.
 
 > [!IMPORTANT]
-> Recovery makes Privateerr responsible for sustained-outage recovery and sets Gluetun's `HEALTH_RESTART_VPN=off`. Keep Privateerr outside Gluetun's VPN network namespace so it can reach PIA when the tunnel fails.
+> Keep Privateerr outside Gluetun's VPN namespace so it can reach PIA during an outage. Recovery sets `HEALTH_RESTART_VPN=off` to prevent Gluetun's health-triggered restarts from racing an update. Keep API and health ports unpublished.
 
-Follow these steps from the repository root:
-
-1. Generate an API key:
+1. Generate a private shared key:
 
     ```sh
     openssl rand -hex 24
     ```
 
-2. Add the following settings to `.env`, replacing `YOUR-GENERATED-KEY` with that value:
+2. Set these values in `.env`, replacing `YOUR-GENERATED-KEY` with the result:
 
     ```dotenv
     PRIVATEERR_AUTO_RECOVER=true
@@ -27,57 +25,84 @@ Follow these steps from the repository root:
     PRIVATEERR_GLUETUN_API_KEY=YOUR-GENERATED-KEY
     ```
 
-3. Pull and start the application services so both VPN containers receive the configured environment. Changed settings recreate affected containers and can interrupt application traffic:
+3. Apply the settings from the repository root. Recreating affected containers can interrupt traffic:
 
     ```sh
     make up
     ```
 
-    This starts only Privateerr, Gluetun, and qBittorrent. Use `make up-build` to build Privateerr from the checkout instead; [the startup guide](https://github.com/scottgigawatt/privateerr#start-privateerr-with-gluetun-) also gives the raw Compose commands.
-
-4. Read Privateerr's logs:
+4. Check Privateerr's logs:
 
     ```sh
-    docker compose logs privateerr
+    docker compose logs --tail 100 privateerr
     ```
 
-    Confirm that you see `Automatic recovery enabled`, followed by `Gluetun tunnel is healthy` after startup.
+    Confirm `Automatic recovery enabled`, followed by `Gluetun tunnel is healthy`. Container readiness alone does not prove tunnel health.
+
+`make up` starts only Privateerr, Gluetun, and qBittorrent. Use `make up-build` for a source build or [direct Compose startup](advanced-usage.md#start-without-make) without Make.
 
 ## Configure a custom deployment
 
-The supplied wrapper disables Gluetun's health-triggered restarts when recovery is enabled because those restarts can race a settings update. WireGuard still reconnects naturally after brief network interruptions. Do not publish Gluetun's control or health ports to the host for this feature.
+Share the complete `/gluetun` directory between Privateerr and Gluetun, retain Gluetun's dependency on Privateerr's startup healthcheck, and use:
 
-The supplied Compose stack gives both containers a shared Docker network. When recovery is enabled, the Gluetun wrapper changes the default health listener from `127.0.0.1:9999` to `0.0.0.0:9999` and creates a temporary API authentication file with only the required routes. When recovery is disabled, the listener, authentication, and Gluetun restart policy remain unchanged.
+```yaml
+entrypoint: ["/bin/sh", "/gluetun/scripts/gluetun-entrypoint-wrapper.sh"]
+```
 
-For a custom deployment, share the complete `/gluetun` directory with Privateerr and start Gluetun with `entrypoint: ["/bin/sh", "/gluetun/scripts/gluetun-entrypoint-wrapper.sh"]`. Keep its dependency on Privateerr's startup healthcheck. Privateerr needs write access to install the scripts on each startup. Keep custom scripts under different names because the two installed files are replaced automatically. Alternatively, configure `HEALTH_RESTART_VPN=off`, the shared network, health listener, and API authentication yourself.
+Privateerr needs write and traverse access to install its two managed scripts at each startup. Keep custom scripts under other filenames; recreate the application stack together after image updates.
 
-If an authentication file already exists at `/gluetun/auth/config.toml`, or `HTTP_CONTROL_SERVER_AUTH_CONFIG_FILEPATH` names a custom path, the wrapper preserves that file. Add a role with your shared key and these routes:
+Both VPN services need a shared Docker network. With recovery enabled, the wrapper changes the default health listener from `127.0.0.1:9999` to `0.0.0.0:9999` and prepares an API authentication role. With recovery disabled, the listener, authentication, and Gluetun restart policy remain unchanged.
+
+An existing `/gluetun/auth/config.toml`, or a custom `HTTP_CONTROL_SERVER_AUTH_CONFIG_FILEPATH`, is preserved. Add your shared key with these allowed routes:
 
 - `GET /v1/vpn/status`
 - `GET /v1/vpn/settings`
 - `PUT /v1/vpn/settings`
 - `GET /v1/portforward`
 
-Follow [Gluetun's authentication documentation](https://github.com/qdm12/gluetun-wiki/blob/main/setup/advanced/control-server.md#authentication). Settings responses contain secrets; do not paste them into support discussions.
+Follow [Gluetun authentication guidance](https://github.com/qdm12/gluetun-wiki/blob/main/setup/advanced/control-server.md#authentication). Settings responses contain secrets; keep them private. Without the wrapper, you must configure authentication, the health listener, shared network, and `HEALTH_RESTART_VPN=off` yourself.
 
 ## Restart a healthy stack
 
-With `PRIVATEERR_AUTO_RECOVER=true`, restarting or recreating the stack reuses the valid saved `wg0.conf` and `privateerr.env`. It does not rerun PIA's lowest-latency selection or switch servers while Gluetun remains healthy. Privateerr monitors the reused connection and refreshes it after a sustained outage.
+Recovery-enabled startup reuses a valid saved `wg0.conf` and `privateerr.env` pair. It does not rerun lowest-latency selection or switch a healthy connection. With recovery disabled, startup generates fresh files.
 
-To request a fresh registration or rerun automatic server selection, follow the [regeneration steps](#choose-a-region). With recovery disabled, Privateerr generates fresh files each time it starts.
+To change the current registration, use the [regeneration procedure](#choose-a-region), rather than repeatedly restarting containers.
 
 ## Choose a region
 
-Automatic selection remains the default. To select the `ca` region, edit `.env`:
+Automatic selection is the default. From a checkout, run `make list-pia-regions` with host `curl` and `jq` installed. It lists every region with its ID and Yes/No port-forwarding support. Terminal output uses color; set `NO_COLOR=1` to disable it. Redirected output is plain text.
+
+Without Make, use this plain-text lookup. It requires `curl`, `jq`, and `column` and reads [PIA's public region catalog](https://serverlist.piaservers.net/vpninfo/servers/v6):
+
+```sh
+(
+  set -eu
+  lookup_dir=$(mktemp -d)
+  trap 'rm -rf "$lookup_dir"' 0
+  trap 'exit 1' 1 2 15
+  curl -fsSL --max-time 30 https://serverlist.piaservers.net/vpninfo/servers/v6 \
+    --output "$lookup_dir/catalog"
+  jq --raw-input --slurp --exit-status --raw-output '
+    split("\n")[0] | fromjson
+    | .regions | sort_by(.name) | select(length > 0)
+    | [["LOCATION", "REGION ID", "PORT FORWARDING"]]
+      + map([.name, .id, (if .port_forward then "Yes" else "No" end)])
+    | .[] | @tsv
+  ' "$lookup_dir/catalog" >"$lookup_dir/regions.tsv"
+  NO_COLOR=1 column -t -s "$(printf '\t')" "$lookup_dir/regions.tsv"
+)
+```
+
+Copy an ID from the `REGION ID` column. If `PIA_PF=true`, choose a region marked `Yes`. To pin that region, edit `.env`:
 
 ```dotenv
 PIA_AUTOCONNECT=false
-PIA_PREFERRED_REGION=ca
+PIA_PREFERRED_REGION=YOUR-CHOSEN-PIA-REGION-ID
 ```
 
-`PIA_PREFERRED_REGION` defaults to `ca` in `example.env`. Choose another PIA region ID to use that region instead. `PIA_AUTOCONNECT=true` takes precedence and ignores the preferred region.
+Replace the placeholder with the chosen ID. `PIA_AUTOCONNECT=true` ignores the preferred region.
 
-Recovery-enabled startup reuses a valid saved pair, so changing the environment and recreating containers alone does not immediately replace a healthy connection. To apply a region or forwarding-selection change, stop the selected Compose project, generate a fresh pair, and start it from the checked-out source. This interrupts application traffic, removes the project containers and network, and replaces the saved VPN files; preserve any configuration you need first. Volumes and images are retained. Run each command only after the previous command succeeds:
+Changing settings and recreating containers does not replace a healthy saved pair. Applying a region or forwarding-selection change requires fresh generation. This interrupts traffic, removes the selected project's containers/network, and replaces its VPN files; preserve needed configuration and stop the supervisor first. Volumes and images are retained. Run each command only after the previous one succeeds:
 
 ```sh
 make down
@@ -85,171 +110,111 @@ make run-privateerr
 make up-build
 ```
 
-The one-shot command disables recovery and keepalive only for that run. Stopping the supervisor prevents two writers from replacing the same files. `make up-build` recreates only the three application services and keeps the locally built Privateerr image. A plain restart does not reload environment changes.
+The one-shot command disables recovery and keepalive only for that run. `make up-build` retains its locally built Privateerr image. A plain restart does not reload environment changes.
 
-Recovery tries another advertised endpoint in the selected region. A pinned region never falls back to another region. Automatic selection prefers other endpoints in the current region, then other eligible regions in the server catalog; recovery does not rerun a full latency benchmark. With `PIA_PF=true`, only regions advertising port forwarding are eligible. If no unused endpoint remains, Privateerr attempts fresh registration against the current permitted endpoint. Dedicated IPs retain their dedicated endpoint through upstream setup.
+Recovery prefers another advertised endpoint in the selected region. Pinned selection never changes regions; automatic selection tries eligible endpoints in the current region, then other regions, without rerunning the latency benchmark. `PIA_PF=true` restricts selection to forwarding-capable regions. With no unused eligible endpoint, Privateerr tries fresh registration against the permitted current endpoint. Dedicated IPs retain upstream's dedicated endpoint.
 
 ## How the supervisor runs
 
-A small Python supervisor runs in the existing Privateerr container. It uses the standard library to manage recovery state, validate connection settings, and call Gluetun. Python invokes the unmodified upstream PIA scripts directly, prepares metadata, and formats their redacted output. Gluetun's startup wrapper remains shell. There is no additional container, web server, or production Docker socket.
+A standard-library Python supervisor runs inside Privateerr; the Gluetun wrapper remains shell. No additional service, web server, or production Docker socket is needed. The [architecture guide](development/privateerr/architecture.md) explains process bounds, timers, logging, and publication.
 
-The supervisor measures elapsed time independently of the system date and time, so host clock corrections do not change outage thresholds or retry delays. It also bounds HTTP requests and PIA generation. See [recovery timing and resource limits](development/privateerr/architecture.md#bound-work-and-protect-credentials) for the implementation details. Container shutdown interrupts waits and stops the active generation process group. Python test and lint tools stay in Buccaneerr.
+The example's `restart: unless-stopped` policy restarts exited services and brings them back after a host reboot unless explicitly stopped. Docker health failures alone do not trigger container restarts. Buccaneerr uses `restart: "no"` so its test result remains final.
 
-The example uses `restart: unless-stopped` for Privateerr, Gluetun, and qBittorrent so Docker restarts exited services and brings them back after a host reboot unless you explicitly stopped them. This container policy is separate from tunnel recovery and does not restart a container merely because its healthcheck fails. Buccaneerr keeps `restart: "no"` so its test result remains final.
-
-For one-shot generation, `make run-privateerr` disables recovery and keepalive for a disposable `docker compose run --rm` container; it exits after generation without changing `.env`. Stop the running supervisor before generating into the same configuration directory. Custom one-shot deployments should set `PRIVATEERR_AUTO_RECOVER=false`, `PRIVATEERR_KEEPALIVE=false`, and `restart: "no"`.
+For custom one-shot generation, set `PRIVATEERR_AUTO_RECOVER=false`, `PRIVATEERR_KEEPALIVE=false`, and `restart: "no"`. Stop any supervisor writing the same directory first.
 
 ## Understand the recovery sequence
 
-Privateerr installs both image-owned integration scripts, then validates the saved configuration or generates a new pair before reporting ready. Gluetun can therefore retain `depends_on: service_healthy`; Privateerr's Docker healthcheck does not depend on a working tunnel.
+After startup readiness and a grace period, Privateerr:
 
-With recovery enabled, the monitor follows this sequence after the startup grace period. Blue marks monitoring, purple marks the settings handoff, green marks a verified save, and amber marks waiting or retrying. The arrow labels explain each transition.
+1. Checks Gluetun's API and tunnel health.
+2. Generates a staged candidate after a sustained outage and the retry cooldown.
+3. Applies the connection fields through `PUT /v1/vpn/settings`, then reads them back and checks tunnel health.
+4. Saves the matching VPN files only after confirmation.
 
-```mermaid
-flowchart TD
-  accTitle: Privateerr automatic recovery sequence
-  accDescr: After startup, Privateerr monitors Gluetun. A sustained outage triggers a fresh PIA registration and a control API update. Privateerr saves the replacement files only after the settings match and the tunnel is healthy. Other paths wait or retry while retaining the saved files.
+Generation failure leaves saved files unchanged. An uncertain API response is reconciled before another candidate is generated; a candidate or interrupted save can survive a Privateerr restart.
 
-  monitor["🔎 Monitor Gluetun"]
-  generate["🛟 Generate and validate<br/>a fresh PIA registration"]
-  apply["Update Gluetun settings<br/>through its control API"]
-  verify{"Settings match and<br/>tunnel is healthy?"}
-  save["✅ Save matching configuration<br/>and PIA metadata"]
-  wait["Wait for the next probe"]
-  retry["Keep saved files;<br/>wait or retry after cooldown"]
-
-  monitor -->|"Sustained outage; cooldown elapsed"| generate
-  monitor -.->|"Healthy, stopped, or API unavailable"| wait
-  generate -->|"Valid candidate; tunnel still needs recovery"| apply
-  generate -.->|"Generation fails"| retry
-  apply -->|"Read back applied settings"| verify
-  verify -->|"Yes"| save
-  verify -.->|"Not yet, or API response uncertain"| retry
-  save -->|"Resume monitoring"| wait
-
-  classDef monitoring fill:#dbeafe,stroke:#2563eb,color:#172554,stroke-width:2px
-  classDef handoff fill:#ede9fe,stroke:#7c3aed,color:#2e1065,stroke-width:2px
-  classDef success fill:#dcfce7,stroke:#16a34a,color:#14532d,stroke-width:2px
-  classDef waiting fill:#fef3c7,stroke:#d97706,color:#451a03,stroke-width:2px
-
-  class monitor monitoring
-  class generate,apply,verify handoff
-  class save success
-  class wait,retry waiting
-```
-
-Waiting returns to the next monitoring cycle. Before retrying an uncertain update, Privateerr checks what Gluetun actually applied; it does not immediately generate another candidate.
-
-After the startup grace period, Privateerr checks Gluetun's control API and tunnel health. A sustained outage triggers one fresh PIA registration. Generation uses staging files and a deadline, leaving saved configuration untouched on failure. The upstream PIA scripts remain unmodified.
-
-Privateerr submits the new WireGuard keys, address, endpoint, and PIA server name together through `PUT /v1/vpn/settings`. Gluetun restarts its internal tunnel. Privateerr reads back the applied settings and waits for tunnel health before saving the new configuration and metadata. An ambiguous API timeout is reconciled before another candidate is generated. Pending candidates and an interrupted publication can be recovered after Privateerr restarts.
-
-Privateerr reports port-forwarding status separately. Gluetun continues obtaining and renewing the forwarded port; a forwarding-only failure does not cause Privateerr to rotate otherwise healthy tunnels. Existing application port-update hooks remain Gluetun's responsibility.
+Gluetun retains the port lease and application hooks. A forwarding-only failure does not rotate a healthy tunnel. See the [publication state and file lifetimes](development/privateerr/architecture.md#confirm-updates-before-saving) for implementation details.
 
 ## Read diagnostics and check storage
 
-Use Dockge's Privateerr service logs, Synology Container Manager's container log view, or the repository command below. Diagnostics appear in container output and, when available, the configured `PRIVATEERR_LOG_PATH` file.
+Use Dockge, Synology Container Manager's log view, or `docker compose logs --tail 100 privateerr`. Messages also go to `PRIVATEERR_LOG_PATH` when available. Inspect and redact full excerpts before sharing; keys, private logs, paths, and region preferences can be sensitive.
 
-```sh
-docker compose logs --tail 100 privateerr
-```
+| Message or symptom | Action |
+| --- | --- |
+| Permission denied | Give container UID 0 write/traverse access to the mapped host path, accounting for UID remapping. A read/write mount does not override host permissions. Do not broadly apply `chmod 777` or remove ACLs. |
+| Read-only filesystem, disk exhaustion, quota limit, or missing path | Correct the reported condition at the corresponding host mount. Permission denial alone does not establish an ACL fault. |
+| API `401` or `403` | Check the shared key and role routes. Keep the key and full settings response private. |
+| API timeout or connection failure | Check the shared network and listener. Authentication/connectivity failures do not trigger blind regeneration. |
+| Saving failed after API acceptance | Repair storage and preserve `.privateerr-pending` and `.privateerr-commit`. Gluetun may already use the candidate while saved files are older or partly replaced. Do not delete state or regenerate concurrently. |
+| Privateerr ready, with recovery-storage warning | A valid saved pair allowed startup, but future recovery writes remain unavailable. Repair the reported storage condition. |
+| Privateerr cannot start | Check script installation, directory preparation, persistent-log access, pending-save reconciliation, and readiness-marker errors. Valid VPN files do not bypass those failures. |
 
-Supervisor messages include severity and the failed operation. Filesystem errors report the affected container path, error category, process UID/GID, and available path ownership and mode. They distinguish permission denial, a read-only filesystem, missing paths, disk exhaustion, and quota limits. The logged path identifies the location inside the container; find its corresponding host path in your Compose volume mapping. Permission denial alone does not prove an ACL problem.
+Filesystem diagnostics identify the container path, operation, error category, numeric UID/GID, and available ownership/mode. Map the container path to its host path before changing permissions. Retain `cap_drop: ALL` and `no-new-privileges`.
 
-At startup, Privateerr tests creating a temporary directory, writing and replacing disposable files, and removing them beside the saved pair. It does not modify existing configuration, ownership, modes, or ACLs. A successful check does not guarantee future writes or access to every pre-existing recovery file; actual operations retain their own diagnostics. Cleanup failure or abrupt termination can leave a `.privateerr-check.*` probe directory behind.
+Startup probes create, write, replace, and remove disposable files beside the saved pair without changing existing configuration, ownership, or ACLs. Failure can warn while reusing a valid pair; when generation is required it stops startup. A passed probe cannot guarantee later writes or access to existing recovery files. Interrupted cleanup can leave a `.privateerr-check.*` directory.
 
-If a valid saved pair is reusable but the check fails, Privateerr warns that recovery storage is unavailable and still reports startup readiness so Gluetun can start. If new configuration is required, the storage failure stops startup with a specific error. This fallback applies to the disposable storage probe; failures preparing output directories, opening the persistent log, resuming an interrupted save, or clearing/writing the readiness marker can still stop startup. Docker's Privateerr healthcheck continues to mean valid startup files exist; it does not certify current VPN health or future recovery capability.
-
-For a permission error, give the container's UID 0 write and traverse access to the intended host output directory, accounting for any runtime UID remapping. The `:rw` mount option does not override host permissions. Keep `cap_drop: ALL` and `no-new-privileges`; do not broadly apply `chmod 777` or strip ACLs. For a read-only mount or disk/quota failure, correct that specific condition. New registration attempts use the recovery cooldown and report their next delay. A retained candidate is checked on subsequent monitoring cycles before another registration is considered; its readback or publication can therefore be retried without waiting for a new-registration cooldown. Restarting only Privateerr resets process timers but does not repair storage permissions or force a new registration.
-
-API failures report a safe category and HTTP status when available. A `401` or `403` points to API authentication or authorization; a timeout or connection failure needs connectivity investigation. An unconfirmed settings update retains its candidate for readback. If local publication fails after Gluetun accepted the update, the log identifies persistence/reconciliation failure rather than claiming that the API update never happened. The running tunnel can already use the candidate while the saved pair is older or only partly replaced. Fix the reported storage condition and preserve `.privateerr-pending` and `.privateerr-commit`; the supervisor checks settings and health before retrying publication. Do not delete retained state or regenerate concurrently to clear the warning. See [publication state and file lifetimes](development/privateerr/architecture.md#confirm-updates-before-saving).
+New registrations follow a cooldown; retained candidates are reconciled on monitoring cycles before another registration. Restarting Privateerr resets process timers but does not repair storage or force a fresh registration.
 
 ### Understand VPN region messages
 
-Privateerr logs the provider-advertised region from saved metadata when reusing configuration, the candidate region after generation, and the saved region after confirmed recovery. Missing or malformed optional region labels appear as `unknown` and do not invalidate an otherwise usable pair. A reused or generated configuration is not proof of a healthy connection.
-
-Region labels describe the selected VPN destination, not the operator's location, measured latency, or proof of the physical server location. Automatic recovery prefers eligible endpoints without rerunning the full startup latency benchmark. These summaries omit keys, tokens, credentials, endpoint addresses, and full API responses. Region choice and diagnostic paths are still operational information; review logs before sharing them publicly.
+Region labels describe the provider-advertised VPN destination, not your location, measured latency, or verified physical server location. Missing/malformed labels display `unknown` without invalidating a usable pair. Reused or generated settings do not prove a healthy tunnel; only a confirmed-recovery message follows API readback, health verification, and saving.
 
 ## Configure timing
 
-Set these values in `.env` using `example.env` as the starting point. Compose deliberately supplies no fallback values. Custom deployments use the image defaults, with recovery disabled unless explicitly enabled.
+Set values in `.env` using `example.env`. Compose has no interpolation fallbacks. Image-only recovery is disabled unless explicitly enabled.
 
-| Variable | Default | Purpose |
+| Variable | Example default | Purpose |
 | --- | --- | --- |
-| `PRIVATEERR_AUTO_RECOVER` | `true` in the environment example | Enable the recovery monitor |
-| `PRIVATEERR_GLUETUN_URL` | `http://gluetun:8000` | Authenticated control API |
-| `PRIVATEERR_GLUETUN_HEALTH_URL` | `http://gluetun:9999` | Tunnel health endpoint |
+| `PRIVATEERR_AUTO_RECOVER` | `true` | Enable monitoring |
+| `PRIVATEERR_GLUETUN_URL` | `http://gluetun:8000` | Authenticated API |
+| `PRIVATEERR_GLUETUN_HEALTH_URL` | `http://gluetun:9999` | Tunnel health |
 | `PRIVATEERR_RECOVERY_INTERVAL_SECONDS` | `30` | Seconds between probes |
 | `PRIVATEERR_RECOVERY_FAILURE_SECONDS` | `120` | Startup grace and continuous failure threshold, in seconds |
-| `PRIVATEERR_RECOVERY_COOLDOWN_SECONDS` | `300` | Initial seconds between attempts; doubles on failures up to one hour |
-| `PRIVATEERR_GENERATION_TIMEOUT_SECONDS` | `180` | Maximum seconds for each upstream generation |
+| `PRIVATEERR_RECOVERY_COOLDOWN_SECONDS` | `300` | Initial retry delay; doubles on failures to one hour |
+| `PRIVATEERR_GENERATION_TIMEOUT_SECONDS` | `180` | Generation work deadline in seconds |
 
-At startup, Privateerr waits through the grace period before monitoring. Recovery then requires a continuous failure lasting the configured threshold, measured from an unhealthy probe. Gluetun's own periodic probes and retries add detection time, so a blocked endpoint can take several minutes to trigger recovery. Healthy probes reset the failure timer. A manually stopped VPN pauses recovery. Failed API authentication or an unreachable control server does not cause repeated configuration generation.
+Monitoring starts after the grace period. A continuous failure must then reach the threshold measured from an unhealthy probe. Gluetun's own detection/retries add delay, so recovery can take several minutes. Healthy probes reset the timer. A manually stopped VPN pauses recovery. Timers use elapsed time and are unaffected by host clock corrections.
 
 ## Compatibility and limits
 
-The Compose example enables recovery; custom image-only deployments must explicitly set `PRIVATEERR_AUTO_RECOVER=true`. Recovery requires keepalive mode, a private shared API key, and `PIA_CONNECT=false`. An explicitly selected region requires `PIA_AUTOCONNECT=false`.
+Recovery needs keepalive, `PIA_CONNECT=false`, a private shared key, a directory mount for both VPN files, and one Privateerr writer. Keep `.privateerr-pending` and `.privateerr-commit` beside the saved pair; they retain candidates and permit completion of interrupted saves.
 
-Recovery requires the configuration and metadata to share a directory mount and one Privateerr instance to own those files. `wg0.conf` and `privateerr.env` are regular files. Privateerr keeps copies of both files in `.privateerr-commit` until both replacements finish, allowing startup to complete an interrupted save. It stores a candidate awaiting API and health confirmation in `.privateerr-pending`. Both directories sit beside the generated files. Do not delete those directories during recovery. A normal one-shot regeneration still replaces saved files; avoid running it concurrently with the monitor.
-
-Privateerr cannot start a stopped Gluetun container or repair a hung Docker daemon. An unavailable PIA service, invalid account credentials, or a fully unavailable pinned region can also prevent recovery. Logs identify those failures while the saved configuration remains available. Repeated failures use a cooldown rather than a container restart loop.
+Privateerr cannot start a stopped Gluetun container, repair Docker, restore unavailable PIA services, fix account credentials, or escape a fully unavailable pinned region. Repeated failures use a cooldown.
 
 ## Run without privileged mode
 
-The example runs Privateerr with all Linux capabilities dropped and `no-new-privileges` enabled. UID 0 remains necessary because the unmodified upstream PIA scripts explicitly require it. Gluetun owns the VPN interface and retains its separate `NET_ADMIN` capability; Privateerr only generates configuration and calls the control API.
+Privateerr retains UID 0 for unmodified upstream scripts, while dropping all Linux capabilities and enabling `no-new-privileges`. Gluetun separately needs `NET_ADMIN` for the tunnel.
 
-`PRIVATEERR_IPV6_DISABLED=1` makes Docker disable IPv6 in Privateerr's network namespace before startup. It does not change host or Gluetun settings. Keep the default alongside `PIA_DISABLE_IPV6=yes`; the wrapper skips redundant upstream writes when Docker has already applied those settings. Keep configuration directories writable by the container's UID 0.
+`PRIVATEERR_IPV6_DISABLED=1` disables IPv6 in Privateerr's namespace before startup. Keep it alongside `PIA_DISABLE_IPV6=yes`; the wrapper skips redundant upstream writes. This does not change host or Gluetun IPv6 settings.
 
-The supplied VPN services carry labels disabling unattended Watchtower updates. Intentional image replacement can still interrupt that container briefly. Container options control privileges, capabilities, and sysctls; pulling an image does not change those options.
+The VPN services disable unattended Watchtower updates. Intentional image replacement can still interrupt traffic; pulling an image alone does not change container privileges or sysctls.
 
 ## Disable recovery
 
-Set `PRIVATEERR_AUTO_RECOVER=false` in `.env`. Applying the changed environment recreates affected containers, interrupts traffic, and causes Privateerr to replace the saved configuration pair; preserve any configuration you need before proceeding:
+Set `PRIVATEERR_AUTO_RECOVER=false` in `.env`. Applying this recreates affected containers, interrupts traffic, and replaces the saved VPN pair. Preserve needed state first:
 
 ```sh
 make up
 ```
 
-Gluetun resumes its configured health-restart policy. Privateerr returns to ordinary startup behavior and generates a fresh configuration pair. The command leaves Buccaneerr's deliberate fault-injection test out of the application startup.
+Gluetun resumes its configured health-restart policy, and Privateerr generates fresh files at startup. Normal startup excludes Buccaneerr's fault-injection tests.
 
 ## Understand container and application limits
 
-Docker health status alone does not restart a container. [`depends_on.restart: true`](https://docs.docker.com/reference/compose-file/services/#depends_on) follows explicit Compose operations, not every Docker runtime restart. Recreating Gluetun outside Compose can leave dependent applications attached to the replaced network namespace; recreate them together. Privateerr has no Docker socket or container-management authority.
+[`depends_on.restart: true`](https://docs.docker.com/reference/compose-file/services/#depends_on) follows explicit Compose operations, not every Docker runtime restart. Recreating Gluetun separately can leave applications attached to its old namespace; recreate dependent services together. Privateerr has no Docker socket or application watchdog.
 
-The bounded forwarding hook reports failed application updates. If qBittorrent stays unavailable longer than its configured wait, restore the application and reapply the current port with the hook or restart forwarding. Privateerr does not provide an application watchdog.
+If qBittorrent remains unavailable beyond the hook's wait limit, restore it and reapply the current port with the hook or restart forwarding.
 
 ## Try the qBittorrent example
 
-Privateerr generates configuration, Gluetun creates the VPN namespace, and qBittorrent runs inside it. The LinuxServer qBittorrent image supports amd64 and arm64; Privateerr's arm/v7 support does not extend to this application. Configure these values in `.env`:
+Review qBittorrent's PUID, PGID, storage paths, and port in `.env`, then follow [stack startup](https://github.com/scottgigawatt/privateerr#start-privateerr-with-gluetun-). The example supports amd64/arm64.
 
-```dotenv
-QBITTORRENT_PORT_SYNC=true
-QBITTORRENT_WEBUI_PORT=8080
-QBITTORRENT_API_WAIT_SECONDS=300
-```
+`QBITTORRENT_WEBUI_PORT` defaults to `8080` and controls the host mapping, internal listener, healthcheck, hook API URL, and tests together. Change it for a host-port conflict; [LinuxServer requires synchronized ports](https://docs.linuxserver.io/images/docker-qbittorrent/#webui).
 
-Set `QBITTORRENT_PUID`, `QBITTORRENT_PGID`, and the configuration/download paths from `example.env` to match the host. Complete the recovery setup above, then pull and start the three application services:
+Obtain the initial password from local qBittorrent logs and change it in the Web UI. The seed permits unauthenticated API access from loopback for the hook; other containers sharing Gluetun's namespace share that trust boundary. Remote Web UI sessions require authentication. Existing application configuration is preserved and must permit the hook's localhost API access.
 
-```sh
-make up
-```
-
-Use `make up-build` when you want to build Privateerr from the checkout instead.
-
-The Web UI is published on the Docker host at the port selected by `QBITTORRENT_WEBUI_PORT` (8080 by default). Changing that value also updates the internal listener, healthcheck, forwarding hook API URL, and Buccaneerr checks. LinuxServer [recommends matching both sides of the port mapping and `WEBUI_PORT`](https://docs.linuxserver.io/images/docker-qbittorrent/#webui) because mismatched ports can cause CSRF and login problems. Keep those ports synchronized rather than fixing the container side at `8080`. The Gluetun API and health listener remain unpublished. Set `QBITTORRENT_WEBUI_PORT` in `.env` if port 8080 is already in use.
-
-The seed configuration allows unauthenticated API access only from loopback, where Gluetun's hook runs. Remote Web UI sessions still require authentication; obtain the initial password from qBittorrent's local container logs and change it in the Web UI. Do not share those logs. Other containers deliberately sharing Gluetun's namespace also share that loopback trust boundary.
-
-The hook binds qBittorrent to the VPN interface and assigned port, with random ports and UPnP disabled. On lease removal it binds to loopback. An existing application configuration is not overwritten; ensure its localhost API access permits the hook. VPN peer ports do not need host publication.
+The hook binds qBittorrent to the VPN interface and assigned port, disables random ports/UPnP, and binds to loopback after lease removal. VPN peer ports need no host publication.
 
 ### Test the example
 
-Buccaneerr is a separate validator in the `test` profile. Normal startup does not start it. With `BUCCANEERR_TEST_RECOVERY=true`, it deliberately blocks the active VPN endpoint, then verifies a new registration, healthy tunnel, matching saved files, and qBittorrent settings. Its `NET_ADMIN` capability applies only inside the shared test namespace; it needs no Docker socket and removes its firewall rule on completion or failure. The default recovery deadline is 600 seconds, including Gluetun's health-detection delay. Set `BUCCANEERR_TEST_RECOVERY=false` for a connectivity-only run.
-
-Use the following only in a disposable test project with real PIA credentials. It enables the `test` profile, starts all four services, replaces generated VPN files, and deliberately interrupts the VPN; preserve any configuration you need first:
-
-```sh
-make test-e2e
-```
-
-See [Buccaneerr testing](https://github.com/scottgigawatt/privateerr/blob/main/test/README.md) for verification, safe cleanup and example restoration, plus the separate credential-free API and live recovery suites. Those isolated suites run their tools inside Buccaneerr, create only labeled temporary Gluetun/qBittorrent containers, and do not start the root example or download torrents. The live recovery suite also checks incoming TCP through the PIA lease; it does not claim UDP reachability or torrent throughput. `make build` and `make build-buccaneerr` build only their respective images.
+Use the [canonical testing guide](development/privateerr/testing.md#validate-the-complete-example) for optional live validation. It requires a disposable project and real PIA credentials and deliberately interrupts the test tunnel. Ordinary startup never runs it.
