@@ -4,7 +4,7 @@ Use these commands from the repository root after completing the [setup](https:/
 
 ## Manage installed Gluetun scripts
 
-Privateerr installs its startup wrapper and qBittorrent forwarding hook into the shared `/gluetun/scripts/` directory before reporting ready. Both containers must mount the complete `/gluetun` directory. Installation failure prevents readiness.
+Long-running Privateerr installs its startup wrapper and qBittorrent forwarding hook into the shared `/gluetun/scripts/` directory before reporting ready. Both containers must mount the complete `/gluetun` directory. Installation failure prevents readiness even with recovery disabled.
 
 The two installed filenames belong to Privateerr and are replaced at startup. Keep custom scripts under different names and select their paths explicitly. Recreate Privateerr, Gluetun, and qBittorrent together after updating images. API-based tunnel recovery preserves their running containers.
 
@@ -75,7 +75,7 @@ The workflow builds GHCR images, mirrors Privateerr to Docker Hub with digest ve
 
 ## Generate without Make
 
-After the [checkout and environment setup](https://github.com/scottgigawatt/privateerr#prepare-a-checkout), use the published image. This replaces saved VPN files; stop other writers and preserve needed state first:
+After the [checkout and environment setup](https://github.com/scottgigawatt/privateerr#prepare-a-checkout), use the published image; check [one-shot behavior and release status](https://github.com/scottgigawatt/privateerr#generate-a-wireguard-configuration-) before choosing an image. This replaces saved VPN files; stop other writers and preserve needed state first:
 
 ```sh
 docker compose --env-file .env run --rm --no-deps --pull always \

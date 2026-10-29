@@ -13,7 +13,7 @@ These pages render public names directly from `docker/privateerr` using mkdocstr
 | [JSON validation](data.md) | Runtime checks at dynamic data boundaries |
 | [Connection settings](settings.md) | Validated connection objects and recoverable file publication |
 | [Filesystem diagnostics](diagnostics.md) | Safe filesystem errors and disposable storage checks |
-| [Script installation](scripts.md) | Image-owned Gluetun scripts installed before readiness |
+| [Script installation](scripts.md) | Image-owned Gluetun scripts installed before long-running startup readiness |
 | [Generation](generation.md) | Bounded PIA subprocesses and metadata generation |
 | [Logging](log.md) | UTC formatting and credential redaction |
 | [Supervisor](supervisor.md) | Endpoint selection, generation, recovery decisions, and shutdown |

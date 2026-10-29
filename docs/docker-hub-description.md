@@ -16,7 +16,7 @@ Use `latest` for stable releases, `edge` for successful `main` builds, or an exa
 
 You need an active Private Internet Access (PIA) subscription. Follow the [repository setup](https://github.com/scottgigawatt/privateerr#readme) to generate files only or start the supplied Privateerr, Gluetun, and qBittorrent stack.
 
-Privateerr installs the Gluetun startup wrapper and forwarding hook from its image into the shared configuration directory before reporting ready. No script download is needed. The recovery-enabled Compose example requires a shared API key. Image-only deployments leave recovery disabled unless explicitly enabled.
+Long-running Privateerr installs the Gluetun startup wrapper and forwarding hook from its image into the shared configuration directory before reporting ready. No script download is needed. The recovery-enabled Compose example requires a shared API key. Image-only deployments leave recovery disabled unless explicitly enabled.
 
 > [!WARNING]
 > Keep credentials and generated VPN files private. Generation can replace saved files; stop other writers and preserve needed state first.

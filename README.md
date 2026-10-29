@@ -64,7 +64,7 @@ cd privateerr
 cp example.env .env
 ```
 
-Set `PIA_USER` and `PIA_PASS` in the private `.env`. Keep `PIA_VPN_PROTOCOL=wireguard` and `PIA_CONNECT=false`. Review host paths, user/group IDs, time zone, and ports. The example enables port forwarding and selects an eligible region automatically.
+Set `PIA_USER` and `PIA_PASS` in the private `.env`. Use your PIA VPN username (`p` or `P` followed by seven digits), not your email address. Keep `PIA_VPN_PROTOCOL=wireguard` and `PIA_CONNECT=false`. Review host paths, user/group IDs, time zone, and ports. The example enables port forwarding and selects an eligible region automatically.
 
 > [!WARNING]
 > Keep `.env`, generated VPN files, backups, and private logs out of Git and public reports. Generation replaces saved files; preserve needed state and stop any supervisor writing the destination first.
@@ -73,13 +73,13 @@ If a build reports a missing `pia-manual-connections/LICENSE`, [initialize the p
 
 ## Generate a WireGuard configuration ⚡
 
-After preparing the checkout, run:
+In the current source (unreleased), setting both `PRIVATEERR_KEEPALIVE=false` and `PRIVATEERR_AUTO_RECOVER=false` selects one-shot generation without installing or changing Gluetun scripts. After preparing the checkout, run:
 
 ```sh
 make run-privateerr
 ```
 
-This builds the checked-out source, disables recovery and keepalive for the disposable run, and exits after writing:
+This builds the checked-out source and exits after writing:
 
 | File | Purpose |
 | --- | --- |
@@ -99,12 +99,15 @@ mkdir privateerr-generation &&
   touch .env
 ```
 
-Open `.env` in your editor and replace these placeholders with literal account values. Docker's `--env-file` does not evaluate shell interpolation; omit shell quotes and do not copy the Compose-oriented `example.env`:
+Open `.env` and replace these placeholders with your PIA VPN username (`p` or `P` followed by seven digits) and password. Docker's `--env-file` reads values literally: do not add shell quotes or copy the Compose-oriented `example.env`:
 
 ```dotenv
-PIA_USER=YOUR-PIA-USERNAME
+PIA_USER=YOUR-PIA-VPN-USERNAME
 PIA_PASS=YOUR-PIA-PASSWORD
 ```
+
+> [!IMPORTANT]
+> `latest` (2.3.1) still installs Gluetun scripts under `config/gluetun/scripts/`. The one-shot script isolation described above is unreleased and applies only to the current source.
 
 Run generation from that directory. It replaces saved VPN files, so preserve any needed state and stop other writers first:
 
@@ -126,7 +129,7 @@ docker run --rm --pull always \
   ghcr.io/scottgigawatt/privateerr:latest
 ```
 
-Docker creates missing shared directories. Existing directories must allow container UID 0 to write and traverse them with all capabilities dropped. Confirm `Generation complete.` and the two files listed above under `config/gluetun/wireguard/`. The image also installs its integration scripts under `config/gluetun/scripts/`; no Git, Make, or additional script download is required. Keep the credential file and generated state private.
+Docker creates missing shared directories. Existing directories must allow container UID 0 to write and traverse them with all capabilities dropped. Confirm `Generation complete.` and the two files listed above under `config/gluetun/wireguard/`. Keep the credential file and generated state private.
 
 ## Start Privateerr with Gluetun 🐳
 
@@ -155,7 +158,7 @@ The supplied stack requires amd64 or arm64 because of its qBittorrent image. Pri
 
 Confirm `Automatic recovery enabled` and then `Gluetun tunnel is healthy`. Privateerr's container healthcheck proves startup readiness, not current tunnel health. Open qBittorrent on the configured host port (`8080` by default), obtain its initial password from local container logs, and change it in the Web UI. Keep those logs private.
 
-Privateerr installs both integration scripts from its image into the shared `config/gluetun/scripts/` directory before reporting ready. No script copying is needed. UID 0 needs write and traverse access to the shared paths. The two installed filenames are replaced at startup; keep custom scripts under other names. Recreate all three services together when updating images.
+Long-running Privateerr installs both integration scripts into the shared `config/gluetun/scripts/` directory before reporting ready, even with recovery disabled. No script copying is needed. UID 0 needs write and traverse access to the shared paths. The two installed filenames are replaced at startup; keep custom scripts under other names. Recreate all three services together when updating images.
 
 Use `make up-build` for a source build; `make up-pull` aliases `make up`. [Direct Compose startup](docs/advanced-usage.md#start-without-make) is available without Make. Buccaneerr stays out of normal startup; its live tests deliberately interrupt a disposable VPN.
 

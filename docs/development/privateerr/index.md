@@ -18,7 +18,7 @@ Privateerr's standard-library Python program coordinates PIA configuration gener
 | Supervisor | Select endpoints, manage generation, and reconcile recovery state | `docker/privateerr/supervisor.py` |
 | Generator | Invoke upstream PIA scripts, bound their output, and prepare matching metadata | `docker/privateerr/generation.py` |
 | Logging | Format UTC records and redact upstream credentials before output | `docker/privateerr/log.py` |
-| Script installer | Install image-owned Gluetun scripts before startup readiness | `docker/privateerr/scripts.py` |
+| Script installer | Install image-owned Gluetun scripts before long-running startup readiness | `docker/privateerr/scripts.py` |
 | Gluetun wrapper | Load saved metadata and configure the existing API and health listener | `docker/gluetun/gluetun-entrypoint-wrapper.sh` |
 | Forwarding hook | Synchronize qBittorrent with Gluetun's port lease | `docker/gluetun/qbittorrent-port-forwarding.sh` |
 
@@ -32,6 +32,6 @@ The production image retains UID 0 for upstream scripts while the example drops 
 
 ## Understand startup modes
 
-The supplied Compose example enables recovery. Image-only deployments that omit `PRIVATEERR_AUTO_RECOVER` retain generation and keepalive behavior. Recovery validates its additional settings only when enabled. One-shot generation still exits after producing matching files when keepalive and recovery are disabled.
+The supplied Compose example enables recovery. Image-only deployments that omit `PRIVATEERR_AUTO_RECOVER` retain generation and keepalive behavior. Recovery validates its additional settings only when enabled. In unreleased source, `Config.one_shot` requires both keepalive and recovery disabled; it produces matching files and exits without installing or changing Gluetun scripts. See [one-shot behavior and release status](https://github.com/scottgigawatt/privateerr#generate-a-wireguard-configuration-).
 
 Keep environment contracts, file paths, and port-forwarding ownership stable. Follow the [architecture](architecture.md) before changing startup or persistence, and run the [relevant validation](testing.md) before updating a pull request.

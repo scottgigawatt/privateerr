@@ -189,10 +189,14 @@ class Supervisor:
             detail = error.diagnostic()
         elif isinstance(error, APIUnavailable):
             detail = f"API {error.diagnostic()}; check connectivity and route authorization."
+        elif isinstance(error, ConfigurationError):
+            # Recovery must never serialize an unexpected exception value containing credentials.
+            detail = "Invalid generation inputs; check PIA_USER and PIA_PASS in your private environment file."
         elif isinstance(error, GenerationFailed):
             # Only messages authored here may be surfaced; subprocess output has its own redaction.
             reasons = {
                 "PIA generation exceeded its deadline.",
+                "PIA setup requested interactive input; check the required environment settings.",
                 "PIA generation failed; retained saved configuration.",
                 "Recovery requires Gluetun's custom WireGuard provider.",
                 "No valid region catalog is available.",
@@ -423,14 +427,15 @@ class Supervisor:
     def run(self) -> None:
         """Prepare startup files, report readiness, and enter recovery or idle keepalive mode."""
 
-        # Install image-owned integration before Gluetun is allowed to start, even with saved files.
-        install_gluetun_scripts(
-            self.config.bin_home / "gluetun", self.config.config_path.parent.parent / "scripts"
-        )
-        LOG.info(
-            "Installed Gluetun integration scripts: %s",
-            self.config.config_path.parent.parent / "scripts",
-        )
+        # Long-running deployments need integration before readiness, including saved-file reuse.
+        if not self.config.one_shot:
+            install_gluetun_scripts(
+                self.config.bin_home / "gluetun", self.config.config_path.parent.parent / "scripts"
+            )
+            LOG.info(
+                "Installed Gluetun integration scripts: %s",
+                self.config.config_path.parent.parent / "scripts",
+            )
 
         # Finish any interrupted publication before validating the saved configuration.
         self.store.resume()
@@ -478,11 +483,12 @@ class Supervisor:
             LOG.info("Saved PIA metadata: %s", self.config.metadata_path)
             LOG.info("Saved VPN region: %s", region_description(self.config.metadata_path))
 
-        # Readiness means scripts and valid files exist, without waiting for a running tunnel.
+        # Readiness covers valid outputs and any integration required by the selected mode.
         with filesystem_operation("write readiness marker", self.config.marker):
             self.config.marker.touch()
 
-        LOG.info("Configuration and integration scripts are ready for Gluetun.")
+        if not self.config.one_shot:
+            LOG.info("Configuration and integration scripts are ready for Gluetun.")
 
         # Allow Gluetun time to start before health probes begin.
         if self.config.recover:

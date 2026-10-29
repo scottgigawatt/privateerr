@@ -36,6 +36,8 @@ class GenerationDetailTests(unittest.TestCase):
         self.config = Config.from_environment(
             {
                 "PIA_BIN_HOME": str(self.root),
+                "PIA_USER": "p0000000",
+                "PIA_PASS": "example-password",  # pragma: allowlist secret
                 "PIA_CONF_PATH": str(self.root / "wireguard/wg0.conf"),
                 "PRIVATEERR_METADATA_PATH": str(self.root / "wireguard/privateerr.env"),
                 "PIA_PF": "true",
@@ -129,6 +131,21 @@ class GenerationDetailTests(unittest.TestCase):
                 self.generator.run_script("run_setup.sh", self.config.environment, started + 0.2)
 
         self.assertLess(time.monotonic() - started, 3)
+
+    def test_missing_input_diagnostic_stops_prompt_loop_before_deadline(self):
+        """Terminate a busy upstream prompt immediately without logging repeated input errors."""
+
+        self.script("run_setup.sh", "while :; do printf 'You must provide input.\\n'; done\n")
+        started = time.monotonic()
+        with (
+            self.assertLogs("PIA/run_setup.sh", level="INFO") as captured,
+            self.assertRaisesRegex(GenerationFailed, "requested interactive input"),
+        ):
+            self.generator.run_script("run_setup.sh", self.config.environment, started + 30)
+
+        self.assertLess(time.monotonic() - started, 3)
+        self.assertEqual(len(captured.output), 1)
+        self.assertNotIn("You must provide input.", "\n".join(captured.output))
 
     def test_metadata_escapes_shell_expansion_and_uses_catalog_fields(self):
         """Catalog labels must remain literal when Gluetun sources generated metadata."""
