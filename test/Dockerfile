@@ -78,7 +78,6 @@ LABEL org.opencontainers.image.title="Buccaneerr" \
 #
 RUN apk upgrade --no-cache && \
     apk add --no-cache \
-        actionlint \
         bash \
         ca-certificates \
         curl \
@@ -139,6 +138,20 @@ RUN apk add --no-cache --virtual .node-build-deps npm && \
 # Use the locked spelling, typing, and Markdown commands throughout the test image.
 #
 ENV PATH="/opt/tools/node_modules/.bin:${PATH}"
+
+#
+# Select Alpine's signed actionlint rebuild with its patched Go runtime.
+# Fetch only from this command's repository; installation resolves dependencies from stable.
+# Keep the edge repository and temporary package out of the final image.
+#
+RUN mkdir /tmp/actionlint-package && \
+    apk fetch --no-cache \
+        --from none \
+        --repository https://dl-cdn.alpinelinux.org/alpine/edge/community \
+        --output /tmp/actionlint-package \
+        actionlint && \
+    apk add --no-cache /tmp/actionlint-package/actionlint-*.apk && \
+    rm -rf /tmp/actionlint-package
 
 #
 # Copy the project license, Python validator, and developer checks into Buccaneerr.

@@ -6,7 +6,7 @@ This review checks local Privateerr and Buccaneerr update candidates on October 
 
 Pull-request CI later detected [CVE-2026-116795](https://github.com/le0pard/re2js/security/advisories/GHSA-gg6h-894w-4m9c) in Buccaneerr's re2js 2.8.6 dependency. Upstream fixes its repeated lookbehind matching in [2.8.7](https://github.com/le0pard/re2js/releases/tag/2.8.7). Markdownlint 0.42.0 still pins 2.8.6, so the test-tool manifest overrides only markdownlint's re2js to a patched release and locks its published integrity hash. Remove that override when a compatible Markdownlint release includes the fix. No scan exception is added.
 
-The candidate identities and totals below predate this follow-up and do not describe rebuilt images containing the override.
+The candidate identities and totals below predate this follow-up and the actionlint rebuild described below. They do not describe rebuilt images containing those fixes.
 
 ## Scan scope and results
 
@@ -46,7 +46,7 @@ The pinned Alpine 3.24 image already resolves to 3.24.3 and remains current. Bui
 | Hadolint DL3018 package-version exception | Retained for APK installation. Stable package refreshes deliberately accept current security revisions rather than pinning each APK forever; immutable image pins and scans identify the built result. Removing the existing lint flag still produces DL3018. |
 | Hadolint DL3064 path exceptions | Retained. Current Hadolint 2.15.1 still flags the non-secret Privateerr install-path argument and environment names when these targeted comments are removed. |
 
-The PIA submodule and reviewed Docker CLI 29.9.2, Compose 5.6.1, ShellCheck 0.11.0, Hadolint 2.15.1, actionlint 1.7.12, and direct npm tool pins are unchanged. Stable actionlint's `1.7.12-r3` package is newer than edge's `r2`; switching it to edge would regress its embedded Go runtime. No project-specific Go rebuild or customized pip distribution is added.
+The PIA submodule and reviewed Docker CLI 29.9.2, Compose 5.6.1, ShellCheck 0.11.0, Hadolint 2.15.1, actionlint 1.7.12, and direct npm tool pins are unchanged. The October 29 package check found a new signed edge actionlint `1.7.12-r3` rebuild using Go 1.27.3 on all three platforms. The test image fetches only that APK from a command-line-only edge source and installs it locally; dependencies and configured repositories remain on stable, with no retained repository tag. Execution and package-closure checks on all three target architectures confirm compatibility without upgrading musl or other stable libraries. No project-specific Go rebuild or customized pip distribution is added.
 
 ## Current Compose exception
 
@@ -62,7 +62,7 @@ Alpine's [stable recipe](https://github.com/alpinelinux/aports/blob/3.24-stable/
 
 ### Official Go tools
 
-Alpine actionlint `1.7.12-r3` embeds Go 1.26.9 and still reports CVE-2026-111943. It also reports the Windows-specific x/sys advisory [CVE-2026-39824](https://pkg.go.dev/vuln/GO-2026-5024). The latest official upstream release and the current edge package do not provide a better compatible binary. Keep the finding visible while awaiting an official package update; no actionlint exception is added.
+The local candidates above use stable actionlint `1.7.12-r3` with Go 1.26.9 and report CVE-2026-111943. The [new official edge rebuild](https://pkgs.alpinelinux.org/package/edge/community/aarch64/actionlint) retains the same actionlint version but uses Go 1.27.3, fixing that standard-library finding. Its native binaries were checked on all three supported architectures. The Windows-specific x/sys advisory [CVE-2026-39824](https://pkg.go.dev/vuln/GO-2026-5024) remains visible in the unfiltered module inventory; no actionlint exception is added.
 
 Compose retains the HTTP/2 finding, four MEDIUM x/net reports, and the [OpenPGP module advisory](https://pkg.go.dev/vuln/GO-2026-5932). The fresh database also reports two UNKNOWN HTML-package advisories, [CVE-2026-78661](https://pkg.go.dev/vuln/GO-2026-6860) and [CVE-2026-97045](https://pkg.go.dev/vuln/GO-2026-6866), fixed in x/net 0.62.0. The affected `golang.org/x/net/html` package is absent from the compiled Compose binary on all three platforms. Scout also reports the Windows plugin-discovery advisory [CVE-2025-15558](https://github.com/docker/cli/security/advisories/GHSA-p436-gjf2-799p). These module-level reports remain visible without new exceptions. Module metadata does not establish that every affected package is invoked by supported commands, and this review does not claim all tool behavior is non-exploitable.
 

@@ -107,7 +107,7 @@ PIA_PASS=YOUR-PIA-PASSWORD
 ```
 
 > [!IMPORTANT]
-> Privateerr 2.3.1 and earlier install Gluetun scripts under `config/gluetun/scripts/` even in one-shot mode. Before using a published image, check its [release notes](https://github.com/scottgigawatt/privateerr/releases) for one-shot script isolation; otherwise, build this source with the Make command above.
+> Privateerr 2.3.1 installs Gluetun scripts under `config/gluetun/scripts/` even in one-shot mode. Before using a published image, check its [release notes](https://github.com/scottgigawatt/privateerr/releases) for one-shot script isolation; otherwise, build this source with the Make command above.
 
 Run generation from that directory. It replaces saved VPN files, so preserve any needed state and stop other writers first:
 
