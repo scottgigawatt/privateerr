@@ -43,6 +43,7 @@ HELP=help
 # Project target names.
 #
 RUN_PRIVATEERR=run-privateerr
+LIST_PIA_REGIONS=list-pia-regions
 BUILD_BUCCANEERR=build-buccaneerr
 LINT=lint
 TEST_TYPES=test-types
@@ -93,6 +94,7 @@ COMMON_TARGETS= \
 #
 PROJECT_TARGETS= \
 	$(RUN_PRIVATEERR) \
+	$(LIST_PIA_REGIONS) \
 	$(BUILD_BUCCANEERR) \
 	$(LINT) \
 	$(TEST_TYPES) \
@@ -192,6 +194,7 @@ COMPOSE_LOGS_OPTIONS            ?= --follow
 # Project-owned helpers used by Make and GitHub Actions.
 #
 PIA_CREDENTIAL_CHECK_CMD ?= scripts/compose/check-pia-credentials.sh
+PIA_REGIONS_CMD          ?= scripts/compose/list-pia-regions.sh
 COMPOSE_STATUS_CMD       ?= scripts/compose/ps.sh
 COMPOSE_NUKE_CMD         ?= scripts/compose/nuke.sh
 CONFIG_BACKUP_CMD        ?= scripts/compose/backup.sh
@@ -275,6 +278,7 @@ BUCCANEERR_PLATFORM_BUILD = \
 #
 # Docker Compose command compatible with 'docker compose' (v2) and 'docker-compose' (v1).
 #
+ifneq ($(MAKECMDGOALS),$(LIST_PIA_REGIONS))
 DOCKER_COMPOSE := $(shell \
 	if $(DOCKER_BIN) compose version >/dev/null 2>&1; then \
 		echo "$(DOCKER_BIN) compose"; \
@@ -283,6 +287,7 @@ DOCKER_COMPOSE := $(shell \
 	else \
 		echo ""; \
 	fi)
+endif
 
 #
 # Bind Compose and its implicit --build paths to the repository-owned builder.
@@ -376,9 +381,12 @@ endef
 #
 # Verify Docker Compose availability.
 #
+# The public region lookup uses host tools and does not need Docker Compose.
+ifneq ($(MAKECMDGOALS),$(LIST_PIA_REGIONS))
 ifeq ($(DOCKER_COMPOSE),)
     $(error "Neither 'docker compose' nor 'docker-compose' is available. \
         Please install Docker Compose.")
+endif
 endif
 
 #
@@ -748,6 +756,7 @@ $(HELP):
 	$(call help_line,$(NUKE),‼️ DANGER ‼️ remove project Docker resources and transient state.)
 	$(call help_heading,🧭 Privateerr tools)
 	$(call help_line,$(RUN_PRIVATEERR),Generate WireGuard config and Gluetun metadata.)
+	$(call help_line,$(LIST_PIA_REGIONS),List all PIA region IDs and port-forwarding support.)
 	$(call help_line,$(BUILD_BUCCANEERR),Build the Buccaneerr test image.)
 	$(call announce_warning,⚠️  Destructive targets never run automatically. Run make backup first.)
 
@@ -763,6 +772,14 @@ $(RUN_PRIVATEERR): $(CHECK_PIA) $(ENSURE_BUILDX_BUILDER)
 	$(PRIVATEERR_COMPOSE) run \
 		$(COMPOSE_PRIVATEERR_ONLY_OPTIONS) \
 		$(PRIVATEERR_SERVICE)
+
+#
+# $(LIST_PIA_REGIONS): List the public PIA catalog without credentials or stack changes.
+#
+# Dependencies: Host curl and jq; network access to PIA's public region catalog.
+#
+$(LIST_PIA_REGIONS):
+	@$(PIA_REGIONS_CMD)
 
 #
 # $(BUILD_BUCCANEERR): Builds only the Buccaneerr image.

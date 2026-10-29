@@ -70,14 +70,37 @@ To change the current registration, use the [regeneration procedure](#choose-a-r
 
 ## Choose a region
 
-Automatic selection is the default. To pin the `ca` region, edit `.env`:
+Automatic selection is the default. From a checkout, run `make list-pia-regions` with host `curl` and `jq` installed. It lists every region with its ID and Yes/No port-forwarding support. Terminal output uses color; set `NO_COLOR=1` to disable it. Redirected output is plain text.
+
+Without Make, use this plain-text lookup. It requires `curl`, `jq`, and `column` and reads [PIA's public region catalog](https://serverlist.piaservers.net/vpninfo/servers/v6):
+
+```sh
+(
+  set -eu
+  lookup_dir=$(mktemp -d)
+  trap 'rm -rf "$lookup_dir"' 0
+  trap 'exit 1' 1 2 15
+  curl -fsSL --max-time 30 https://serverlist.piaservers.net/vpninfo/servers/v6 \
+    --output "$lookup_dir/catalog"
+  jq --raw-input --slurp --exit-status --raw-output '
+    split("\n")[0] | fromjson
+    | .regions | sort_by(.name) | select(length > 0)
+    | [["LOCATION", "REGION ID", "PORT FORWARDING"]]
+      + map([.name, .id, (if .port_forward then "Yes" else "No" end)])
+    | .[] | @tsv
+  ' "$lookup_dir/catalog" >"$lookup_dir/regions.tsv"
+  NO_COLOR=1 column -t -s "$(printf '\t')" "$lookup_dir/regions.tsv"
+)
+```
+
+Copy an ID from the `REGION ID` column. If `PIA_PF=true`, choose a region marked `Yes`. To pin that region, edit `.env`:
 
 ```dotenv
 PIA_AUTOCONNECT=false
-PIA_PREFERRED_REGION=ca
+PIA_PREFERRED_REGION=YOUR-CHOSEN-PIA-REGION-ID
 ```
 
-Replace `ca` with your chosen PIA region ID. `PIA_AUTOCONNECT=true` ignores the preferred region.
+Replace the placeholder with the chosen ID. `PIA_AUTOCONNECT=true` ignores the preferred region.
 
 Changing settings and recreating containers does not replace a healthy saved pair. Applying a region or forwarding-selection change requires fresh generation. This interrupts traffic, removes the selected project's containers/network, and replaces its VPN files; preserve needed configuration and stop the supervisor first. Volumes and images are retained. Run each command only after the previous one succeeds:
 
