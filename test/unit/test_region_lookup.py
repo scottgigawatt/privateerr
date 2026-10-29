@@ -16,6 +16,7 @@ import subprocess
 import tempfile
 import unittest
 from pathlib import Path
+from textwrap import dedent
 
 
 class RegionLookupTests(unittest.TestCase):
@@ -42,22 +43,91 @@ class RegionLookupTests(unittest.TestCase):
             + "\npublic-signature\n"
         )
         (self.bin / "curl").write_text(
-            "#!/bin/sh\nset -eu\n"
-            'while [ "$#" -gt 0 ]; do\n'
-            '    case "$1" in --output) destination=$2; shift ;; esac\n'
-            "    shift\ndone\n"
-            'case "${REGION_TEST_MODE:-valid}" in\n'
-            "    transport) exit 22 ;;\n"
-            '    malformed) printf "not-json\\n" >"${destination}" ;;\n'
-            '    empty) printf \'{"regions":[]}\\n\' >"${destination}" ;;\n'
-            '    *) cat "${REGION_TEST_FIXTURE}" >"${destination}" ;;\n'
-            "esac\n"
+            dedent(
+                """\
+                #!/bin/sh
+
+                #
+                # Copyright 2025-2026 Scott Gigawatt
+                #
+                # Licensed under the Apache License, Version 2.0.
+                #
+                # curl: Supply a controlled public catalog response for lookup tests.
+                #
+                # Usage: curl --output <path> [ignored options]
+                #
+                # - Uses REGION_TEST_MODE to select a response or transport failure.
+                # - Copies REGION_TEST_FIXTURE for successful requests without networking.
+                #
+
+                #
+                # Fail if the fixture environment or destination is unavailable.
+                #
+                set -eu
+
+                #
+                # Capture the output path while ignoring unrelated curl options.
+                #
+                while [ "$#" -gt 0 ]; do
+
+                    case "$1" in
+                        --output)
+                            destination=$2
+                            shift
+                            ;;
+                    esac
+
+                    shift
+                done
+
+                #
+                # Exercise transport, parse, and empty-catalog failures independently.
+                #
+                case "${REGION_TEST_MODE:-valid}" in
+                    transport)
+                        exit 22
+                        ;;
+                    malformed)
+                        printf 'not-json\\n' >"${destination}"
+                        ;;
+                    empty)
+                        printf '{"regions":[]}\\n' >"${destination}"
+                        ;;
+                    *)
+                        cat "${REGION_TEST_FIXTURE}" >"${destination}"
+                        ;;
+                esac
+                """
+            )
         )
         (self.bin / "docker").write_text(
-            '#!/bin/sh\nprintf "Unexpected Docker invocation\\n" >&2\nexit 99\n'
+            dedent(
+                """\
+                #!/bin/sh
+
+                #
+                # Copyright 2025-2026 Scott Gigawatt
+                #
+                # Licensed under the Apache License, Version 2.0.
+                #
+                # docker: Reject accidental Docker calls from the public lookup.
+                #
+                # Usage: docker [ignored arguments]
+                #
+
+                #
+                # Fail visibly if Make probes Docker for a host-only lookup.
+                #
+                printf 'Unexpected Docker invocation\\n' >&2
+                exit 99
+                """
+            )
         )
+
+        # Execute the controlled commands through the same PATH lookup used by the real helper.
         for command in self.bin.iterdir():
             command.chmod(0o755)
+
         self.environment = {
             "PATH": str(self.bin) + os.pathsep + os.defpath,
             "TMPDIR": str(self.root),
@@ -114,6 +184,7 @@ class RegionLookupTests(unittest.TestCase):
         for no_color in ("", "1"):
             with self.subTest(no_color=no_color):
                 master, slave = pty.openpty()
+
                 try:
                     result = subprocess.run(
                         self.command,
@@ -131,6 +202,7 @@ class RegionLookupTests(unittest.TestCase):
 
                 self.assertIn("Yes", output)
                 self.assertIn("No", output)
+
                 if no_color:
                     self.assertNotIn("\x1b", output)
                 else:
