@@ -39,7 +39,7 @@ Privateerr generates [Private Internet Access (PIA)](https://www.privateinternet
 
 <p align="center">
   <em>🕵️ VPN in Tartarus? Summon the network necromancers in</em>
-  <a href="https://discord.gg/BpEGzWwGYf"><img src="https://img.shields.io/discord/1403601106315116626?label=%F0%9F%94%A5HADES%F0%9F%94%A5&logo=discord&logoColor=white&color=5865F2" alt="HADES Discord community" /></a>
+  <a href="https://discord.gg/BpEGzWwGYf"><img src="https://img.shields.io/discord/1403601106315116626?label=%F0%9F%94%A5HADES%F0%9F%94%A5&logo=discord&logoColor=white&color=5865F2" alt="HADES Discord community" align="absmiddle" /></a>
 </p>
 <!-- markdownlint-enable MD033 -->
 
