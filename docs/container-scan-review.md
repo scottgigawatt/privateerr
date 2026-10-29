@@ -2,6 +2,12 @@
 
 This review checks local Privateerr and Buccaneerr update candidates on October 28, 2026 (UTC). Every image was examined on `linux/amd64`, `linux/arm64`, and `linux/arm/v7`. These candidates are review artifacts; changing source does not publish an image or advance `latest`.
 
+## Subsequent Markdown-tooling fix
+
+Pull-request CI later detected [CVE-2026-116795](https://github.com/le0pard/re2js/security/advisories/GHSA-gg6h-894w-4m9c) in Buccaneerr's re2js 2.8.6 dependency. Upstream fixes its repeated lookbehind matching in [2.8.7](https://github.com/le0pard/re2js/releases/tag/2.8.7). Markdownlint 0.42.0 still pins 2.8.6, so the test-tool manifest overrides only markdownlint's re2js to 2.8.7 and locks its published integrity hash. Remove that override when a compatible Markdownlint release includes the fix. No scan exception is added.
+
+The candidate identities and totals below predate this follow-up and do not describe rebuilt images containing the override.
+
 ## Scan scope and results
 
 Trivy 0.76.1 used comprehensive detection with all severities, unfixed findings, and an explicit empty ignore file. Its database was updated at `2026-10-28 01:21:08 UTC` and held constant for all six scans. Local OCI builds were inspected one runtime manifest at a time; their exact configuration and layer contents were preserved when preparing Docker archives. Each Trivy report's architecture was checked against its selected manifest. Docker Scout 1.27.0 also ran without severity or fix-status filters on the same six platform archives. Its report instances and distinct advisory identifiers are counted separately because aliases can describe the same issue.
