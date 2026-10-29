@@ -51,7 +51,7 @@ Privateerr generates [Private Internet Access (PIA)](https://www.privateinternet
 
 ## Choose a task 🧭
 
-- [Generate configuration only](#generate-a-wireguard-configuration-): write files for a compatible VPN client.
+- [Generate configuration only](#generate-a-wireguard-configuration-): use the repository, or [run Docker directly](#using-docker-directly) without Git or Make.
 - [Run the supplied stack](#start-privateerr-with-gluetun-): start Privateerr, Gluetun, and qBittorrent with automatic recovery.
 - [Develop or test Privateerr](docs/development/privateerr/testing.md): work on source without using a production deployment.
 
@@ -90,6 +90,46 @@ This builds the checked-out source, disables recovery and keepalive for the disp
 | `config/gluetun/wireguard/privateerr.env` | Matching PIA server metadata |
 
 Confirm that the command exits successfully with `Generation complete.` and both files exist. File generation alone does not establish a working tunnel. Without Make, use the [published-image Compose command](docs/advanced-usage.md#generate-without-make).
+
+### Using Docker directly
+
+This route needs only Docker and an active PIA subscription. Start in a new directory outside an existing checkout or deployment:
+
+```sh
+mkdir privateerr-generation &&
+  cd privateerr-generation &&
+  umask 077 &&
+  touch .env
+```
+
+Open `.env` in your editor and replace these placeholders with literal account values. Docker's `--env-file` does not evaluate shell interpolation; omit shell quotes and do not copy the Compose-oriented `example.env`:
+
+```dotenv
+PIA_USER=YOUR-PIA-USERNAME
+PIA_PASS=YOUR-PIA-PASSWORD
+```
+
+Run generation from that directory. It replaces saved VPN files, so preserve any needed state and stop other writers first:
+
+```sh
+docker run --rm --pull always \
+  --cap-drop ALL \
+  --security-opt no-new-privileges:true \
+  --env-file .env \
+  --env VPN_PROTOCOL=wireguard \
+  --env PIA_CONNECT=false \
+  --env DISABLE_IPV6=no \
+  --env DIP_TOKEN=no \
+  --env AUTOCONNECT=true \
+  --env PIA_PF=true \
+  --env PIA_DNS=true \
+  --env PRIVATEERR_AUTO_RECOVER=false \
+  --env PRIVATEERR_KEEPALIVE=false \
+  --volume "$(pwd)/config/gluetun:/gluetun" \
+  ghcr.io/scottgigawatt/privateerr:latest
+```
+
+Docker creates missing shared directories. Existing directories must allow container UID 0 to write and traverse them with all capabilities dropped. Confirm `Generation complete.` and the two files listed above under `config/gluetun/wireguard/`. The image also installs its integration scripts under `config/gluetun/scripts/`; no Git, Make, or additional script download is required. Keep the credential file and generated state private.
 
 ## Start Privateerr with Gluetun 🐳
 
