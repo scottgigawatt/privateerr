@@ -1,45 +1,36 @@
 ---
-name: "Bug report from the crow's nest 🐛"
-about: "Report trouble so Privateerr can keep chartin' clean waters ⚓"
+name: "Bug report 🐛"
+about: "Report reproducible trouble with Privateerr"
 title: "[BUG] "
 labels: bug
 assignees: scottgigawatt
 ---
 
-## What went wrong ☠️
+## What went wrong
 
-Tell me what broke. Keep it clear enough that I can chase the cursed thing down.
+Describe the expected and actual behavior.
 
-## Steps to reproduce 🪝
+## Steps to reproduce
 
 1.
 2.
 3.
 
-## Expected result 🌊
+## Setup
 
-What should have happened?
+- Privateerr and Gluetun image tags:
+- Buccaneerr tag, if involved:
+- Host platform, Docker, and Compose versions:
+- Command run:
+- Generation-only or recovery-enabled deployment:
 
-## Logs or output 📜
+## Safe diagnostic evidence
 
-Share only an inspected, sanitized excerpt of logs, errors, screenshots, or command output. `make config` and full environment output can contain credentials; report whether validation passed without pasting the resolved configuration. Include the failed operation and category when available.
+Include only inspected, sanitized excerpts with the failed operation/category. Share region or mount details only when relevant and safe. Do not run live tests or reset commands merely to fill out this report.
 
 > [!WARNING]
-> Redact PIA credentials, WireGuard private keys, live `wg0.conf`, live `privateerr.env`, and private logs before tossin' anything onto the public deck.
+> Never include credentials, private keys, live VPN files, or full resolved configuration/environment output. Report whether a configuration check passed without pasting its contents.
 
-## Setup 🧩
+## Additional context
 
-- Privateerr image tag:
-- Buccaneerr image tag:
-- Gluetun image tag:
-- OS / platform:
-- Docker version:
-- Docker Compose version:
-- PIA region or server:
-- Command ye ran:
-- Did `make config` pass?
-- Relevant environment variables, with secrets removed:
-
-## Extra clues 🧭
-
-Anything else that helps find the leak below deck.
+Optional: add related issues or a minimal secret-free example.

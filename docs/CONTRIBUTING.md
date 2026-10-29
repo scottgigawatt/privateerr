@@ -1,35 +1,18 @@
 # Contributing to Privateerr 🏴‍☠️
 
-Ahoy, improbable contributor. Since this project will likely be maintained by one caffeine-powered captain yelling at Docker Compose in the moonlight, contributions be welcome but should arrive shipshape.
+Help improve configuration generation, Gluetun integration, tests, or documentation. Keep changes focused and discuss large design changes in an issue first.
 
 ## Before you start ⚓
 
-- Read the [README](https://github.com/scottgigawatt/privateerr#readme).
-- Read the [security policy](SECURITY.md) before sharing logs or generated config.
-- Read the [documentation style](documentation-style.md) before changing public Markdown.
-- Keep to the [Code](CODE_OF_CONDUCT.md).
-- Check existing issues before opening a duplicate treasure map.
+Read the [README](https://github.com/scottgigawatt/privateerr#readme), [documentation standards](documentation-style.md), [security policy](SECURITY.md), and [Code of Conduct](CODE_OF_CONDUCT.md). Search existing issues before opening one.
 
-## What belongs here 🧭
-
-Good contributions include:
-
-- Clear bug fixes.
-- Dockerfile or Compose improvements that keep Synology and macOS in mind.
-- Documentation that helps real humans avoid cursed setup mistakes.
-- Test improvements for Privateerr, Gluetun, or Buccaneerr.
-- Security hardening that stays free, open, and maintainable.
-
-Questionable cargo includes:
-
-- Huge rewrites without an issue first.
-- Paid-only services, subscription gates, or magic hosted scanners.
-- Changes to upstream PIA scripts inside `docker/pia-manual-connections`.
-- Anything that requires committing secrets, live `wg0.conf`, or real `privateerr.env` data.
+Keep upstream PIA scripts unmodified. Never contribute credentials, live VPN files, private logs, or operator-specific values. Production code uses the Python standard library; test dependencies belong in Buccaneerr.
 
 <a id="development-checkout"></a>
 
 ## Set up a development checkout 🛠️
+
+You need Git, Docker with Compose/Buildx, and Make:
 
 ```sh
 git clone --recurse-submodules https://github.com/scottgigawatt/privateerr.git
@@ -37,90 +20,46 @@ cd privateerr
 cp example.env .env
 ```
 
-Keep `.env` private. Offline checks and documentation builds need no real PIA credentials; configure yer own account and deployment values only before an intentional live test.
+Offline checks and documentation builds need no real PIA credentials. Configure credentials only for an intentional, isolated live test. If the public HTTPS submodule is missing, [recover its pinned checkout](SUPPORT.md#recover-a-missing-pia-submodule).
 
-The public PIA submodule uses HTTPS and needs no GitHub SSH key. If its directory is empty, follow [Recover a missing PIA submodule](SUPPORT.md#recover-a-missing-pia-submodule) before building.
+## Validate your change
 
-Run repository and documentation checks without starting the VPN stack. Tool-image builds can download dependencies. `make test-precommit` can also download hook environments, modify the checkout, and use the local Docker socket for nested checks; inspect its diff afterward:
+Select checks from the [canonical testing guide](development/privateerr/testing.md). It explains offline, real-API, live-VPN, build, and documentation boundaries. Report commands actually run and any skipped coverage. Pre-commit can modify files and download hooks; inspect its diff.
 
-```sh
-make test
-make test-workflows
-make test-precommit
-make spellcheck
-make docs
-```
+Live tests deliberately interrupt VPN traffic. Use a disposable checkout and preserve needed state first. After complete-example testing, [stop the stack and restore examples](advanced-usage.md#restore-vpn-examples). Never restore test files into an active deployment.
 
-Image-only build checks also leave the application stack stopped:
+## Follow project conventions
 
-```sh
-make build
-make build-buccaneerr
-make build-platforms
-```
+`.editorconfig`, Ruff, and strict Pyright own formatting and type rules. Shell/Python/JSON use four spaces; Markdown/YAML/TOML/AWK/jq use two; Make recipes use tabs. Code comments use plain English. Keep Compose defaults in environment files and behavior explanations beside Compose entries.
 
-The live `make test-e2e` target enables Buccaneerr's `test` profile, requires real PIA credentials, and deliberately interrupts the test tunnel. Use a disposable checkout and protect any configuration you need first. Afterward, stop that test stack before [restoring its example files](advanced-usage.md#restore-vpn-examples).
+Public documentation must apply the [GitHub and ISO plain-language policy](documentation-style.md), including reader-task review and duplicate-content removal. Preserve badges/community links and meaningful project voice.
 
-`make up` pulls published images and starts only Privateerr, Gluetun, and qBittorrent; `make up-build` builds Privateerr from the checkout instead. `make down` includes the `test` profile while preserving volumes and images. `make clean-test` restores examples only after shutdown succeeds; use it only in a disposable checkout. `make clean` never touches Docker, `.env`, generated WireGuard state, config, or backups. Use `make nuke` only for an intentionally destructive reset of this repository's Docker resources and scoped Buildx cache; it still preserves `.env`, `backups/`, and persistent config before restoring the checked-in examples.
-
-## Follow the project style 📜
-
-- Public Markdown and user-facing command output may use light pirate flavor after the operational meaning is clear.
-- Documentation follows [`documentation-style.md`](documentation-style.md), including sentence-case headings and alert limits.
-- Code comments should use plain English.
-- Shell scripts written for host use should use `#!/bin/sh` where possible.
-- Shell scripts should use four spaces for indentation.
-- YAML, TOML, AWK, and jq use two-space indentation; JSON and
-  JSON-with-comments use four.
-- Docker Compose values should come from `.env` defaults instead of inline fallback soup.
-- Keep pinned GitHub Action SHAs and Alpine digests intact unless the change is a dependency update.
-- If ye update `ALPINE_TAG`, update every matching Dockerfile, workflow build arg, and example env default together.
-- Keep service config directories aligned with service names.
-- Leave upstream PIA scripts untouched so users can verify the treasure scrolls were not tampered with.
+Keep action SHAs, base-image digests, build arguments, and matching example defaults synchronized; use the existing policy checks. Renovate owns routine dependency updates.
 
 ### Configure editor tooling 🧰
 
-`.editorconfig` is the portable source of truth for indentation, line endings, final newlines, and trailing whitespace. Install the recommendations from `.vscode/extensions.json` when using VS Code; each entry carries an aligned comment explaining whether it formats, validates, or only highlights a file type.
-
-Workspace format-on-save is deliberately disabled. Prettier is available only for explicit formatting of supported JSON and Markdown files through the checked-in `.prettierrc.json5`. It does not parse jq, and the repository excludes jq, YAML, TOML, and aligned workspace JSONC from Prettier so specialized tools cannot undo project-owned spacing. Keep two spaces before pinned-action comments in workflow YAML.
+Install the recommendations in `.vscode/extensions.json` when using VS Code. Format-on-save is disabled; explicit Prettier formatting is limited by `.prettierrc.json5` and exclusions. It must not undo aligned YAML, jq, TOML, or workspace JSONC. Ruff and Pyright configurations are shared with CI.
 
 ## Strict Python checks
 
-Run `make test-types` to check application code and tests with the pinned Pyright version in a disposable test container. Docker is the only host prerequisite. The root `pyrightconfig.json` is shared with VS Code/Pylance; select an interpreter with the project's dependencies installed for accurate editor import resolution. `make test` and pre-commit enforce the same check during pull requests and main/release validation. Ruff continues to own lint and formatting.
+Use `make test-types` for pinned containerized Pyright and `make lint` for Ruff lint/format, types, and ShellCheck. They require Docker; they do not prove runtime behavior. See [Python documentation conventions](development/privateerr/documentation.md) for source contracts.
 
 ## Build the developer documentation
 
-Run `make docs` after changing guides, Python signatures, or docstrings. Buccaneerr installs Privateerr's exact, hash-verified MkDocs toolchain from `requirements-docs.txt` and builds the generated Python reference in strict mode. Use `make docs-serve` to preview the deep blue theme locally.
+Use `make docs` for the strict Material/API build and `make docs-serve` for preview. Follow [documentation validation](development/privateerr/testing.md#validate-documentation) for spelling, links, rendering, and reader-task review. PRs validate without deploying; Pages deployment is separate.
 
-Follow the [Python documentation conventions](development/privateerr/documentation.md) and [testing guide](development/privateerr/testing.md). The Pages workflow publishes merged documentation from `main`; pull requests build the site without deployment permissions.
+<a id="release-tags"></a>
 
 ## Create release tags 🏷️
 
-- Create annotated release tags from commits already on `main`.
-- Use semantic versions such as `v1.2.3` or `v1.2.3-rc.1`.
-- Never move or reuse a published version tag.
-- Successful `main` builds publish `edge`; they do not replace `latest`.
-- Stable version tags publish exact, minor, major, and `latest` aliases.
-- Major version zero omits the broad `0` alias.
-- Prerelease tags publish only the prerelease version and commit SHA tags.
-- Wait for the image workflow, registry mirror, and provenance checks before publishing the GitHub release.
+Publishing requires separate maintainer authorization. Create annotated, immutable SemVer tags such as `v1.2.3` or `v1.2.3-rc.1` from commits already on `main`; never move/reuse them.
+
+Successful `main` builds publish `edge` and SHA tags. Stable tags publish exact/minor/major/`latest` aliases; major zero omits `0`. Prereleases publish exact and SHA tags only. See [image channels](advanced-usage.md#registry-publishing).
+
+The build workflow validates tags before registry login, builds all supported architectures, and verifies mirrors/provenance. Docker Hub publishing needs the repository secrets `DOCKERHUB_USERNAME` and `DOCKERHUB_TOKEN`. Wait for publication verification before announcing a GitHub release.
 
 ## Prepare a pull request 🪝
 
-Before opening a pull request:
+Explain the problem and resulting behavior, list relevant validation and limits, and review the complete diff for unrelated changes or sensitive data. Documentation changes must preserve operational meaning while reducing repeated or unnecessary content.
 
-- Run relevant `make` targets.
-- Run `make test-workflows` for workflow, release, build-pin, or image-tag changes.
-- Run `make test-precommit`.
-- Let Renovate handle routine dependency bumps when possible.
-- After a live test in a disposable checkout, stop its supervisor before restoring checked-in VPN examples with `make restore-test-config`. Never overwrite an active deployment's VPN files to prepare a commit; keep live deployments separate from contribution checkouts.
-- Confirm no secrets, live VPN configs, or logs slipped into the hold.
-- Explain what changed and why.
-
-Tiny pull requests be easier to review than a kraken-sized rewrite with six unrelated tentacles.
-
-## Report security concerns 🛡️
-
-Do not report security problems in public issues, pull requests, or Discord. Use the [security policy](SECURITY.md) and GitHub private vulnerability reporting. Use the [support guide](SUPPORT.md) for non-sensitive questions.
-
-Fair winds, clean diffs, and may yer YAML indent on the first try. ☠️
+Report vulnerabilities through the [private security route](SECURITY.md); use [support](SUPPORT.md) for non-sensitive questions. Small pull requests are easier to review than a kraken with six unrelated tentacles.

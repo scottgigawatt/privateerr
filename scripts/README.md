@@ -1,70 +1,26 @@
-# Privateerr script hold 🏴‍☠️
+# Privateerr scripts 🏴‍☠️
 
-These documented AWK programs and host helpers support the Privateerr Compose project. Pick the smallest tool for the job and review its header before running it against a live deployment.
+Use Make as the normal interface to these host helpers. Read a script's header before invoking it directly.
 
-## Find a script 🧭
+| Helper | Purpose |
+| --- | --- |
+| [`awk/collect-dockerfile-base-images.awk`](awk/collect-dockerfile-base-images.awk) | Resolve declared base images for scoped cleanup; skip unresolved references |
+| [`awk/format-compose-status.awk`](awk/format-compose-status.awk) | Format status and collapse duplicate IPv4/IPv6 port bindings |
+| [`awk/order-environment.awk`](awk/order-environment.awk) | Match resolved environment ordering to `example.env` |
+| [`awk/strip-comments.awk`](awk/strip-comments.awk) | Produce uncommented configuration views |
+| [`compose/backup.sh`](compose/backup.sh) | Archive config without replacing earlier backups |
+| [`compose/check-pia-credentials.sh`](compose/check-pia-credentials.sh) | Reject missing/example credentials without sourcing `.env` or printing values |
+| [`compose/nuke.sh`](compose/nuke.sh) | Validate and remove resources owned by one selected project |
+| [`compose/ps.sh`](compose/ps.sh) | Show project status |
+| [`docs/build.sh`](docs/build.sh) | Build/preview documentation with read-only source and locked tools |
+| [`compose/test.sh`](compose/test.sh) | Run named suites in Buccaneerr |
 
-| Hold       | Script                                                                                                                               | Purpose                                                            |
-| ---------- | ------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------ |
-| 🧮 AWK     | [`awk/collect-dockerfile-base-images.awk`](awk/collect-dockerfile-base-images.awk) | Resolve Dockerfile build arguments into base image references      |
-| 🧮 AWK     | [`awk/format-compose-status.awk`](awk/format-compose-status.awk)       | Align Compose status rows and stack distinct published ports       |
-| 🧮 AWK     | [`awk/order-environment.awk`](awk/order-environment.awk)               | Order resolved values like the checked-in environment file         |
-| 🧮 AWK     | [`awk/strip-comments.awk`](awk/strip-comments.awk)                     | Remove comments and blank lines from raw configuration output      |
-| 🐳 Compose | [`compose/backup.sh`](compose/backup.sh)                               | Archive Privateerr config without replacing an existing backup     |
-| 🐳 Compose | [`compose/check-pia-credentials.sh`](compose/check-pia-credentials.sh) | Report missing or example PIA credentials before Privateerr starts |
-| 🐳 Compose | [`compose/nuke.sh`](compose/nuke.sh)                               | Remove resources owned by one explicit Compose project             |
-| 🐳 Compose | [`compose/ps.sh`](compose/ps.sh)                                       | Print a compact status table for the Privateerr Compose project    |
+## Respect operational boundaries
 
-## AWK programs 🧮
+Backups can contain secrets and are not application-consistent while writers run. Preserve `.env` and Docker-managed volumes separately. See [maintenance and backup limits](../docs/advanced-usage.md#maintenance-reference).
 
-### `awk/collect-dockerfile-base-images.awk`
+The cleanup helper never deletes repository files. Make owns transient-state reset and example restoration after scoped Docker cleanup. Shared or in-use base images are retained. Read the [destructive-reset warning](../docs/advanced-usage.md#clean-developer-artifacts) before choosing a cleanup target.
 
-Records global Dockerfile `ARG` defaults, resolves `${NAME}` and `$NAME` in `FROM`, ignores internal stages and `scratch`, and resets state between input files. Unresolved references are skipped instead of being passed to Docker. The nuke helper uses its unique output for best-effort declared-base cleanup.
+Keep credentials in the ignored `.env` file. Do not pass their literal values on command lines or paste resolved configuration into support reports.
 
-### `awk/format-compose-status.awk`
-
-Formats tab-separated `docker compose ps` data into aligned terminal columns, collapses equivalent IPv4 and IPv6 wildcard bindings, and places each distinct published port on its own continuation row. `compose/ps.sh` invokes it.
-
-### `awk/order-environment.awk`
-
-Prints resolved Docker Compose environment assignments in the same order as `example.env`. `make env` invokes it through the centralized AWK variables.
-
-### `awk/strip-comments.awk`
-
-Removes comments, trailing whitespace, and empty lines. `make print-config` and `make print-env` share it so both raw views follow one filtering contract.
-
-## Compose helpers 🐳
-
-### `compose/backup.sh`
-
-Archives the complete `config/` directory with a timestamped filename. An incrementing suffix prevents a same-second backup from replacing an existing archive. `make backup` is the normal entry point, and `backups/` stays ignored.
-
-### `compose/check-pia-credentials.sh`
-
-Reads resolved Compose environment values from standard input and fails when a Privateerr deployment would start without real `PIA_USER` and `PIA_PASS` values. Invalid credentials produce a color-aware diagnostic with a corrective action; redirected output remains plain text and `NO_COLOR` disables terminal color. `make run-privateerr`, `make up`, `make up-build`, and `make test-e2e` call it automatically; `make up-pull` aliases `make up`.
-
-### `compose/nuke.sh`
-
-Validates the selected Compose model before deleting anything, captures service images, runs project-scoped teardown with volumes, orphans, and service images, then removes explicitly supplied local image references and one named Buildx builder. Repeated `--dockerfile` and `--additional-image` arguments avoid shell command evaluation. Declared base images are removed without force, so shared or in-use references are retained with a warning. Missing resources are harmless; unexpected Compose, Docker, or builder failures stop the helper.
-
-The helper never deletes repository files, `.env`, config, or backups. Make owns the later repository cleanup, transient-state reset, and example restore.
-
-### `compose/ps.sh`
-
-Resolves the Privateerr Compose project and prints only its containers in a terminal-friendly status table. Equivalent IPv4 and IPv6 wildcard bindings are collapsed, and each distinct published port receives an aligned continuation line. `make ps` is the normal entry point.
-
-For status inspection and isolated helper validation:
-
-```sh
-make ps
-make test-make-helpers
-```
-
-`make backup` archives secret-bearing `config/` data without stopping writers; preserve `.env` and any Docker-managed volumes separately when needed. `make run-privateerr` generates fresh VPN files and requires real PIA credentials; stop any supervisor that owns the destination first. See [generation](../README.md#generate-a-wireguard-configuration-) and [backup and restoration cautions](../docs/advanced-usage.md#maintenance-reference).
-
-> [!IMPORTANT]
-> Keep credentials in the ignored `.env` file. Do not pass them as command-line arguments, paste them into issues, or commit generated WireGuard state.
-
-## Documentation tools
-
-[`docs/build.sh`](docs/build.sh) provides the container implementation behind `make docs-install`, `make docs`, and `make docs-serve`. It uses Buccaneerr's optional documentation target with hash-verified dependencies, read-only source mounts, and a local preview port. It does not start the VPN stack.
+Use the [testing guide](../docs/development/privateerr/testing.md) for isolated helper checks; the [recovery guide](../docs/automatic-recovery.md) covers live diagnostics.

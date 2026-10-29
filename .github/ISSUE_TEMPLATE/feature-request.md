@@ -1,22 +1,19 @@
 ---
-name: "Feature request from the quarterdeck ✨"
-about: "Suggest new cargo for Privateerr to carry ⚓"
+name: "Feature request ✨"
+about: "Suggest a focused improvement to Privateerr"
 title: "[FEATURE] "
 labels: enhancement
 assignees: scottgigawatt
 ---
 
-**🏴‍☠️ Problem to solve**
-What limitation or rough water are ye running into?
+## Problem to solve
 
-**💰 Treasure requested**
-Describe the feature or change ye want.
+Describe the task and current limitation.
 
-**🧪 Where should it live?**
-Is this for Privateerr, Gluetun wrapper behavior, Buccaneerr validation, docs, workflows, or downstream Plundarr integration?
+## Proposed behavior
 
-**🗺️ Routes already considered**
-List alternatives, workarounds, or related ideas.
+Explain what should happen and which component owns the change.
 
-**🧭 Extra context**
-Screenshots, links, examples, or notes welcome.
+## Alternatives and context
+
+Optional: list workarounds, related issues, or examples. Keep sensitive configuration and logs private.

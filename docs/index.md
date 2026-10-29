@@ -2,26 +2,25 @@
 icon: material/ship-wheel
 ---
 
-# Privateerr developer chart room 🏴‍☠️
+# Privateerr documentation 🏴‍☠️
 
-Welcome aboard the developer documentation for **Privateerr** and its Python recovery supervisor. These charts explain how Privateerr generates PIA connection settings, hands them to Gluetun, and repairs sustained tunnel failures without adding another service.
+Find the task you need, then follow the shortest safe route. Privateerr generates PIA settings; Gluetun owns the tunnel.
 
-## Choose a route 🧭
+## Operate Privateerr
 
-| Destination | Best for |
-| :--- | :--- |
-| [Supervisor overview](development/privateerr/index.md) | Understanding responsibilities and source layout |
-| [Architecture](development/privateerr/architecture.md) | Following generation, API updates, and verified publication |
-| [Python documentation](development/privateerr/documentation.md) | Writing useful public docstrings and implementation notes |
-| [Testing](development/privateerr/testing.md) | Selecting the right validation voyage |
-| [Python reference](development/privateerr/reference/index.md) | Looking up public classes and functions from source |
-| [Automatic recovery](automatic-recovery.md) | Configuring a deployment and understanding its limits |
+- [Initial setup](https://github.com/scottgigawatt/privateerr#readme).
+- [Automatic recovery](automatic-recovery.md): configure the API, change regions, and diagnose failures.
+- [Maintenance and images](advanced-usage.md): backup scope, cleanup, and image channels.
+- [Support](SUPPORT.md) and [private vulnerability reporting](SECURITY.md).
+- [Plundarrpedia](https://scottgigawatt.github.io/plundarrpedia/): broader platform and generated-stack deployment guides.
 
-> [!NOTE]
-> Privateerr generates and supervises connection settings. Gluetun owns the VPN tunnel, firewall, DNS, and forwarded port. Buccaneerr is the separate test image, not a production recovery service.
+## Develop Privateerr
 
-## Understand documentation boundaries 📚
+- [Source responsibilities](development/privateerr/index.md).
+- [Architecture](development/privateerr/architecture.md).
+- [Testing](development/privateerr/testing.md).
+- [Python documentation conventions](development/privateerr/documentation.md).
+- [Generated Python reference](development/privateerr/reference/index.md).
+- [Contributing](CONTRIBUTING.md) and [writing standards](documentation-style.md).
 
-This site covers the checked-out source, repository guides, and generated Python reference. Broader fleet guidance lives in [Plundarrpedia](https://scottgigawatt.github.io/plundarrpedia/); generated stack development belongs in the [Plundarr developer site](https://scottgigawatt.github.io/plundarr/).
-
-The static HTML is generated during validation and deployment. Only Markdown sources, MkDocs configuration, styling, and pinned documentation dependencies belong in Git; the generated `site/` directory does not.
+Guides describe the checked-out source; deployment releases must be checked separately. API reference comes from the same source revision. Generated HTML stays out of Git.

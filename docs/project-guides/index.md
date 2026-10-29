@@ -2,16 +2,13 @@
 icon: material/book-open-page-variant
 ---
 
-# Project guides 📖
+# Privateerr guides 📖
 
-Pick the chart that matches the work ahead:
+Choose a task:
 
-- [Configure automatic recovery and qBittorrent](../automatic-recovery.md) 🧭
-- [Build, test, and maintain Privateerr](../advanced-usage.md) 🧪
-- [Contribute to the project](../CONTRIBUTING.md) 🛠️
-- [Follow the documentation style](../documentation-style.md) ✍️
-- [Report a security concern](../SECURITY.md) 🛡️
-- [Get support](../SUPPORT.md) 🛟
-- [Review the Code of Conduct](../CODE_OF_CONDUCT.md) 🤝
+- [Configure recovery, regions, and application access](../automatic-recovery.md).
+- [Maintain configuration and choose images](../advanced-usage.md).
+- [Develop and test Privateerr](../development/privateerr/index.md).
+- [Get support](../SUPPORT.md) or [report a vulnerability privately](../SECURITY.md).
 
-For first-time setup, follow the [repository quickstart](https://github.com/scottgigawatt/privateerr#readme). For generated media stacks and wider deployment guidance, use [Plundarrpedia](https://scottgigawatt.github.io/plundarrpedia/).
+For initial setup, use the [repository quickstart](https://github.com/scottgigawatt/privateerr#readme). [Plundarrpedia](https://scottgigawatt.github.io/plundarrpedia/) covers broader deployment and platform guidance.

@@ -1,22 +1,21 @@
 ---
-name: "Documentation fix for the ship's log 📚"
-about: "Request clearer docs, examples, or setup notes ⚓"
+name: "Documentation improvement 📚"
+about: "Report a task that the documentation does not explain clearly"
 title: "[DOC] "
 labels: documentation
 assignees: scottgigawatt
 ---
 
-**📚 What needs clearer words**
-Which section, file, command, or example is confusing?
+## Page and task
 
-**📝 Requested improvement**
-What should the docs explain better?
+Link the page and explain what you were trying to do.
 
-**🗺️ Suggested wording or route**
-Drop a draft, link, or example if ye have one.
+## What was missing or unclear
 
-**🧪 Did ye try a command?**
-If a command confused ye, name it here. Examples: `make help`, `make config`, `make env`, `make print-config`, `make run-privateerr`, `make test-e2e`, `make nuke`.
+Describe the instruction you could not find, understand, or use. Include expected and actual results if you tried a command. Do not run live tests or destructive commands just to complete this report.
 
-**🧭 Extra context**
-Anything else that helps polish the ship's log.
+## Suggested improvement
+
+Optional: suggest wording, an example, or a better location.
+
+Keep credentials, generated VPN files, and private logs out of the report.

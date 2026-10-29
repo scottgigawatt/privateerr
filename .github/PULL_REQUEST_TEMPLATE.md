@@ -1,37 +1,18 @@
-# Pull Request Boarding Pass 🏴‍☠️
+# Pull request 🏴‍☠️
 
-## What changed? ⚓
+## What changed and why
 
--
+Describe the problem and resulting behavior.
 
-## Why? 🧭
+## Validation
 
--
+List exact checks run, their results, and relevant checks skipped with reasons. Select checks from the [testing guide](../docs/development/privateerr/testing.md); do not run live VPN tests for unrelated edits.
 
-## Test voyage 🧪
+- [ ] Reviewed the complete diff and preserved unrelated work.
+- [ ] No credentials, live VPN state, or private logs are included.
+- [ ] If live testing was needed, used a disposable project and completed safe shutdown/example restoration.
+- [ ] If documentation changed, applied GitHub/ISO reader outcomes, removed unnecessary duplication, and checked affected links and rendering.
 
-- [ ] `make help`
-- [ ] `make test`
-- [ ] `make test-workflows` if workflow helpers changed
-- [ ] `make test-precommit`
-- [ ] `make config`
-- [ ] `make build`
-- [ ] `make build-buccaneerr`
-- [ ] `make build-platforms` if image dependencies or build stages changed
-- [ ] `make test-e2e` if VPN behavior changed
-- [ ] Pinned action SHAs and Alpine digest defaults still move together
-- [ ] `make clean-test` restored example config after any live test
-- [ ] Any `make nuke` validation used only disposable project resources
-- [ ] `git status --short` shows no generated config, logs, or other stray cargo
+## Remaining limits
 
-## Secrets check 🛡️
-
-- [ ] No real PIA credentials
-- [ ] No live `wg0.conf`
-- [ ] No live `privateerr.env`
-- [ ] No private logs
-- [ ] Example files restored from `test/examples`
-
-## Captain's notes 📜
-
--
+Describe unresolved risks, compatibility constraints, or follow-up work.

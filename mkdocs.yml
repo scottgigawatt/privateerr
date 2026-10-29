@@ -32,13 +32,19 @@ edit_uri: edit/main/docs/
 # explicit navigation hierarchy.
 #
 nav:
-  - Chart Room: index.md
-  - Supervisor:
-      - Developer overview: development/privateerr/index.md
+  - Start: index.md
+  - Operate:
+      - Automatic recovery: automatic-recovery.md
+      - Maintenance and images: advanced-usage.md
+      - Guide map: project-guides/index.md
+  - Develop:
+      - Source overview: development/privateerr/index.md
       - Architecture: development/privateerr/architecture.md
-      - Python documentation: development/privateerr/documentation.md
       - Testing: development/privateerr/testing.md
-  - Python Reference:
+      - Python documentation: development/privateerr/documentation.md
+      - Contributing: CONTRIBUTING.md
+      - Writing standards: documentation-style.md
+  - Python reference:
       - Reference map: development/privateerr/reference/index.md
       - Configuration: development/privateerr/reference/config.md
       - HTTP client: development/privateerr/reference/client.md
@@ -49,17 +55,12 @@ nav:
       - Script installation: development/privateerr/reference/scripts.md
       - Generation: development/privateerr/reference/generation.md
       - Logging: development/privateerr/reference/log.md
-  - Project Guides:
-      - Guide map: project-guides/index.md
-      - Automatic recovery: automatic-recovery.md
-      - Advanced usage: advanced-usage.md
-      - Documentation style: documentation-style.md
-      - Contributing: CONTRIBUTING.md
+  - Project information:
       - Security: SECURITY.md
-      - Container scan review: container-scan-review.md
+      - Container scan evidence: container-scan-review.md
       - Support: SUPPORT.md
       - Code of Conduct: CODE_OF_CONDUCT.md
-      - Docker Hub description: docker-hub-description.md
+      - Docker Hub overview: docker-hub-description.md
 
 #
 # Configure Material's visual identity and navigation behavior. Project-owned

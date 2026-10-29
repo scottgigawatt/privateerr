@@ -1,13 +1,5 @@
-# Buccaneerr configuration 🔎
+# Buccaneerr logs 🔎
 
-Buccaneerr is the test-only deckhand that validates the tunnel and application handoff, then writes its log here:
+The optional validator writes `logs/buccaneerr.log` here. Normal application startup excludes Buccaneerr; live validation enables its `test` profile and can deliberately interrupt the test VPN.
 
-```text
-config/buccaneerr/logs/buccaneerr.log
-```
-
-The service belongs to the `test` Compose profile. Normal `make up` / `make up-build` startup does not start it; `make test-e2e` enables it for live validation. The log is ignored by Git because it may contain fresh connection details.
-
-Buccaneerr checks the matching configuration pair, VPN egress, Gluetun port forwarding, and qBittorrent's actual port and interface settings. With recovery testing enabled, it deliberately interrupts the active endpoint and verifies recovery while containers retain their identity. See the [canonical test coverage and limits](../../test/README.md#test-automatic-recovery) before running the live example.
-
-If the voyage sinks, inspect this log first; it usually points to the failed handoff.
+Inspect failures locally and sanitize excerpts before sharing. Logs are ignored by Git and may contain connection details. Follow the [test coverage and cleanup guide](../../docs/development/privateerr/testing.md) before running live checks.
