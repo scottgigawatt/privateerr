@@ -73,7 +73,7 @@ If a build reports a missing `pia-manual-connections/LICENSE`, [initialize the p
 
 ## Generate a WireGuard configuration ⚡
 
-In the current source (unreleased), setting both `PRIVATEERR_KEEPALIVE=false` and `PRIVATEERR_AUTO_RECOVER=false` selects one-shot generation without installing or changing Gluetun scripts. After preparing the checkout, run:
+In this source revision, setting both `PRIVATEERR_KEEPALIVE=false` and `PRIVATEERR_AUTO_RECOVER=false` selects one-shot generation without installing or changing Gluetun scripts. After preparing the checkout, run:
 
 ```sh
 make run-privateerr
@@ -107,7 +107,7 @@ PIA_PASS=YOUR-PIA-PASSWORD
 ```
 
 > [!IMPORTANT]
-> `latest` (2.3.1) still installs Gluetun scripts under `config/gluetun/scripts/`. The one-shot script isolation described above is unreleased and applies only to the current source.
+> Privateerr 2.3.1 and earlier install Gluetun scripts under `config/gluetun/scripts/` even in one-shot mode. Before using a published image, check its [release notes](https://github.com/scottgigawatt/privateerr/releases) for one-shot script isolation; otherwise, build this source with the Make command above.
 
 Run generation from that directory. It replaces saved VPN files, so preserve any needed state and stop other writers first:
 
