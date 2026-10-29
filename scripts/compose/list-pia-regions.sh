@@ -25,12 +25,10 @@ set -eu
 # Check both host tools before creating temporary files or requesting the catalog.
 #
 for dependency in curl jq; do
-
     if ! command -v "${dependency}" >/dev/null 2>&1; then
         printf 'Required command not found: %s. Install it and retry.\n' "${dependency}" >&2
         exit 1
     fi
-
 done
 
 #
@@ -80,84 +78,84 @@ fi
 # Render the complete table before displaying it so validation errors leave stdout empty.
 #
 jq --exit-status --raw-output --argjson color "${color}" '
-  #
-  # pad: Pad a plain-text field before terminal color codes are added.
-  #
-  # Parameters: $width - Minimum field length in characters.
-  #
-  # Returns: The input string with trailing spaces to reach the requested length.
-  #
-  def pad($width):
-    . + (" " * ($width - length));
+    #
+    # pad: Pad a plain-text field before terminal color codes are added.
+    #
+    # Parameters: $width - Minimum field length in characters.
+    #
+    # Returns: The input string with trailing spaces to reach the requested length.
+    #
+    def pad($width):
+        . + (" " * ($width - length));
 
-  #
-  # Validate every catalog row before constructing the headings or data rows.
-  #
-  .regions
-  | if type == "array" and length > 0 and all(.[];
-      (.name | type) == "string" and (.id | type) == "string"
-      and (.port_forward | type) == "boolean")
-    then
-      .
-    else
-      error("The PIA catalog has no valid region list.")
-    end
+    #
+    # Validate every catalog row before constructing the headings or data rows.
+    #
+    .regions
+    | if type == "array" and length > 0 and all(.[];
+        (.name | type) == "string" and (.id | type) == "string"
+        and (.port_forward | type) == "boolean")
+        then
+        .
+        else
+        error("The PIA catalog has no valid region list.")
+        end
 
-  #
-  # Keep every region and sort by location; forwarding support changes the label, not membership.
-  #
-  | [["LOCATION", "REGION ID", "PORT FORWARDING"]]
-    + (
-      sort_by(.name)
-      | map([
-          .name,
-          .id,
+    #
+    # Keep every region and sort by location; forwarding support changes the label, not membership.
+    #
+    | [["LOCATION", "REGION ID", "PORT FORWARDING"]]
+        + (
+        sort_by(.name)
+        | map([
+            .name,
+            .id,
 
-          (if .port_forward then
-            "Yes"
-          else
-            "No"
-          end)
+            (if .port_forward then
+                "Yes"
+            else
+                "No"
+            end)
 
-        ])
-    )
-
-  #
-  # Size columns from both headings and data before introducing ANSI escape sequences.
-  #
-  | (map(.[0] | length) | max) as $name_width
-  | (map(.[1] | length) | max) as $id_width
-  | to_entries[]
-  | .key as $index | .value as $row
-
-  #
-  # Retain readable Yes/No labels when color is unavailable or explicitly disabled.
-  #
-  | (
-      if $color and $index > 0 then
-
-        (
-          if $row[2] == "Yes" then
-            "\u001b[32m"
-          else
-            "\u001b[31m"
-          end
+            ])
         )
-        + $row[2] + "\u001b[0m"
 
-      else
-        $row[2]
-      end
-    ) as $status
+    #
+    # Size columns from both headings and data before introducing ANSI escape sequences.
+    #
+    | (map(.[0] | length) | max) as $name_width
+    | (map(.[1] | length) | max) as $id_width
+    | to_entries[]
+    | .key as $index | .value as $row
 
-  | ($row[0] | pad($name_width)) + "  "
-    + ($row[1] | pad($id_width)) + "  " + $status
+    #
+    # Retain readable Yes/No labels when color is unavailable or explicitly disabled.
+    #
+    | (
+        if $color and $index > 0 then
 
-  | if $color and $index == 0 then
-      "\u001b[1;36m" + . + "\u001b[0m"
-    else
-      .
-    end
+            (
+            if $row[2] == "Yes" then
+                "\u001b[32m"
+            else
+                "\u001b[31m"
+            end
+            )
+            + $row[2] + "\u001b[0m"
+
+        else
+            $row[2]
+        end
+        ) as $status
+
+    | ($row[0] | pad($name_width)) + "  "
+        + ($row[1] | pad($id_width)) + "  " + $status
+
+    | if $color and $index == 0 then
+        "\u001b[1;36m" + . + "\u001b[0m"
+        else
+        .
+        end
 ' "${work_directory}/catalog.json" >"${work_directory}/table"
 
 cat "${work_directory}/table"

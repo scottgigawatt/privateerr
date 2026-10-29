@@ -380,8 +380,8 @@ endef
 
 #
 # Verify Docker Compose availability.
+# The public PIA region lookup uses host tools and does not need Docker Compose.
 #
-# The public region lookup uses host tools and does not need Docker Compose.
 ifneq ($(MAKECMDGOALS),$(LIST_PIA_REGIONS))
 ifeq ($(DOCKER_COMPOSE),)
     $(error "Neither 'docker compose' nor 'docker-compose' is available. \
