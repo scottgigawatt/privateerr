@@ -4,7 +4,7 @@ This review checks local Privateerr and Buccaneerr update candidates on October 
 
 ## Subsequent Markdown-tooling fix
 
-Pull-request CI later detected [CVE-2026-116795](https://github.com/le0pard/re2js/security/advisories/GHSA-gg6h-894w-4m9c) in Buccaneerr's re2js 2.8.6 dependency. Upstream fixes its repeated lookbehind matching in [2.8.7](https://github.com/le0pard/re2js/releases/tag/2.8.7). Markdownlint 0.42.0 still pins 2.8.6, so the test-tool manifest overrides only markdownlint's re2js to 2.8.7 and locks its published integrity hash. Remove that override when a compatible Markdownlint release includes the fix. No scan exception is added.
+Pull-request CI later detected [CVE-2026-116795](https://github.com/le0pard/re2js/security/advisories/GHSA-gg6h-894w-4m9c) in Buccaneerr's re2js 2.8.6 dependency. Upstream fixes its repeated lookbehind matching in [2.8.7](https://github.com/le0pard/re2js/releases/tag/2.8.7). Markdownlint 0.42.0 still pins 2.8.6, so the test-tool manifest overrides only markdownlint's re2js to a patched release and locks its published integrity hash. Remove that override when a compatible Markdownlint release includes the fix. No scan exception is added.
 
 The candidate identities and totals below predate this follow-up and do not describe rebuilt images containing the override.
 
