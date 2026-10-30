@@ -164,7 +164,11 @@ Use `make up-build` for a source build. [Direct Compose startup](docs/advanced-u
 
 ## Select a PIA region 🧭
 
-Automatic selection is the default. Run `make list-pia-regions` to see all region IDs and port-forwarding support; host `curl` and `jq` are required. The table uses color in terminals and respects `NO_COLOR`. Follow [region lookup and safe regeneration](docs/automatic-recovery.md#choose-a-region) to choose a region or list regions without Make.
+Automatic selection is the default. To pin a region, set `PIA_AUTOCONNECT=false` and `PIA_PREFERRED_REGION=YOUR-CHOSEN-PIA-REGION-ID` in `.env`, replacing the placeholder with a PIA region `id`.
+
+With `curl` and `jq` installed on the host, run `make list-pia-regions` to see all region IDs and port-forwarding support.
+
+Recovery-enabled startup reuses valid saved files; changing these values alone does not replace a healthy connection. Follow the [safe regeneration procedure](docs/automatic-recovery.md#choose-a-region).
 
 ## Find commands and image channels ⚙️
 
