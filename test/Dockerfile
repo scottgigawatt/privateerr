@@ -27,7 +27,7 @@ FROM docker:29.9.2-cli@sha256:5e6baf67325a79f64ed3bed6863954d5e05d0f3d4e57cbdb14
 # Stage 3 of 6: Obtain the reviewed official Compose binary for every supported CPU.
 # Keep official tooling intact rather than rebuilding its dependency graph.
 #
-FROM docker/compose-bin:v5.6.1@sha256:2aeaeedd4f2d8e2dcb399b2b9723bfaeb6714140cb0657897f5865960f1624ae AS compose
+FROM docker/compose-bin:v5.7.0@sha256:a4de4851b16f18634f74de66f126d5de65f7c5cb5a9502d67ab83e9a96041a70 AS compose
 
 #
 # Stage 4 of 6: Keep all validation tools in the test-only Buccaneerr image.

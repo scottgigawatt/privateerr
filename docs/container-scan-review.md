@@ -1,6 +1,14 @@
 # Container security review
 
-This review checks local Privateerr and Buccaneerr update candidates on October 28, 2026 (UTC). Every image was examined on `linux/amd64`, `linux/arm64`, and `linux/arm/v7`. These candidates are review artifacts; changing source does not publish an image or advance `latest`.
+The historical review below checks local Privateerr and Buccaneerr update candidates on October 28, 2026 (UTC). Every image was examined on `linux/amd64`, `linux/arm64`, and `linux/arm/v7`. These candidates are review artifacts; changing source does not publish an image or advance `latest`.
+
+## November 4, 2026 official Compose update
+
+Buccaneerr now copies Docker's published [Compose 5.7.0 binary](https://github.com/docker/compose/releases/tag/v5.7.0) from the immutable donor index `sha256:a4de4851b16f18634f74de66f126d5de65f7c5cb5a9502d67ab83e9a96041a70`. The index supplies `linux/amd64`, `linux/arm64`, and `linux/arm/v7`. It includes `golang.org/x/net v0.60.0`, which fixes CVE-2026-78669 and four additional x/net advisories present in the previous donor. No project-specific Go build is introduced.
+
+Trivy 0.76.1 compared both immutable donor indexes on all three platforms using comprehensive detection, every severity, unfixed findings, and an explicit empty ignore file. The same database, updated at `2026-11-03 19:16:30 UTC`, was held constant for all six scans. Reported image architectures matched the requested platforms. Findings fell from eight to three on each platform: CVE-2026-78669, CVE-2026-78659, CVE-2026-78660, CVE-2026-78663, and CVE-2026-97032 are absent from 5.7.0. GO-2026-5932, CVE-2026-78661, and CVE-2026-97045 remain visible at UNKNOWN severity; this update does not claim a vulnerability-free binary.
+
+These are donor-image results, not rebuilt Buccaneerr or published-release totals. The existing exact-path exception and November 6 expiry remain unchanged pending separate maintainer review. Removing that obsolete exception is recommended after reviewing this fix. The earlier candidate identities and counts below remain historical evidence.
 
 ## Subsequent Markdown-tooling fix
 
@@ -50,7 +58,7 @@ The PIA submodule and reviewed Docker CLI 29.9.2, Compose 5.6.1, ShellCheck 0.11
 
 ## Current Compose exception
 
-The latest official Compose 5.6.1 binary still embeds `golang.org/x/net v0.58.0`; [CVE-2026-78669](https://pkg.go.dev/vuln/GO-2026-6611) requires its fix from x/net 0.60.0. The existing exception covers only `usr/local/lib/docker/cli-plugins/docker-compose` and still expires November 6, 2026. Its scope, expiry, and risk statement are unchanged. A fixed library release does not make the official binary fixed until that binary incorporates it.
+The October 28 Compose 5.6.1 candidate embeds `golang.org/x/net v0.58.0`; [CVE-2026-78669](https://pkg.go.dev/vuln/GO-2026-6611) requires its fix from x/net 0.60.0. Compose 5.7.0 now includes that fix, as verified above. The retained exception covers only `usr/local/lib/docker/cli-plugins/docker-compose` and still expires November 6, 2026. Its scope, expiry, and risk statement are unchanged. A fixed library release does not make the official binary fixed until that binary incorporates it.
 
 This HTTP/2 issue affects clients and servers; being a CLI is not an exemption. Supported checks use trusted fixtures and the wrapper's local Unix Docker socket. The wrapper rejects remote Docker contexts and does not forward `DOCKER_HOST`. Network-enabled runtime tests remain supported, and untrusted HTTP/2 peers outside this boundary retain risk. Remove the exception after compatible official binaries on every supported platform include the fix, or review the remaining risk before the existing expiry. Keep full unfiltered scans regardless of the gate.
 
