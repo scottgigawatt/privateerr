@@ -21,7 +21,7 @@ FROM koalaman/shellcheck:v0.11.0@sha256:61862eba1fcf09a484ebcc6feea46f1782532571
 # Stage 2 of 6: Obtain the current Docker client without a daemon or extra plugins.
 # Alpine's packaged client lags behind upstream security releases.
 #
-FROM docker:29.9.2-cli@sha256:5e6baf67325a79f64ed3bed6863954d5e05d0f3d4e57cbdb14809346814bbfdb AS docker-cli
+FROM docker:29.9.3-cli@sha256:4d742ab934c2149b628bf26369ac3ec51cb91e2e28fe6722a0e86a6d6efc4bd5 AS docker-cli
 
 #
 # Stage 3 of 6: Obtain the reviewed official Compose binary for every supported CPU.
