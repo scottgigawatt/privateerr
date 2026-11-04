@@ -73,7 +73,7 @@ The protected build path then:
 
 Rebuilding the same commit keeps the pinned base image, but uncached APK installation can pick up newer packages from Alpine. Renovate updates base and tool pins separately. Pull the resulting `edge` image or publish a stable release to deliver fixes to `latest`.
 
-The remaining exact-path Compose exception for CVE-2026-78669 expires on November 6, 2026. The official Compose 5.7.0 donor now includes the fix on every supported platform. The exception remains unchanged pending separate maintainer review; all other scan rules remain unchanged. See the [current exception scope and risk](container-scan-review.md#current-compose-exception).
+The obsolete Compose exception for CVE-2026-78669 is removed. Official Compose 5.7.0 includes the fix, and unfiltered published Buccaneerr scans confirm clearance on every supported platform. Fixed HIGH and CRITICAL findings still fail CI. See the [removal evidence and remaining findings](container-scan-review.md#removed-compose-exception).
 
 See the [dated container scan review](container-scan-review.md) for the reviewed image identities, dependency-fix scope, and upstream evidence behind remaining package-level alerts. Its scan dates and image revisions matter; results for an `edge` image do not describe every stable release.
 

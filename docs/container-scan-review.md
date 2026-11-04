@@ -8,7 +8,7 @@ Buccaneerr now copies Docker's published [Compose 5.7.0 binary](https://github.c
 
 Trivy 0.76.1 compared both immutable donor indexes on all three platforms using comprehensive detection, every severity, unfixed findings, and an explicit empty ignore file. The same database, updated at `2026-11-03 19:16:30 UTC`, was held constant for all six scans. Reported image architectures matched the requested platforms. Findings fell from eight to three on each platform: CVE-2026-78669, CVE-2026-78659, CVE-2026-78660, CVE-2026-78663, and CVE-2026-97032 are absent from 5.7.0. GO-2026-5932, CVE-2026-78661, and CVE-2026-97045 remain visible at UNKNOWN severity; this update does not claim a vulnerability-free binary.
 
-These are donor-image results, not rebuilt Buccaneerr or published-release totals. The existing exact-path exception and November 6 expiry remain unchanged pending separate maintainer review. Removing that obsolete exception is recommended after reviewing this fix. The earlier candidate identities and counts below remain historical evidence.
+These donor-image results are separate from the published-image recheck below. The earlier candidate identities and counts remain historical evidence.
 
 ## Subsequent Markdown-tooling fix
 
@@ -27,7 +27,7 @@ The counts below are identical on all three platforms:
 | Privateerr | Local stable-Python candidate | 0 | 1 | 1 |
 | Buccaneerr | Local stable-Python candidate | 10 | 38 | 34 |
 
-Whole-image scanner totals do not establish coverage of every embedded archive. Python's retained `ensurepip` bootstrap wheel requires the separate inspection described below. Buccaneerr retains upstream tool findings; this review does not declare either image free of vulnerabilities. The normal CI gate is narrower than this audit: it rejects fixed HIGH/CRITICAL findings, uses precise detection by default, and applies the one exact-path Compose exception.
+Whole-image scanner totals do not establish coverage of every embedded archive. Python's retained `ensurepip` bootstrap wheel requires the separate inspection described below. Buccaneerr retains upstream tool findings; this review does not declare either image free of vulnerabilities. The normal CI gate is narrower than this audit: it rejects fixed HIGH/CRITICAL findings and uses precise detection by default. It no longer applies a Compose exception.
 
 ## Production runtime updates
 
@@ -49,18 +49,28 @@ The pinned Alpine 3.24 image already resolves to 3.24.3 and remains current. Bui
 | KaTeX npm override | Retained at 0.19.1. Removing it resolves the math extension's `^0.16.0` dependency to 0.16.47 and restores [CVE-2026-103923](https://github.com/advisories/GHSA-238p-pmpm-9mq7). The final npm audit reports zero findings. |
 | Ruff packaging | Updated to 0.17.3 in the hash-verified tool and documentation locks. Official wheels cover all three Linux targets; Alpine's older Ruff package is unnecessary. |
 | Inactive virtualenv seed-wheel cleanup | Retained. Only virtualenv's active upstream pip 26.2.2 and setuptools 84.2.1 wheels are retained for Python 3.14; upstream wheel integrity checks remain intact. |
-| Compose CVE exception | Retained at its existing path and expiry; see the next section. No exception is added or broadened. |
+| Compose CVE exception | Removed on November 4 after the official fix and unfiltered published-image scans confirmed clearance on every platform; see the next section. |
 | Date compatibility shim | Retained. Current upstream PIA still calls `date --date='1 day'`; BusyBox rejects that syntax, while the shim translates it and delegates to BusyBox. No GNU coreutils package is introduced. |
 | Hadolint DL3018 package-version exception | Retained for APK installation. Stable package refreshes deliberately accept current security revisions rather than pinning each APK forever; immutable image pins and scans identify the built result. Removing the existing lint flag still produces DL3018. |
 | Hadolint DL3064 path exceptions | Retained. Current Hadolint 2.15.1 still flags the non-secret Privateerr install-path argument and environment names when these targeted comments are removed. |
 
 The PIA submodule and reviewed Docker CLI 29.9.2, Compose 5.6.1, ShellCheck 0.11.0, Hadolint 2.15.1, actionlint 1.7.12, and direct npm tool pins are unchanged. The October 29 package check found a new signed edge actionlint `1.7.12-r3` rebuild using Go 1.27.3 on all three platforms. The test image fetches only that APK from a command-line-only edge source and installs it locally; dependencies and configured repositories remain on stable, with no retained repository tag. Execution and package-closure checks on all three target architectures confirm compatibility without upgrading musl or other stable libraries. No project-specific Go rebuild or customized pip distribution is added.
 
-## Current Compose exception
+## Removed Compose exception
 
-The October 28 Compose 5.6.1 candidate embeds `golang.org/x/net v0.58.0`; [CVE-2026-78669](https://pkg.go.dev/vuln/GO-2026-6611) requires its fix from x/net 0.60.0. Compose 5.7.0 now includes that fix, as verified above. The retained exception covers only `usr/local/lib/docker/cli-plugins/docker-compose` and still expires November 6, 2026. Its scope, expiry, and risk statement are unchanged. A fixed library release does not make the official binary fixed until that binary incorporates it.
+The exact-path exception for [CVE-2026-78669](https://pkg.go.dev/vuln/GO-2026-6611) is removed, together with the unused ignore file and workflow references. Official Compose 5.7.0 contains the fix from x/net 0.60.0 on every supported platform. CI continues to reject fixed HIGH and CRITICAL findings; no exception is added, broadened, or extended.
 
-This HTTP/2 issue affects clients and servers; being a CLI is not an exemption. Supported checks use trusted fixtures and the wrapper's local Unix Docker socket. The wrapper rejects remote Docker contexts and does not forward `DOCKER_HOST`. Network-enabled runtime tests remain supported, and untrusted HTTP/2 peers outside this boundary retain risk. Remove the exception after compatible official binaries on every supported platform include the fix, or review the remaining risk before the existing expiry. Keep full unfiltered scans regardless of the gate.
+On November 4, Trivy 0.76.1 scanned all three runtime manifests from published Buccaneerr index `sha256:c723041fad63f778985e6a31f3406b856e89c4e0851b389ba6b10c2789973c97`, built from source `28ab2a6f8598d92377df059c9d41191cdcfebca5`. The database updated at `2026-11-04 13:16:53 UTC` was held constant. Comprehensive detection included every severity and unfixed findings with an explicit empty ignore file. Each reported architecture matched the selected manifest.
+
+| Platform | Published runtime manifest digest |
+| --- | --- |
+| `linux/amd64` | `sha256:2fba0cecebadedfdbbc9c2e6242fdf84dec17f364f2b1a9359470fe314744b7e` |
+| `linux/arm64` | `sha256:482f95726a00af6d33b96ccc029a33ffa1dd6a291ad89337c4c8157f81162250` |
+| `linux/arm/v7` | `sha256:8e02ea36d41fa87af35c0c0bae2bc9ef54e3e1c63b6d4baa34ebc823aaabc3b3` |
+
+CVE-2026-78669 is absent from every report. Each platform retains four UNKNOWN findings: actionlint's CVE-2026-39824 and Compose's GO-2026-5932, CVE-2026-78661, and CVE-2026-97045. There are no HIGH or CRITICAL findings in these reports. This result does not establish coverage of nested archives or claim vulnerability-free images. The current database now identifies an upstream fix for GO-2026-5932; Compose 5.7.0 still contains the older module.
+
+Removing the exception does not update previously released images. Buccaneerr from the existing Privateerr v2.4.0 stable release still contains Compose 5.6.1; the verified fix is available in the published edge image above. No stable release is created by this cleanup.
 
 ## Interpret remaining findings
 
