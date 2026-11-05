@@ -3,7 +3,7 @@
 #
 # Copyright 2025-2026 Scott Gigawatt
 #
-# Licensed under the Apache License, Version 2.0.
+# SPDX-License-Identifier: Apache-2.0
 #
 # compose-docker-stub.sh: Stand in for the Docker CLI during Compose helper
 #                         tests without contacting a Docker daemon.

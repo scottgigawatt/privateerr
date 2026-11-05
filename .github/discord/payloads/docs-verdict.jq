@@ -1,7 +1,7 @@
 #
 # Copyright 2025-2026 Scott Gigawatt
 #
-# Licensed under the Apache License, Version 2.0.
+# SPDX-License-Identifier: Apache-2.0
 #
 # docs-verdict.jq: Render the shared Discord embed for documentation build and
 #                  deployment results.

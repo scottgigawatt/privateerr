@@ -1,7 +1,7 @@
 <!--
   Copyright 2025-2026 Scott Gigawatt
 
-  Licensed under the Apache License, Version 2.0.
+  SPDX-License-Identifier: Apache-2.0
 
   AGENTS.md: Contributor and AI-agent operating instructions for Privateerr.
   -->
@@ -69,7 +69,7 @@ This overwrites both destination files; never run it against an operator's activ
 
 Comments use plain English and explain intent, constraints, or non-obvious behavior. Do not narrate assignments or obvious syntax, add repetitive step labels, or use pirate language in code comments.
 
-Project-owned scripts and config-style files start with a copyright line, Apache-2.0 license note, a short filename summary, and a short bullet list when usage or behavior needs context. Put one blank line after a shell shebang before that block. Align inline Compose comments within each logical group with at least two spaces before `#`.
+Project-owned scripts and config-style files start with a copyright line, `SPDX-License-Identifier: Apache-2.0` license note, a short filename summary, and a short bullet list when usage or behavior needs context. Use the literal `SPDX-License-Identifier: Apache-2.0` line in top-of-file comments. Preserve the existing comment syntax, blank lines and comment-only separators around it, copyright notices, and filename/purpose summaries. Put one blank line after a shell shebang before that block. Align inline Compose comments within each logical group with at least two spaces before `#`.
 
 Fix the cause of lint, typing, spelling, or security findings. Any necessary exception must be narrow, justified beside the affected code, and tied to a real runtime or test constraint. Do not weaken strict modes, exclude whole code areas, or add blanket suppressions to hide findings.
 
@@ -98,7 +98,7 @@ Keep each short explanatory sentence on one comment line. Test shell helpers wit
 
 ### Python
 
-Python modules and tests start with the copyright, Apache-2.0, and filename summary block, followed by a useful module docstring. Prefer small functions, explicit types at application boundaries, standard-library facilities, validated dynamic input, narrowed optional values, and explicit collection and callback contracts. Avoid blanket `Any` annotations or broad exceptions that conceal errors.
+Python modules and tests start with the copyright, `SPDX-License-Identifier: Apache-2.0`, and filename summary block, followed by a useful module docstring. Prefer small functions, explicit types at application boundaries, standard-library facilities, validated dynamic input, narrowed optional values, and explicit collection and callback contracts. Avoid blanket `Any` annotations or broad exceptions that conceal errors.
 
 `ruff.toml` owns lint and formatting rules, including import order, four-space indentation, and Unix line endings. Editors, pre-commit, and PR validation must use this same `ruff.toml` for both Ruff lint and format checks. Run both Ruff lint and format checks through `make lint`; that target also runs strict Pyright and ShellCheck. `pyrightconfig.json` covers all project-owned Python modules and tests, including optional fuzz harnesses. `make test-types` runs the pinned containerized checker; `make test`, pre-commit, and PR/main/release validation must enforce strict Python checking. Document any targeted diagnostic exception beside the intentional test or optional dependency.
 
