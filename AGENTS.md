@@ -69,7 +69,7 @@ This overwrites both destination files; never run it against an operator's activ
 
 Comments use plain English and explain intent, constraints, or non-obvious behavior. Do not narrate assignments or obvious syntax, add repetitive step labels, or use pirate language in code comments.
 
-Project-owned scripts and config-style files start with a copyright line, `SPDX-License-Identifier: Apache-2.0` license note, a short filename summary, and a short bullet list when usage or behavior needs context. Put one blank line after a shell shebang before that block. Align inline Compose comments within each logical group with at least two spaces before `#`.
+Project-owned scripts and config-style files start with a copyright line, `SPDX-License-Identifier: Apache-2.0` license note, a short filename summary, and a short bullet list when usage or behavior needs context. Use the literal `SPDX-License-Identifier: Apache-2.0` line in top-of-file comments. Preserve the existing comment syntax, blank lines and comment-only separators around it, copyright notices, and filename/purpose summaries. Put one blank line after a shell shebang before that block. Align inline Compose comments within each logical group with at least two spaces before `#`.
 
 Fix the cause of lint, typing, spelling, or security findings. Any necessary exception must be narrow, justified beside the affected code, and tied to a real runtime or test constraint. Do not weaken strict modes, exclude whole code areas, or add blanket suppressions to hide findings.
 
