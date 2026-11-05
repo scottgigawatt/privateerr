@@ -1,7 +1,7 @@
 #
 # Copyright 2025-2026 Scott Gigawatt
 #
-# Licensed under the Apache License, Version 2.0.
+# SPDX-License-Identifier: Apache-2.0
 #
 # collect-build-pins.awk: Extract and validate digest-pinned build dependency
 #                         tags from one repository policy surface.

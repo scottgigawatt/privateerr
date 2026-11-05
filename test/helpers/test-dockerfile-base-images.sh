@@ -3,7 +3,7 @@
 #
 # Copyright 2025-2026 Scott Gigawatt
 #
-# Licensed under the Apache License, Version 2.0.
+# SPDX-License-Identifier: Apache-2.0
 #
 # test-dockerfile-base-images.sh: Validate portable Dockerfile base-image
 #                                 discovery without contacting Docker.

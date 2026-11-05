@@ -3,7 +3,7 @@
 #
 # Copyright 2025-2026 Scott Gigawatt
 #
-# Licensed under the Apache License, Version 2.0.
+# SPDX-License-Identifier: Apache-2.0
 #
 # gluetun-entrypoint-wrapper.sh: Prepare generated PIA settings and optional recovery access before starting Gluetun.
 #

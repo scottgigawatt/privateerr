@@ -1,7 +1,7 @@
 #
 # Copyright 2025-2026 Scott Gigawatt
 #
-# Licensed under the Apache License, Version 2.0.
+# SPDX-License-Identifier: Apache-2.0
 #
 # test_generation_details.py: Exercise bounded PIA output, metadata, and recovery invocation.
 #
@@ -168,6 +168,14 @@ class GenerationDetailTests(unittest.TestCase):
             self.generator.write_metadata(stage, "example-one", time.monotonic() + 3)
 
         metadata = (stage / "privateerr.env").read_text()
+
+        # Generated metadata retains the source header's blank comment separators.
+        self.assertTrue(
+            metadata.startswith(
+                "#\n# Copyright 2025-2026 Scott Gigawatt\n#\n"
+                "# SPDX-License-Identifier: Apache-2.0\n#\n"
+            )
+        )
         self.assertIn("PIA_REGION_ID=example-region\n", metadata)
         self.assertIn("PIA_PORT_FORWARDING_SUPPORTED=true\n", metadata)
         self.assertIn("PIA_GEOLOCATED_REGION=false\n", metadata)

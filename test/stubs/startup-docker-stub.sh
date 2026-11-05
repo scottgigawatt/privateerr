@@ -3,7 +3,7 @@
 #
 # Copyright 2025-2026 Scott Gigawatt
 #
-# Licensed under the Apache License, Version 2.0.
+# SPDX-License-Identifier: Apache-2.0
 #
 # startup-docker-stub.sh: Record startup and teardown recipe calls without
 #                         contacting Docker or a VPN provider.
