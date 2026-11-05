@@ -28,6 +28,11 @@ x-default-healthcheck-settings: &default-healthcheck-settings  # YAML anchor for
   retries: ${DEFAULT_HEALTHCHECK_RETRIES}                      # Mark as unhealthy after failures
 
 #
+# Define the project name for this stack.
+#
+name: ${COMPOSE_PROJECT_NAME}
+
+#
 # Define the services used in this stack.
 #
 services:
