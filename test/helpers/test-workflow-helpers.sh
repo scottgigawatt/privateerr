@@ -165,6 +165,11 @@ sh "${REPOSITORY_ROOT}/test/policy/check-compose-exception-policy.sh"
 sh "${REPOSITORY_ROOT}/test/helpers/test-compose-exception-policy.sh"
 
 #
+# Only the two named webhooks may be used, with no fallback across destinations.
+#
+PYTHONDONTWRITEBYTECODE=1 python3 "${REPOSITORY_ROOT}/test/helpers/test_discord_secret_scope.py"
+
+#
 # Exercise every notification state and metadata boundary without external writes.
 #
 sh "${REPOSITORY_ROOT}/test/helpers/test-discord-notifier.sh"
