@@ -15,6 +15,16 @@ After building the tool image, these suites use networking-disabled containers a
 
 For Python changes, use `make lint`; `make format` intentionally applies Ruff import/format fixes. The root Ruff and strict Pyright configurations also drive editors and CI.
 
+## Check workflow notifications
+
+The [notification guide](https://github.com/scottgigawatt/privateerr/blob/main/.github/discord/README.md) owns destination setup, message editing, fixed colors, and synthetic previews. Use the Docker-based workflow-helper suite after notification changes:
+
+```sh
+make test-workflows
+```
+
+Its fixtures cover image and documentation starts and results, every joke variant, publication evidence, metadata limits, and isolated delivery failures. They contact neither Discord nor a registry. Dry-run payloads do not verify a webhook’s actual destination or live Discord rendering.
+
 ## Run repository hooks
 
 Pre-commit can download hook environments, modify files, and use the local Docker socket for nested checks. Inspect its resulting diff:

@@ -12,6 +12,8 @@
     // Accept project names, dependencies, and intentional pirate vocabulary.
     //
     "cSpell.words": [
+        "rootfs",
+        "startswith",
         "absmiddle",
         "accDescr",
         "actionlint",
@@ -19,6 +21,7 @@
         "apikey",
         "aquasecurity",
         "argjson",
+        "Asteres",
         "autorefs",
         "Avenir",
         "avoidin",

@@ -43,6 +43,46 @@ concurrency:
 
 jobs:
   #
+  # Announce documentation updates without gating the build or deployment.
+  #
+  notify-start:
+    name: "Open the Reading Room 📣"
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      #
+      # Read only the notification helper and presentation assets.
+      #
+      - name: "Fetch the Reading List 🧰"
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
+
+      #
+      # Documentation notices use only the private Asteres destination.
+      #
+      - name: "Notify Asteres: documentation started 📣"
+        continue-on-error: true
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          REPOSITORY: ${{ github.repository }}
+          REF_NAME: ${{ github.ref_name }}
+          WORKFLOW_NAME: ${{ github.workflow }}
+          ACTOR: ${{ github.actor }}
+        run: |
+          sh .github/scripts/discord-notifier.sh \
+              --type docs-start \
+              --profile docs \
+              --image-name "Privateerr" \
+              --run-url "${RUN_URL}" \
+              --repository "${REPOSITORY}" \
+              --ref-name "${REF_NAME}" \
+              --workflow-name "${WORKFLOW_NAME}" \
+              --actor "${ACTOR}"
+
+  #
   # Build one immutable static artifact before entering the deployment
   # environment with Pages write permissions.
   #
@@ -136,6 +176,7 @@ jobs:
     name: "Report from the Chart Room 🦜"
     if: always()
     needs:
+      - notify-start
       - build
       - deploy
     runs-on: ubuntu-latest
@@ -154,7 +195,8 @@ jobs:
       #
       # Report build and deployment outcomes to the optional Discord destination.
       #
-      - name: "Notify Discord: documentation verdict 📣"
+      - name: "Notify Asteres: documentation verdict 📣"
+        continue-on-error: true
         env:
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
           DOCS_BUILD_STATUS: ${{ needs.build.result }}

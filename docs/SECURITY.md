@@ -73,7 +73,7 @@ The protected build path then:
 
 Rebuilding the same commit keeps the pinned base image, but uncached APK installation can pick up newer packages from Alpine. Renovate updates base and tool pins separately. Pull the resulting `edge` image or publish a stable release to deliver fixes to `latest`.
 
-The obsolete Compose exception for CVE-2026-78669 is removed. Official Compose 5.7.0 includes the fix, and unfiltered published Buccaneerr scans confirm clearance on every supported platform. Fixed HIGH and CRITICAL findings still fail CI. See the [removal evidence and remaining findings](container-scan-review.md#removed-compose-exception).
+The obsolete Compose exception for CVE-2026-78669 is removed. Official Compose 5.7.0 includes the fix, and unfiltered published Buccaneerr scans confirm clearance on every supported platform. Other fixed HIGH and CRITICAL findings still fail CI. The new [CVE-2026-78661-only exception](container-scan-review.md#november-8-2026-temporary-compose-exception) applies only to the reviewed test-only Buccaneerr Compose binary and expires on November 22, 2026 at 00:00 UTC. See the [older removal evidence and remaining findings](container-scan-review.md#removed-compose-exception).
 
 See the [dated container scan review](container-scan-review.md) for the reviewed image identities, dependency-fix scope, and upstream evidence behind remaining package-level alerts. Its scan dates and image revisions matter; results for an `edge` image do not describe every stable release.
 

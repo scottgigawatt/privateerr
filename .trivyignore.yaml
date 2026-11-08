@@ -1,0 +1,21 @@
+#
+# Copyright 2025-2026 Scott Gigawatt
+#
+# SPDX-License-Identifier: Apache-2.0
+#
+# .trivyignore.yaml: Temporarily exclude one absent-package Compose finding.
+#
+# Review scope, artifact proof, owner, and removal conditions in the dated audit.
+# Expiry is 2026-11-22 at 00:00 UTC; do not extend without a new review.
+#
+vulnerabilities:
+  - id: CVE-2026-78661
+    paths:
+      - usr/local/lib/docker/cli-plugins/docker-compose
+    expired_at: 2026-11-22
+    statement: >-
+      Owner: scottgigawatt. The affected golang.org/x/net/html package and symbols
+      are absent from the reviewed official Compose 5.7.0 donor on amd64, arm64,
+      and ARMv7. This exception applies only to the exact binary path above.
+      Reviewed donor: docker/compose-bin:v5.7.0@sha256:a4de4851b16f18634f74de66f126d5de65f7c5cb5a9502d67ab83e9a96041a70.
+      Evidence and removal: docs/container-scan-review.md#november-8-2026-temporary-compose-exception.

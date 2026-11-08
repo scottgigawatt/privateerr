@@ -9,7 +9,7 @@
 #                      notifications to an optional Discord webhook.
 #
 # Usage: DISCORD_WEBHOOK_URL=<url> discord-notifier.sh \
-#            --type <image-start|image-verdict|docs-verdict> \
+#            --type <image-start|image-verdict|docs-start|docs-verdict> \
 #            --profile <image-primary|image-secondary|docs> \
 #            --run-url <url> --repository <owner/repository> \
 #            --ref-name <ref> [notification options]
@@ -21,6 +21,10 @@
 #
 : "${DISCORD_WEBHOOK_URL:=}"
 actor=""
+image_name="Privateerr"
+publication_status=""
+mirror_status=""
+failure_stage=""
 build_status=""
 deploy_status=""
 discord_dry_run=false
@@ -71,6 +75,7 @@ usage() {
         "Notification types:" \
         "  image-start     Announce a container-image build." \
         "  image-verdict   Report a container-image publication result." \
+        "  docs-start      Announce a documentation update." \
         "  docs-verdict    Report documentation build and deployment results." \
         "" \
         "Profiles:" \
@@ -88,7 +93,8 @@ usage() {
         "  -x, --dry-run" \
         "  -h, --help" \
         "" \
-        "Image-start options:" \
+        "Image and documentation options:" \
+        "  --image-name <name>" \
         "  --workflow-name <name>" \
         "  --actor <actor>" \
         "  --platforms <platforms>" \
@@ -97,6 +103,9 @@ usage() {
         "" \
         "Image-verdict options:" \
         "  --job-status <status>" \
+        "  --publication-status <actual-push-outcome>" \
+        "  --mirror-status <actual-Docker-Hub-copy-outcome>" \
+        "  --failure-stage <stage>" \
         "  --ghcr-image <image>" \
         "  --ghcr-package-url <url>" \
         "  --dockerhub-url <url>" \
@@ -173,29 +182,21 @@ random_value() {
 }
 
 #
-# expand_message: Replace supported literal tokens without evaluating content.
+# classify_status: Map a workflow conclusion to an explicit presentation state.
 #
-# Parameters: $1 - Selected message text.
+# Parameters: $1 - Workflow or job conclusion.
 #
-# Returns: Prints the message with public workflow values substituted safely.
+# Returns: Prints a supported catalog outcome; unknown conclusions warn.
 #
-expand_message() {
-    jq \
-        --null-input \
-        --raw-output \
-        --arg message       "$1" \
-        --arg workflow_name "${workflow_name}" \
-        --arg job_status    "${job_status}" \
-        --arg build_status  "${build_status}" \
-        --arg deploy_status "${deploy_status}" \
-        '
-            def replace($token; $value): split($token) | join($value);
-            $message
-            | replace("{{workflow_name}}"; $workflow_name)
-            | replace("{{job_status}}"; $job_status)
-            | replace("{{build_status}}"; $build_status)
-            | replace("{{deploy_status}}"; $deploy_status)
-        '
+classify_status() {
+    case "$1" in
+        success) printf '%s\n' success ;;
+        failure | timed_out | startup_failure) printf '%s\n' failure ;;
+        cancelled) printf '%s\n' cancelled ;;
+        skipped) printf '%s\n' skipped ;;
+        neutral) printf '%s\n' neutral ;;
+        *) printf '%s\n' warning ;;
+    esac
 }
 
 #
@@ -236,6 +237,26 @@ while [ "$#" -gt 0 ]; do
         -x | --dry-run)
             discord_dry_run=true
             shift
+            ;;
+        --image-name)
+            require_option_argument "$1" "$#"
+            image_name=$2
+            shift 2
+            ;;
+        --publication-status)
+            require_option_argument "$1" "$#"
+            publication_status=$2
+            shift 2
+            ;;
+        --mirror-status)
+            require_option_argument "$1" "$#"
+            mirror_status=$2
+            shift 2
+            ;;
+        --failure-stage)
+            require_option_argument "$1" "$#"
+            failure_stage=$2
+            shift 2
             ;;
         --workflow-name)
             require_option_argument "$1" "$#"
@@ -337,35 +358,37 @@ require_value --ref-name   "${ref_name}"
 #
 case "${notification_type}" in
     image-start)
-        require_value --workflow-name   "${workflow_name}"
-        require_value --actor           "${actor}"
-        require_value --platforms       "${image_platforms}"
-        require_value --ghcr-image      "${ghcr_image}"
-        require_value --dockerhub-image "${dockerhub_image}"
+        require_value --ghcr-image "${ghcr_image}"
         outcome="start"
         ;;
     image-verdict)
         require_value --job-status "${job_status}"
         require_value --ghcr-image "${ghcr_image}"
-        if [ "${job_status}" = "success" ]; then
-            outcome="success"
-        else
-            outcome="failure"
+        outcome=$(classify_status "${job_status}")
+
+        # A successful job without confirmed publication must never announce an image.
+        if [ "${outcome}" = "success" ] && { [ "${publication_status}" != "success" ] || [ -z "${published_digest}" ]; }; then
+            outcome="warning"
+            failure_stage="Publication evidence is incomplete"
         fi
+        ;;
+    docs-start)
+        outcome="start"
         ;;
     docs-verdict)
-        require_value --build-status  "${build_status}"
+        require_value --build-status "${build_status}"
         require_value --deploy-status "${deploy_status}"
-        if [ "${build_status}" = "success" ] \
-            && [ "${deploy_status}" = "success" ]; then
-            outcome="success"
+        outcome=$(classify_status "${build_status}")
+
+        if [ "${build_status}" = "success" ]; then
+            outcome=$(classify_status "${deploy_status}")
+            failure_stage="Pages deployment"
         else
-            outcome="failure"
+            failure_stage="Documentation build"
         fi
-        [ -n "${site_url}" ] || site_url="unavailable"
         ;;
     *)
-        echo "--type must be image-start, image-verdict, or docs-verdict." >&2
+        echo "--type must be image-start, image-verdict, docs-start, or docs-verdict." >&2
         exit 1
         ;;
 esac
@@ -386,6 +409,7 @@ selection=$(random_value)
 if ! notification=$(jq \
     --null-input \
     --compact-output \
+    --arg     image_name        "${image_name}" \
     --arg     notification_type "${notification_type}" \
     --arg     profile           "${discord_profile}" \
     --arg     outcome           "${outcome}" \
@@ -410,19 +434,15 @@ if [ ! -f "${payload_path}" ]; then
 fi
 
 #
-# Safely expand the message selected by the structured theme catalog.
+# Only confirmed pushes may expose tags as published metadata. Metadata actions
+# can calculate tags before publication, and failed pushes may be incomplete.
 #
-selected_message=$(printf '%s\n' "${notification}" | jq --raw-output '.message')
-description=$(expand_message "${selected_message}")
-
-#
-# Normalize optional publication metadata for the verdict payload.
-#
-formatted_tags=$(printf '%s\n' "${published_tags:-none}" \
-    | sed '/^$/d; s#^'"${ghcr_image}"':##; s/^/• /')
-[ -n "${formatted_tags}" ] || formatted_tags="none"
-digest_short=$(printf '%s' "${published_digest:-unavailable}" \
-    | sed -E 's/^(sha256:[0-9a-f]{12}).*/\1/')
+if [ "${publication_status}" != "success" ] || [ -z "${published_digest}" ]; then
+    published_tags=""
+    published_digest=""
+fi
+formatted_tags=${published_tags:-unconfirmed}
+digest_short=${published_digest:-unconfirmed}
 
 #
 # Render the selected external jq payload with workflow metadata passed only as
@@ -431,7 +451,13 @@ digest_short=$(printf '%s' "${published_digest:-unavailable}" \
 payload=$(jq \
     --null-input \
     --argjson notification     "${notification}" \
-    --arg     description      "${description}" \
+    --arg     image_name       "${image_name}" \
+    --arg     outcome          "${outcome}" \
+    --arg     publication_status "${publication_status}" \
+    --arg     mirror_status    "${mirror_status}" \
+    --arg     failure_stage    "${failure_stage}" \
+    --arg     workflow_name    "${workflow_name}" \
+    --arg     notification_type "${notification_type}" \
     --arg     url              "${run_url}" \
     --arg     repository       "${repository}" \
     --arg     ref              "${ref_name}" \
@@ -446,6 +472,7 @@ payload=$(jq \
     --arg     build_status     "${build_status}" \
     --arg     deploy_status    "${deploy_status}" \
     --arg     site_url         "${site_url}" \
+    -L                         "${discord_directory}/payloads" \
     --from-file                "${payload_path}")
 
 #
@@ -462,7 +489,9 @@ fi
 curl \
     --fail \
     --silent \
-    --show-error \
+    --output /dev/null \
+    --connect-timeout 10 \
+    --max-time 30 \
     --header "Content-Type: application/json" \
     --data "${payload}" \
     "${DISCORD_WEBHOOK_URL}"
