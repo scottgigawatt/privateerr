@@ -10,11 +10,11 @@ These documented POSIX shell helpers keep reusable release, notification, and re
 | `registry-mirror.sh`      | Copy published container tags from GHCR to Docker Hub              |
 | `validate-release-tag.sh` | Require annotated SemVer release tags whose commits belong to main |
 
-`discord-notifier.sh` reads the stable profiles, themed strings, presentation values, and payload shapes documented in the [Discord wardrobe](../discord/README.md). `registry-mirror.sh` verifies copied manifest digests instead of trusting a successful transfer alone.
+`discord-notifier.sh` reads the stable profiles, themed strings, presentation values, and payload shapes documented in the [Discord notification guide](../discord/README.md). `registry-mirror.sh` verifies copied manifest digests instead of trusting a successful transfer alone.
 
 ## Workflow consumers 🧵
 
-`build-and-push.yml` uses all three helpers for guarded multi-registry image publication. The notifier also supports a documentation profile for workflows that publish a site. Keeping the helpers and structured assets byte-identical lets sibling repositories reuse them while reviewing each workflow locally.
+`build-and-push.yml` uses all three helpers for guarded multi-registry image publication. The notifier reports image and GitHub Pages starts and results; its documentation profile sends only to Asteres. Each repository maintains its own assets and themed copy behind the same explicit interface.
 
 ## Offline validation 🧪
 
@@ -24,4 +24,4 @@ Run the complete helper and publishing-policy suite without contacting Discord o
 make test-workflows
 ```
 
-The suite uses temporary Git repositories, deterministic payload selection, and a local Skopeo stub. It covers short and long options, release-tag rejection, message rendering, registry mirroring, digest comparison, synchronized build pins, and canonical image-tag channels.
+The suite uses temporary Git repositories, deterministic payload selection, and a local Skopeo stub. It covers short and long options, release-tag rejection, fixed colors, all notification states and joke variants, metadata limits, publication evidence, isolated delivery failures, registry mirroring, digest comparison, synchronized build pins, and canonical image-tag channels.

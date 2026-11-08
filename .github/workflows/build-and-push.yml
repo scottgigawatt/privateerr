@@ -44,6 +44,80 @@ permissions:
 
 jobs:
   #
+  # Announce eligible image pipelines independently of validation and registry credentials.
+  # Delivery failures never change publication results or stop another destination.
+  #
+  notify-start:
+    name: "Open the Image Wardrobe 📣 (${{ matrix.image-name }}, ${{ matrix.profile }})"
+    if: (github.event_name != 'workflow_dispatch' || github.ref == 'refs/heads/main')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - image: privateerr
+            image-name: Privateerr
+            profile: image-primary
+            webhook: DISCORD_WEBHOOK_URL
+            dockerhub: true
+          - image: privateerr
+            image-name: Privateerr
+            profile: image-secondary
+            webhook: DISCORD_HADES_HOOK_URL
+            dockerhub: true
+          - image: buccaneerr
+            image-name: Buccaneerr
+            profile: image-primary
+            webhook: DISCORD_WEBHOOK_URL
+            dockerhub: false
+          - image: buccaneerr
+            image-name: Buccaneerr
+            profile: image-secondary
+            webhook: DISCORD_HADES_HOOK_URL
+            dockerhub: false
+
+    steps:
+      #
+      # Read notification assets without retaining repository credentials.
+      #
+      - name: "Unpack the Notification Wardrobe 🧰"
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
+
+      #
+      # Pass metadata as arguments and keep each webhook out of logs.
+      #
+      - name: "Notify Discord: image pipeline started 📣"
+        continue-on-error: true
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets[matrix.webhook] }}
+          IMAGE_NAME: ${{ matrix.image-name }}
+          PROFILE: ${{ matrix.profile }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          REPOSITORY: ${{ github.repository }}
+          REF_NAME: ${{ github.ref_name }}
+          WORKFLOW_NAME: ${{ github.workflow }}
+          ACTOR: ${{ github.actor }}
+          GHCR_IMAGE: ghcr.io/${{ github.repository_owner }}/${{ matrix.image }}
+          DOCKERHUB_IMAGE: ${{ matrix.dockerhub && format('docker.io/{0}/{1}', github.repository_owner, matrix.image) || '' }}
+        run: |
+          sh .github/scripts/discord-notifier.sh \
+              --type "image-start" \
+              --profile "${PROFILE}" \
+              --image-name "${IMAGE_NAME}" \
+              --run-url "${RUN_URL}" \
+              --repository "${REPOSITORY}" \
+              --ref-name "${REF_NAME}" \
+              --workflow-name "${WORKFLOW_NAME}" \
+              --actor "${ACTOR}" \
+              --ghcr-image "${GHCR_IMAGE}" \
+              --dockerhub-image "${DOCKERHUB_IMAGE}" \
+              --platforms "linux/amd64,linux/arm64,linux/arm/v7"
+
+  #
   # Build and inspect both images before publishing their multi-architecture
   # manifests, attestations, registry mirrors, and release notifications.
   #
@@ -51,6 +125,48 @@ jobs:
     name: "Pack the Cargo Hold 🧰"
     if: github.event_name != 'workflow_dispatch' || github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
+    outputs:
+      privateerr-publication: ${{ steps.publish-privateerr.outcome }}
+      privateerr-tags: ${{ steps.meta-privateerr.outputs.tags }}
+      privateerr-digest: ${{ steps.publish-privateerr.outputs.digest }}
+      privateerr-result: ${{ steps.publish-privateerr.outcome == 'success' && steps.attest-privateerr.outcome == 'success' && steps.verify-mirror.outcome == 'success' && steps.overview.outcome == 'success' && 'success' || '' }}
+      privateerr-stage: >-
+        ${{ steps.release-check.outcome == 'failure' && 'Release tag validation'
+            || steps.validate.outcome == 'failure' && 'Repository validation'
+            || steps.local-build.outcome == 'failure' && 'Local image builds and container checks'
+            || steps.runtime-check.outcome == 'failure' && 'Optional VPN integration checks'
+            || steps.cleanup.outcome == 'failure' && 'Test cleanup'
+            || steps.scan-privateerr.outcome == 'failure' && 'Privateerr vulnerability scan'
+            || steps.scan-buccaneerr.outcome == 'failure' && 'Buccaneerr vulnerability scan'
+            || steps.publish-privateerr.outcome == 'failure' && 'Privateerr build or GHCR publication'
+            || steps.publish-buccaneerr.outcome == 'failure' && 'Buccaneerr build or GHCR publication'
+            || steps.mirror.outcome == 'failure' && 'Privateerr Docker Hub mirror'
+            || steps.verify-mirror.outcome == 'failure' && 'Registry digest verification'
+            || steps.attest-privateerr.outcome == 'failure' && 'Privateerr provenance attestation'
+            || steps.attest-buccaneerr.outcome == 'failure' && 'Buccaneerr provenance attestation'
+            || steps.overview.outcome == 'failure' && 'Docker Hub description update'
+            || 'Publication or required verification' }}
+      privateerr-mirror: ${{ steps.mirror.outcome }}
+      buccaneerr-publication: ${{ steps.publish-buccaneerr.outcome }}
+      buccaneerr-tags: ${{ steps.meta-buccaneerr.outputs.tags }}
+      buccaneerr-digest: ${{ steps.publish-buccaneerr.outputs.digest }}
+      buccaneerr-result: ${{ steps.publish-buccaneerr.outcome == 'success' && steps.attest-buccaneerr.outcome == 'success' && 'success' || '' }}
+      buccaneerr-stage: >-
+        ${{ steps.release-check.outcome == 'failure' && 'Release tag validation'
+            || steps.validate.outcome == 'failure' && 'Repository validation'
+            || steps.local-build.outcome == 'failure' && 'Local image builds and container checks'
+            || steps.runtime-check.outcome == 'failure' && 'Optional VPN integration checks'
+            || steps.cleanup.outcome == 'failure' && 'Test cleanup'
+            || steps.scan-privateerr.outcome == 'failure' && 'Privateerr vulnerability scan'
+            || steps.scan-buccaneerr.outcome == 'failure' && 'Buccaneerr vulnerability scan'
+            || steps.publish-privateerr.outcome == 'failure' && 'Privateerr build or GHCR publication'
+            || steps.publish-buccaneerr.outcome == 'failure' && 'Buccaneerr build or GHCR publication'
+            || steps.mirror.outcome == 'failure' && 'Privateerr Docker Hub mirror'
+            || steps.verify-mirror.outcome == 'failure' && 'Registry digest verification'
+            || steps.attest-privateerr.outcome == 'failure' && 'Privateerr provenance attestation'
+            || steps.attest-buccaneerr.outcome == 'failure' && 'Buccaneerr provenance attestation'
+            || steps.overview.outcome == 'failure' && 'Docker Hub description update'
+            || 'Publication or required verification' }}
     permissions:
       contents: read
       id-token: write
@@ -82,67 +198,12 @@ jobs:
       # belong to main before any release image can be published.
       #
       - name: "Inspect the Release Chart 🧭"
+        id: release-check
         if: startsWith(github.ref, 'refs/tags/')
         run: |
           .github/scripts/validate-release-tag.sh \
             --release-tag "${{ github.ref_name }}" \
             --release-sha "${{ github.sha }}"
-
-      #
-      # Announce the start independently to each optional webhook. Only the
-      # credential stays secret; public workflow metadata uses explicit flags.
-      #
-      - name: "Notify Primary Discord: build opened 📣"
-        env:
-          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
-          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-          WORKFLOW_NAME: ${{ github.workflow }}
-          REF_NAME: ${{ github.ref_name }}
-          ACTOR: ${{ github.actor }}
-          REPOSITORY: ${{ github.repository }}
-          GHCR_IMAGE: ${{ env.PRIVATEERR_IMAGE_REF }}
-          DOCKERHUB_IMAGE: ${{ env.DOCKERHUB_PRIVATEERR_IMAGE_REF }}
-          IMAGE_PLATFORMS: ${{ env.IMAGE_PLATFORMS }}
-        run: |
-          sh .github/scripts/discord-notifier.sh \
-              --type            image-start \
-              --profile         image-primary \
-              --run-url         "${RUN_URL}" \
-              --repository      "${REPOSITORY}" \
-              --ref-name        "${REF_NAME}" \
-              --workflow-name   "${WORKFLOW_NAME}" \
-              --actor           "${ACTOR}" \
-              --platforms       "${IMAGE_PLATFORMS}" \
-              --ghcr-image      "${GHCR_IMAGE}" \
-              --dockerhub-image "${DOCKERHUB_IMAGE}"
-
-      #
-      # Send the same opening state through the secondary destination profile
-      # so future presentation changes remain isolated from workflow logic.
-      #
-      - name: "Notify Secondary Discord: build opened 📣"
-        env:
-          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_HADES_HOOK_URL }}
-          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-          WORKFLOW_NAME: ${{ github.workflow }}
-          REF_NAME: ${{ github.ref_name }}
-          ACTOR: ${{ github.actor }}
-          REPOSITORY: ${{ github.repository }}
-          GHCR_IMAGE: ${{ env.PRIVATEERR_IMAGE_REF }}
-          DOCKERHUB_IMAGE: ${{ env.DOCKERHUB_PRIVATEERR_IMAGE_REF }}
-          IMAGE_PLATFORMS: ${{ env.IMAGE_PLATFORMS }}
-        run: |
-          sh .github/scripts/discord-notifier.sh \
-              --type            image-start \
-              --profile         image-secondary \
-              --run-url         "${RUN_URL}" \
-              --repository      "${REPOSITORY}" \
-              --ref-name        "${REF_NAME}" \
-              --workflow-name   "${WORKFLOW_NAME}" \
-              --actor           "${ACTOR}" \
-              --platforms       "${IMAGE_PLATFORMS}" \
-              --ghcr-image      "${GHCR_IMAGE}" \
-              --dockerhub-image "${DOCKERHUB_IMAGE}"
 
       #
       # Prepare emulation, Buildx, and registry authentication for one
@@ -187,6 +248,7 @@ jobs:
       # Make interface contributors use before building either image.
       #
       - name: "Interrogate the Rigging 🧪"
+        id: validate
         run: |
           make test
           make config >/dev/null
@@ -196,6 +258,7 @@ jobs:
       # Build both local image shapes before runtime tests and vulnerability scans.
       #
       - name: "Hammer the Docker Hulls ⚒️"
+        id: local-build
         run: |
           make build
           make build-buccaneerr
@@ -205,6 +268,7 @@ jobs:
       # Run the credential-backed e2e voyage when both optional PIA secrets exist.
       #
       - name: "Send the Test Ship to Sea 🌊"
+        id: runtime-check
         env:
           PIA_USER: ${{ secrets.PIA_USER }}
           PIA_PASS: ${{ secrets.PIA_PASS }}
@@ -221,6 +285,7 @@ jobs:
       # Always stop test resources and restore checked-in example configuration.
       #
       - name: "Swab the Test Deck 🧽"
+        id: cleanup
         if: always()
         run: make clean-test
 
@@ -229,6 +294,7 @@ jobs:
       # can be tagged or sent to a registry.
       #
       - name: "Inspect Privateerr for Bilge Rot 🔍"
+        id: scan-privateerr
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25  # v0.36.0
         with:
           image-ref: ${{ env.PRIVATEERR_LOCAL_IMAGE_REF }}:latest
@@ -242,6 +308,7 @@ jobs:
       # Apply the same fixed-vulnerability policy to the Buccaneerr test image.
       #
       - name: "Inspect Buccaneerr for Bilge Rot 🔍"
+        id: scan-buccaneerr
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25  # v0.36.0
         with:
           image-ref: ${{ env.BUCCANEERR_LOCAL_IMAGE_REF }}:latest
@@ -328,6 +395,7 @@ jobs:
       # Copy every published Privateerr manifest from GHCR to Docker Hub.
       #
       - name: "Mirror Privateerr to Docker Hub 🪞"
+        id: mirror
         env:
           GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
@@ -344,6 +412,7 @@ jobs:
       # Fail publication unless both registries expose identical tag digests.
       #
       - name: "Compare Registry Manifests 🔎"
+        id: verify-mirror
         env:
           GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
@@ -389,6 +458,7 @@ jobs:
       # after their multi-architecture manifests are available.
       #
       - name: "Stamp Privateerr's Provenance Scroll 🧾"
+        id: attest-privateerr
         uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8  # v4
         with:
           subject-name: ${{ env.PRIVATEERR_IMAGE_REF }}
@@ -399,6 +469,7 @@ jobs:
       # Publish the equivalent registry-backed attestation for Buccaneerr.
       #
       - name: "Stamp Buccaneerr's Provenance Scroll 🧾"
+        id: attest-buccaneerr
         uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8  # v4
         with:
           subject-name: ${{ env.BUCCANEERR_IMAGE_REF }}
@@ -410,6 +481,7 @@ jobs:
       # public image documentation.
       #
       - name: "Update Privateerr Docker Hub overview 📘"
+        id: overview
         uses: peter-evans/dockerhub-description@1b9a80c056b620d92cedb9d9b5a223409c68ddfa  # v5.0.0
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
@@ -418,64 +490,91 @@ jobs:
           short-description: "Generate PIA WireGuard config and Gluetun port forwarding metadata."
           readme-filepath: ./docs/docker-hub-description.md
 
+  #
+  # Report image evidence even when validation fails or publication is skipped.
+  # Delivery failures never change publication results or stop another destination.
+  #
+  notify-result:
+    name: "Read the Image Receipts 📣 (${{ matrix.image-name }}, ${{ matrix.profile }})"
+    if: always() && (github.event_name != 'workflow_dispatch' || github.ref == 'refs/heads/main')
+    needs: [notify-start, build-and-push]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - image: privateerr
+            image-name: Privateerr
+            profile: image-primary
+            webhook: DISCORD_WEBHOOK_URL
+            dockerhub: true
+          - image: privateerr
+            image-name: Privateerr
+            profile: image-secondary
+            webhook: DISCORD_HADES_HOOK_URL
+            dockerhub: true
+          - image: buccaneerr
+            image-name: Buccaneerr
+            profile: image-primary
+            webhook: DISCORD_WEBHOOK_URL
+            dockerhub: false
+          - image: buccaneerr
+            image-name: Buccaneerr
+            profile: image-secondary
+            webhook: DISCORD_HADES_HOOK_URL
+            dockerhub: false
+
+    steps:
       #
-      # Report the final job state to both optional Discord destinations.
-      # These steps always run so a failed publication never disappears.
+      # Read notification assets without retaining repository credentials.
       #
-      - name: "Notify Primary Discord: build verdict 📣"
-        if: always()
-        env:
-          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
-          JOB_STATUS: ${{ job.status }}
-          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-          REPOSITORY: ${{ github.repository }}
-          REF_NAME: ${{ github.ref_name }}
-          GHCR_IMAGE: ${{ env.PRIVATEERR_IMAGE_REF }}
-          GHCR_PACKAGE_URL: ${{ github.server_url }}/${{ github.repository }}/pkgs/container/privateerr
-          DOCKERHUB_URL: https://hub.docker.com/r/${{ github.repository_owner }}/privateerr
-          PUBLISHED_TAGS: ${{ steps.meta-privateerr.outputs.tags }}
-          PUBLISHED_DIGEST: ${{ steps.publish-privateerr.outputs.digest }}
-        run: |
-          sh .github/scripts/discord-notifier.sh \
-              --type             image-verdict \
-              --profile          image-primary \
-              --run-url          "${RUN_URL}" \
-              --repository       "${REPOSITORY}" \
-              --ref-name         "${REF_NAME}" \
-              --job-status       "${JOB_STATUS}" \
-              --ghcr-image       "${GHCR_IMAGE}" \
-              --ghcr-package-url "${GHCR_PACKAGE_URL}" \
-              --dockerhub-url    "${DOCKERHUB_URL}" \
-              --published-tags   "${PUBLISHED_TAGS}" \
-              --published-digest "${PUBLISHED_DIGEST}"
+      - name: "Unpack the Notification Wardrobe 🧰"
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
 
       #
-      # Send the same final state to the optional secondary destination even
-      # when an earlier publication step failed.
+      # Pass metadata as arguments and keep each webhook out of logs.
       #
-      - name: "Notify Secondary Discord: build verdict 📣"
-        if: always()
+      - name: "Notify Discord: image pipeline result 📣"
+        continue-on-error: true
         env:
-          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_HADES_HOOK_URL }}
-          JOB_STATUS: ${{ job.status }}
+          DISCORD_WEBHOOK_URL: ${{ secrets[matrix.webhook] }}
+          IMAGE_NAME: ${{ matrix.image-name }}
+          PROFILE: ${{ matrix.profile }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
           REPOSITORY: ${{ github.repository }}
           REF_NAME: ${{ github.ref_name }}
-          GHCR_IMAGE: ${{ env.PRIVATEERR_IMAGE_REF }}
-          GHCR_PACKAGE_URL: ${{ github.server_url }}/${{ github.repository }}/pkgs/container/privateerr
-          DOCKERHUB_URL: https://hub.docker.com/r/${{ github.repository_owner }}/privateerr
-          PUBLISHED_TAGS: ${{ steps.meta-privateerr.outputs.tags }}
-          PUBLISHED_DIGEST: ${{ steps.publish-privateerr.outputs.digest }}
+          WORKFLOW_NAME: ${{ github.workflow }}
+          ACTOR: ${{ github.actor }}
+          GHCR_IMAGE: ghcr.io/${{ github.repository_owner }}/${{ matrix.image }}
+          DOCKERHUB_IMAGE: ${{ matrix.dockerhub && format('docker.io/{0}/{1}', github.repository_owner, matrix.image) || '' }}
+          JOB_STATUS: ${{ needs.build-and-push.outputs[format('{0}-result', matrix.image)] || needs.build-and-push.result }}
+          PUBLICATION_STATUS: ${{ needs.build-and-push.outputs[format('{0}-publication', matrix.image)] }}
+          MIRROR_STATUS: ${{ needs.build-and-push.outputs[format('{0}-mirror', matrix.image)] }}
+          FAILURE_STAGE: ${{ needs.build-and-push.outputs[format('{0}-stage', matrix.image)] }}
+          PUBLISHED_TAGS: ${{ needs.build-and-push.outputs[format('{0}-tags', matrix.image)] }}
+          PUBLISHED_DIGEST: ${{ needs.build-and-push.outputs[format('{0}-digest', matrix.image)] }}
+          GHCR_PACKAGE_URL: ${{ github.server_url }}/${{ github.repository }}/pkgs/container/${{ matrix.image }}
+          DOCKERHUB_URL: ${{ matrix.dockerhub && format('https://hub.docker.com/r/{0}/{1}', github.repository_owner, matrix.image) || '' }}
         run: |
           sh .github/scripts/discord-notifier.sh \
-              --type             image-verdict \
-              --profile          image-secondary \
-              --run-url          "${RUN_URL}" \
-              --repository       "${REPOSITORY}" \
-              --ref-name         "${REF_NAME}" \
-              --job-status       "${JOB_STATUS}" \
-              --ghcr-image       "${GHCR_IMAGE}" \
+              --type "image-verdict" \
+              --profile "${PROFILE}" \
+              --image-name "${IMAGE_NAME}" \
+              --run-url "${RUN_URL}" \
+              --repository "${REPOSITORY}" \
+              --ref-name "${REF_NAME}" \
+              --workflow-name "${WORKFLOW_NAME}" \
+              --actor "${ACTOR}" \
+              --ghcr-image "${GHCR_IMAGE}" \
+              --job-status "${JOB_STATUS}" \
+              --publication-status "${PUBLICATION_STATUS}" \
+              --mirror-status "${MIRROR_STATUS}" \
+              --failure-stage "${FAILURE_STAGE}" \
               --ghcr-package-url "${GHCR_PACKAGE_URL}" \
-              --dockerhub-url    "${DOCKERHUB_URL}" \
-              --published-tags   "${PUBLISHED_TAGS}" \
+              --dockerhub-url "${DOCKERHUB_URL}" \
+              --published-tags "${PUBLISHED_TAGS}" \
               --published-digest "${PUBLISHED_DIGEST}"
