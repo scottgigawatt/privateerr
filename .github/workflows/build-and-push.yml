@@ -61,22 +61,18 @@ jobs:
           - image: privateerr
             image-name: Privateerr
             profile: image-primary
-            webhook: DISCORD_WEBHOOK_URL
             dockerhub: true
           - image: privateerr
             image-name: Privateerr
             profile: image-secondary
-            webhook: DISCORD_HADES_HOOK_URL
             dockerhub: true
           - image: buccaneerr
             image-name: Buccaneerr
             profile: image-primary
-            webhook: DISCORD_WEBHOOK_URL
             dockerhub: false
           - image: buccaneerr
             image-name: Buccaneerr
             profile: image-secondary
-            webhook: DISCORD_HADES_HOOK_URL
             dockerhub: false
 
     steps:
@@ -89,12 +85,13 @@ jobs:
           persist-credentials: false
 
       #
-      # Pass metadata as arguments and keep each webhook out of logs.
+      # Name only the two notification secrets and keep webhook values out of logs.
+      # Guard both routes so an unset webhook cannot select the other server.
       #
       - name: "Notify Discord: image pipeline started 📣"
         continue-on-error: true
         env:
-          DISCORD_WEBHOOK_URL: ${{ secrets[matrix.webhook] }}
+          DISCORD_WEBHOOK_URL: ${{ matrix.profile == 'image-primary' && secrets.DISCORD_WEBHOOK_URL || matrix.profile == 'image-secondary' && secrets.DISCORD_HADES_HOOK_URL || '' }}
           IMAGE_NAME: ${{ matrix.image-name }}
           PROFILE: ${{ matrix.profile }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
@@ -514,22 +511,18 @@ jobs:
           - image: privateerr
             image-name: Privateerr
             profile: image-primary
-            webhook: DISCORD_WEBHOOK_URL
             dockerhub: true
           - image: privateerr
             image-name: Privateerr
             profile: image-secondary
-            webhook: DISCORD_HADES_HOOK_URL
             dockerhub: true
           - image: buccaneerr
             image-name: Buccaneerr
             profile: image-primary
-            webhook: DISCORD_WEBHOOK_URL
             dockerhub: false
           - image: buccaneerr
             image-name: Buccaneerr
             profile: image-secondary
-            webhook: DISCORD_HADES_HOOK_URL
             dockerhub: false
 
     steps:
@@ -542,12 +535,13 @@ jobs:
           persist-credentials: false
 
       #
-      # Pass metadata as arguments and keep each webhook out of logs.
+      # Name only the two notification secrets and keep webhook values out of logs.
+      # Guard both routes so an unset webhook cannot select the other server.
       #
       - name: "Notify Discord: image pipeline result 📣"
         continue-on-error: true
         env:
-          DISCORD_WEBHOOK_URL: ${{ secrets[matrix.webhook] }}
+          DISCORD_WEBHOOK_URL: ${{ matrix.profile == 'image-primary' && secrets.DISCORD_WEBHOOK_URL || matrix.profile == 'image-secondary' && secrets.DISCORD_HADES_HOOK_URL || '' }}
           IMAGE_NAME: ${{ matrix.image-name }}
           PROFILE: ${{ matrix.profile }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
