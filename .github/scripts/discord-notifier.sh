@@ -441,7 +441,12 @@ if [ "${publication_status}" != "success" ] || [ -z "${published_digest}" ]; the
     published_tags=""
     published_digest=""
 fi
-formatted_tags=${published_tags:-unconfirmed}
+formatted_tags=""
+
+if [ "${notification_type}" = "image-verdict" ]; then
+    formatted_tags=$(sh "${script_directory}/notification-tags.sh" \
+        --image "${ghcr_image}" --tags "${published_tags}")
+fi
 digest_short=${published_digest:-unconfirmed}
 
 #
@@ -484,14 +489,32 @@ if [ "${discord_dry_run}" = "true" ]; then
 fi
 
 #
-# Deliver the payload without logging the webhook URL or JSON body.
+# Capture only the numeric HTTP status. Suppress response bodies and raw curl
+# errors so credentials, request payloads, headers, and URLs cannot reach logs.
 #
-curl \
+if http_status=$(curl \
     --fail \
     --silent \
     --output /dev/null \
+    --write-out '%{http_code}' \
     --connect-timeout 10 \
     --max-time 30 \
     --header "Content-Type: application/json" \
     --data "${payload}" \
-    "${DISCORD_WEBHOOK_URL}"
+    "${DISCORD_WEBHOOK_URL}" 2>/dev/null); then
+    curl_exit=0
+else
+    curl_exit=$?
+fi
+
+#
+# Only a three-digit status may enter the fixed diagnostic line. Preserve curl's
+# exit behavior, including its existing handling of redirects and HTTP failures.
+#
+case "${http_status}" in
+    [0-9][0-9][0-9]) ;;
+    *) http_status=000 ;;
+esac
+printf 'Discord notification request finished: HTTP %s; curl exit %s.\n' \
+    "${http_status}" "${curl_exit}"
+exit "${curl_exit}"

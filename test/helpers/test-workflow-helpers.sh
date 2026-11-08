@@ -170,6 +170,11 @@ sh "${REPOSITORY_ROOT}/test/helpers/test-compose-exception-policy.sh"
 PYTHONDONTWRITEBYTECODE=1 python3 "${REPOSITORY_ROOT}/test/helpers/test_discord_secret_scope.py"
 
 #
+# Notification tags must be validated before the cross-job output boundary.
+#
+sh "${REPOSITORY_ROOT}/test/helpers/test-notification-tags.sh"
+
+#
 # Exercise every notification state and metadata boundary without external writes.
 #
 sh "${REPOSITORY_ROOT}/test/helpers/test-discord-notifier.sh"

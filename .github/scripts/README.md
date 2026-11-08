@@ -7,6 +7,7 @@ These documented POSIX shell helpers keep reusable release, notification, and re
 | Helper                    | Purpose                                                            |
 | ------------------------- | ------------------------------------------------------------------ |
 | `discord-notifier.sh`     | Validate inputs, render a selected jq payload, and notify Discord  |
+| `notification-tags.sh`    | Validate short tags and remove only the expected image prefix |
 | `registry-mirror.sh`      | Copy published container tags from GHCR to Docker Hub              |
 | `validate-release-tag.sh` | Require annotated SemVer release tags whose commits belong to main |
 
@@ -14,7 +15,7 @@ These documented POSIX shell helpers keep reusable release, notification, and re
 
 ## Workflow consumers 🧵
 
-`build-and-push.yml` uses all three helpers for guarded multi-registry image publication. The notifier reports image and GitHub Pages starts and results; its documentation profile sends only to Asteres. Each repository maintains its own assets and themed copy behind the same explicit interface.
+`build-and-push.yml` uses the release, registry, tag, and notification helpers for guarded multi-registry image publication. The notifier reports image and GitHub Pages starts and results; its documentation profile sends only to Asteres. Each repository maintains its own assets and themed copy behind the same explicit interface.
 
 ## Offline validation 🧪
 
@@ -24,4 +25,4 @@ Run the complete helper and publishing-policy suite without contacting Discord o
 make test-workflows
 ```
 
-The suite uses temporary Git repositories, deterministic payload selection, and a local Skopeo stub. It covers short and long options, release-tag rejection, fixed colors, all notification states and joke variants, metadata limits, publication evidence, isolated delivery failures, registry mirroring, digest comparison, synchronized build pins, and canonical image-tag channels.
+The suite uses temporary Git repositories, deterministic payload selection, and a local Skopeo stub. It covers short and long options, release-tag rejection, fixed colors, all notification states and joke variants, metadata limits, publication evidence, short-tag boundaries, atomic rejection, sanitized HTTP/curl status reporting, registry mirroring, digest comparison, synchronized build pins, and canonical image-tag channels.
