@@ -19,6 +19,7 @@ on:
     tags:
       - "v*.*.*"
     paths:
+      - ".trivyignore.yaml"
       - ".github/discord/**"
       - ".github/scripts/**"
       - ".github/workflows/build-and-push.yml"
@@ -309,6 +310,8 @@ jobs:
       #
       - name: "Inspect Buccaneerr for Bilge Rot 🔍"
         id: scan-buccaneerr
+        env:
+          TRIVY_SHOW_SUPPRESSED: "true"
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25  # v0.36.0
         with:
           image-ref: ${{ env.BUCCANEERR_LOCAL_IMAGE_REF }}:latest
@@ -316,6 +319,9 @@ jobs:
           vuln-type: os,library
           severity: CRITICAL,HIGH
           ignore-unfixed: true
+
+          # The exact-path exception expires automatically; retain every other finding.
+          trivyignores: .trivyignore.yaml
           exit-code: 1
 
       #

@@ -97,6 +97,13 @@ repos:
         pass_filenames: false
         always_run: true
 
+      - id: check-compose-exception-policy
+        name: check temporary Compose exception scope
+        entry: test/policy/check-compose-exception-policy.sh
+        language: script
+        pass_filenames: false
+        always_run: true
+
       - id: check-build-pin-policy
         name: check build pin policy
         entry: test/policy/check-build-pin-policy.sh

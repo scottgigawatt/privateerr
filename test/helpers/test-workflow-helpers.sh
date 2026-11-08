@@ -159,6 +159,12 @@ grep -F 'Release tag v1.2.5 does not point to a commit on main.' \
     "${TEST_ROOT}/release-ancestry.out" >/dev/null
 
 #
+# A changed Compose donor or expanded scan exception must require a new review.
+#
+sh "${REPOSITORY_ROOT}/test/policy/check-compose-exception-policy.sh"
+sh "${REPOSITORY_ROOT}/test/helpers/test-compose-exception-policy.sh"
+
+#
 # Exercise every notification state and metadata boundary without external writes.
 #
 sh "${REPOSITORY_ROOT}/test/helpers/test-discord-notifier.sh"
