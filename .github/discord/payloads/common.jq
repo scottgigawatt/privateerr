@@ -25,7 +25,10 @@ def image_fields:
     else
       [field("📦 GHCR publication"; ($publication_status | if . == "" then "unconfirmed" else . end))]
       + (if $dockerhub_url != "unavailable" then [field("🐳 Docker Hub mirror"; ($mirror_status | if . == "" then "unconfirmed" else . end))] else [] end)
-      + (if $publication_status == "success" and $digest != "unconfirmed" then [field("🏷️ Published tags"; $tags), field("🧾 Digest"; $digest)] else [] end)
+      + (if $publication_status == "success" and $digest != "unconfirmed" then
+          (if $tags != "" then [field("🏷️ Published tags"; $tags)] else [] end)
+          + [field("🧾 Digest"; $digest)]
+        else [] end)
       + (if $ghcr_url != "unavailable" then [field("📦 GHCR"; $ghcr_url)] else [] end)
       + (if $dockerhub_url != "unavailable" then [field("🐳 Docker Hub"; $dockerhub_url)] else [] end)
     end);

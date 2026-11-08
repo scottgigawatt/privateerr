@@ -36,6 +36,12 @@ Privateerr publishes to GHCR and Docker Hub; the test-only Buccaneerr image publ
 
 A successful image message requires a successful pipeline result, a successful push outcome, and a digest. Metadata calculated before a failed push is never labeled as published tags. A later failure retains evidence of a completed GHCR push and names the stage needing attention. Docker Hub mirror status is reported separately; a GHCR digest alone does not prove a successful mirror. Review the linked run before using a partially verified image.
 
+## Validate notification tags
+
+The published-tags field uses short tags such as `edge`, `sha-ABC123`, or `1.2.3`. [notification-tags.sh](../scripts/notification-tags.sh) accepts already-short tags or full references beginning with the exact expected image name followed by a colon. It preserves order and spelling, permits up to 128 ASCII characters per Docker tag, and rejects whitespace, digests, malformed tags, and references to another image. Blank lines are optional metadata. The whole list is validated before any output is printed; errors do not echo the rejected input.
+
+The image workflow normalizes these notification tags before exporting them between jobs. Build and registry-mirror steps continue to receive full image references. Removing unnecessary owner and image prefixes reduces collisions with GitHub's secret filtering without disabling or bypassing that filtering. A short tag can still coincidentally match a configured secret. If optional tag metadata is unavailable, the notifier omits the tags field and retains a confirmed digest; it never invents a tag.
+
 ## Edit presentation and copy
 
 | File | Responsibility |
@@ -45,6 +51,7 @@ A successful image message requires a successful pipeline result, a successful p
 | [image-start.jq](payloads/image-start.jq), [image-verdict.jq](payloads/image-verdict.jq) | Image payload entry points |
 | [docs-start.jq](payloads/docs-start.jq), [docs-verdict.jq](payloads/docs-verdict.jq) | Documentation payload entry points |
 | [discord-notifier.sh](../scripts/discord-notifier.sh) | Input validation, outcome classification, deterministic selection, and delivery |
+| [notification-tags.sh](../scripts/notification-tags.sh) | Validate and shorten image tags before notification output boundaries |
 
 1. Find the image and destination in `themes.jq`, or the `docs` definition for Pages messages.
 2. Edit the applicable `jokes` array. Each supported outcome has two short variants. Keep each joke independent of operational facts.
@@ -77,6 +84,23 @@ For a final image preview, use `--type image-verdict`, `--job-status`, and `--pu
 
 For documentation previews, select `--profile docs` with `--type docs-start` or `--type docs-verdict`. A verdict needs `--build-status` and `--deploy-status`; `--site-url` adds the site link when available. Run `sh .github/scripts/discord-notifier.sh --help` for the complete interface.
 
+## Diagnose delivery failures safely
+
+Each request logs only a numeric HTTP status and curl exit code with fixed text, for example `Discord notification request finished: HTTP 204; curl exit 0.` Raw response bodies, headers, curl error text, webhook URLs, payloads, and tokens are never logged. An unavailable or malformed HTTP status is reported as `000`.
+
+Use the codes to choose the next check. An HTTP error does not identify the rejected payload detail because response bodies remain private.
+
+| Result | What to check |
+| --- | --- |
+| HTTP `400` with curl exit `22` | Review a synthetic payload and its metadata against Discord limits and required fields |
+| HTTP `401` or `403` with curl exit `22` | Verify webhook access and permissions in Discord without sharing its URL |
+| HTTP `404` with curl exit `22` | Verify that the existing webhook is still available |
+| HTTP `429` with curl exit `22` | Wait before another authorized send; rebuilding the image does not resolve rate limits |
+| HTTP `5xx` with curl exit `22` | Check Discord service availability before another authorized send |
+| HTTP `000` | Use curl exit `6` for a name-resolution check, `7` for a connection check, or `28` for a timeout check |
+
+A failed request returns its original curl exit code. Notification failures do not change build or publication results, and retries are not automatic.
+
 ## Validate and recover
 
 Docker must be available for `make test-workflows`, which runs in the Buccaneerr test image. Preparing that image can need network access. The fixtures themselves use no live provider credentials and contact neither Discord nor a registry.
@@ -87,6 +111,6 @@ make test-workflows
 
 To run only the notifier fixtures with a POSIX shell and `jq` on the host, use `sh test/helpers/test-discord-notifier.sh`.
 
-The notifier fixtures cover every maintained image, destination, state, and joke variant; fixed colors; partial publication; missing evidence; metadata escaping and size limits; missing hooks; and isolated delivery failures. Other workflow fixtures validate release policy and registry mirroring. These checks do not prove live Discord delivery or a healthy deployed application.
+The notifier fixtures cover every maintained image, destination, state, and joke variant; fixed colors; partial publication; missing evidence; metadata escaping and size limits; missing hooks; short-tag boundaries and atomic rejection; and sanitized HTTP/curl status reporting. Other workflow fixtures validate release policy and registry mirroring. These checks do not prove live Discord delivery or a healthy deployed application.
 
 If a notification fails, inspect the notification step and linked publishing run. Check destination configuration, required metadata, and whether the run was cancelled. A delivery error alone is not a reason to rebuild or republish an image. Live test messages require explicit authorization.

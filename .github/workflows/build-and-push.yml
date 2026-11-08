@@ -125,7 +125,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       privateerr-publication: ${{ steps.publish-privateerr.outcome }}
-      privateerr-tags: ${{ steps.meta-privateerr.outputs.tags }}
+      privateerr-tags: ${{ steps.notification-tags.outputs.privateerr-tags }}
       privateerr-digest: ${{ steps.publish-privateerr.outputs.digest }}
       privateerr-result: ${{ steps.publish-privateerr.outcome == 'success' && steps.attest-privateerr.outcome == 'success' && steps.verify-mirror.outcome == 'success' && steps.overview.outcome == 'success' && 'success' || '' }}
       privateerr-stage: >-
@@ -146,7 +146,7 @@ jobs:
             || 'Publication or required verification' }}
       privateerr-mirror: ${{ steps.mirror.outcome }}
       buccaneerr-publication: ${{ steps.publish-buccaneerr.outcome }}
-      buccaneerr-tags: ${{ steps.meta-buccaneerr.outputs.tags }}
+      buccaneerr-tags: ${{ steps.notification-tags.outputs.buccaneerr-tags }}
       buccaneerr-digest: ${{ steps.publish-buccaneerr.outputs.digest }}
       buccaneerr-result: ${{ steps.publish-buccaneerr.outcome == 'success' && steps.attest-buccaneerr.outcome == 'success' && 'success' || '' }}
       buccaneerr-stage: >-
@@ -492,6 +492,29 @@ jobs:
           repository: ${{ github.repository_owner }}/privateerr
           short-description: "Generate PIA WireGuard config and Gluetun port forwarding metadata."
           readme-filepath: ./docs/docker-hub-description.md
+
+      #
+      # Export only validated short tags for notifications. Full references remain
+      # local to the build and mirror steps; notification metadata cannot gate publication.
+      #
+      - name: "Prepare the Notification Tag Labels 🏷️"
+        id: notification-tags
+        if: always()
+        continue-on-error: true
+        env:
+          PRIVATEERR_TAGS: ${{ steps.meta-privateerr.outputs.tags }}
+          BUCCANEERR_TAGS: ${{ steps.meta-buccaneerr.outputs.tags }}
+        run: |
+          privateerr_tags=$(sh .github/scripts/notification-tags.sh \
+              --image "${PRIVATEERR_IMAGE_REF}" --tags "${PRIVATEERR_TAGS}")
+          buccaneerr_tags=$(sh .github/scripts/notification-tags.sh \
+              --image "${BUCCANEERR_IMAGE_REF}" --tags "${BUCCANEERR_TAGS}")
+
+          # The delimiter contains colons, which cannot occur in a validated short tag.
+          {
+              printf 'privateerr-tags<<:notification-tags:\n%s\n:notification-tags:\n' "${privateerr_tags}"
+              printf 'buccaneerr-tags<<:notification-tags:\n%s\n:notification-tags:\n' "${buccaneerr_tags}"
+          } >> "${GITHUB_OUTPUT}"
 
   #
   # Report image evidence even when validation fails or publication is skipped.

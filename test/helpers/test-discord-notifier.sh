@@ -133,11 +133,26 @@ render --type image-verdict --profile image-primary --job-status failure --publi
 jq -e '.embeds[0].description | contains("GHCR publication completed")' "${TEST_ROOT}/payload.json" >/dev/null
 
 #
+# Published notification tags are short and optional; a real digest remains useful
+# even if GitHub withheld optional tag metadata at a job boundary.
+#
+render --type image-verdict --profile image-primary --job-status success --publication-status success \
+    --published-tags 'ghcr.io/test/image:Version_1.2-RC
+sha-ABC' --published-digest sha256:0123456789abcdef > "${TEST_ROOT}/payload.json"
+jq -e '[.embeds[0].fields[] | select(.name == "🏷️ Published tags")][0].value == "Version_1.2-RC\nsha-ABC"' \
+    "${TEST_ROOT}/payload.json" >/dev/null
+render --type image-verdict --profile image-primary --job-status success --publication-status success \
+    --published-digest sha256:0123456789abcdef > "${TEST_ROOT}/payload.json"
+jq -e '([.embeds[0].fields[].name] | index("🏷️ Published tags") == null)
+    and ([.embeds[0].fields[].name] | index("🧾 Digest") != null)' "${TEST_ROOT}/payload.json" >/dev/null
+
+#
 # Simultaneously large inputs exercise the aggregate budget and literal escaping.
 #
 long_value=$(awk 'BEGIN {for (i = 0; i < 1200; i++) printf "word "; print "@everyone \"quoted\""}')
+many_tags=$(awk 'BEGIN {for (i = 0; i < 100; i++) print "tag-" i}')
 render --type image-verdict --profile image-primary --job-status failure --publication-status success \
-    --published-digest "${long_value}" --published-tags "${long_value}" \
+    --published-digest "${long_value}" --published-tags "${many_tags}" \
     --ghcr-package-url "${long_value}" --dockerhub-url "${long_value}" \
     --failure-stage "${long_value}" --repository "${long_value}" --ref-name "${long_value}" \
     --workflow-name "${long_value}" --actor "${long_value}" --platforms "${long_value}" \
@@ -160,29 +175,56 @@ if render --type image-start --profile legacy > "${TEST_ROOT}/rejected.log" 2>&1
 fi
 
 #
-# Stub delivery proves missing hooks skip, failures stay failures, and a later
-# destination can still be attempted without any real network activity.
+# Stub every delivery response and deliberately emit hostile diagnostic data.
+# Only the fixed numeric status line may escape the notifier.
 #
 mkdir "${TEST_ROOT}/bin"
 cat > "${TEST_ROOT}/bin/curl" <<'STUB'
 #!/bin/sh
-exit "${STUB_CURL_STATUS:-0}"
+printf '%s\n' 'attempt' >> "${STUB_CURL_COUNT_FILE}"
+printf '%s\n' "$@" 'response-body-canary header-canary token-canary' >&2
+printf '%s' "${STUB_CURL_STDOUT}"
+exit "${STUB_CURL_STATUS}"
 STUB
 chmod +x "${TEST_ROOT}/bin/curl"
 DISCORD_WEBHOOK_URL='' sh "${NOTIFIER}" > "${TEST_ROOT}/missing-hook.log"
-if PATH="${TEST_ROOT}/bin:${PATH}" STUB_CURL_STATUS=22 DISCORD_WEBHOOK_URL=https://example.invalid/private-hook \
-    sh "${NOTIFIER}" --type image-start --profile image-primary \
-    --run-url https://example.invalid/run --repository test/repo --ref-name main \
-    --ghcr-image ghcr.io/test/image > "${TEST_ROOT}/delivery.log" 2>&1; then
-    echo "Discord delivery failure was hidden." >&2
-    exit 1
-fi
-if grep -F 'private-hook' "${TEST_ROOT}/delivery.log" >/dev/null; then
-    echo "Discord delivery exposed its webhook URL." >&2
-    exit 1
-fi
-PATH="${TEST_ROOT}/bin:${PATH}" STUB_CURL_STATUS=0 DISCORD_WEBHOOK_URL=https://example.invalid/secondary-hook \
-    sh "${NOTIFIER}" --type image-start --profile image-secondary \
-    --run-url https://example.invalid/run --repository test/repo --ref-name main \
-    --ghcr-image ghcr.io/test/image
+
+#
+# deliver: Exercise one synthetic curl response without contacting Discord.
+#
+# Parameters: $1 - Simulated HTTP status output.
+#             $2 - Simulated curl exit status.
+#
+# Returns: Preserves the notifier exit code and writes sanitized diagnostics.
+#
+deliver() {
+    PATH="${TEST_ROOT}/bin:${PATH}" \
+    STUB_CURL_STDOUT="$1" STUB_CURL_STATUS="$2" \
+    STUB_CURL_COUNT_FILE="${TEST_ROOT}/curl-attempts" \
+    DISCORD_WEBHOOK_URL=https://example.invalid/webhook-canary \
+        sh "${NOTIFIER}" --type image-start --profile image-primary \
+        --run-url https://example.invalid/run --repository payload-canary/repo --ref-name main \
+        --ghcr-image ghcr.io/test/image
+}
+
+for response in 204:0 303:0 400:22 403:22 404:22 429:22 500:22 000:7 000:28; do
+    http_status=${response%:*}
+    expected_exit=${response#*:}
+    : > "${TEST_ROOT}/curl-attempts"
+
+    if deliver "${http_status}" "${expected_exit}" > "${TEST_ROOT}/delivery.log" 2>&1; then
+        actual_exit=0
+    else
+        actual_exit=$?
+    fi
+
+    test "${actual_exit}" -eq "${expected_exit}"
+    test "$(cat "${TEST_ROOT}/delivery.log")" = "Discord notification request finished: HTTP ${http_status}; curl exit ${expected_exit}."
+    test "$(wc -l < "${TEST_ROOT}/curl-attempts" | tr -d '[:space:]')" = 1
+done
+
+# Malformed stdout must not inject arbitrary values into the numeric log field.
+: > "${TEST_ROOT}/curl-attempts"
+deliver 'webhook-canary body-canary 204' 0 > "${TEST_ROOT}/delivery.log" 2>&1
+test "$(cat "${TEST_ROOT}/delivery.log")" = 'Discord notification request finished: HTTP 000; curl exit 0.'
 printf '%s\n' 'Discord notifier tests passed.'
