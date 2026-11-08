@@ -123,11 +123,11 @@ jq -e '.embeds[0].description | contains("documentation build")' "${TEST_ROOT}/p
 render --type image-verdict --profile image-primary --job-status failure --publication-status failure \
     --published-tags ghcr.io/test/image:never-published --published-digest sha256:unconfirmed \
     > "${TEST_ROOT}/payload.json"
-jq -e '[.embeds[0].fields[].name] | index("Published tags") == null' "${TEST_ROOT}/payload.json" >/dev/null
+jq -e '[.embeds[0].fields[].name] | index("🏷️ Published tags") == null' "${TEST_ROOT}/payload.json" >/dev/null
 render --type image-verdict --profile image-primary --job-status success --publication-status success \
     --published-tags ghcr.io/test/image:never-confirmed > "${TEST_ROOT}/payload.json"
 assert_payload 16705372
-jq -e '[.embeds[0].fields[].name] | index("Published tags") == null' "${TEST_ROOT}/payload.json" >/dev/null
+jq -e '[.embeds[0].fields[].name] | index("🏷️ Published tags") == null' "${TEST_ROOT}/payload.json" >/dev/null
 render --type image-verdict --profile image-primary --job-status failure --publication-status success \
     --published-digest sha256:0123456789abcdef --failure-stage 'Registry verification' > "${TEST_ROOT}/payload.json"
 jq -e '.embeds[0].description | contains("GHCR publication completed")' "${TEST_ROOT}/payload.json" >/dev/null
@@ -148,7 +148,7 @@ assert_payload 15548997
 injection_value='$(touch never-created) `printf unsafe` "quoted"'
 render --type image-start --profile image-primary --workflow-name "${injection_value}" \
     > "${TEST_ROOT}/payload.json"
-jq -e --arg value "${injection_value}" '[.embeds[0].fields[] | select(.name == "Workflow")][0].value == $value' \
+jq -e --arg value "${injection_value}" '[.embeds[0].fields[] | select(.name == "⚙️ Workflow")][0].value == $value' \
     "${TEST_ROOT}/payload.json" >/dev/null
 
 #

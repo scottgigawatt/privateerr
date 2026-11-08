@@ -15,29 +15,29 @@ def field($name; $value):
   {name: $name, value: ($value | if length > 300 then .[0:297] + "..." else . end), inline: false};
 
 def image_fields:
-  [field("Image"; $image_name), field("Repository"; $repository), field("Ref"; $ref)]
-  + (if $workflow_name != "" then [field("Workflow"; $workflow_name)] else [] end)
-  + (if $actor != "" then [field("Triggered by"; $actor)] else [] end)
-  + (if $platforms != "" then [field("Platforms"; $platforms)] else [] end)
+  [field("📦 Image"; $image_name), field("📁 Repository"; $repository), field("🌿 Ref"; $ref)]
+  + (if $workflow_name != "" then [field("⚙️ Workflow"; $workflow_name)] else [] end)
+  + (if $actor != "" then [field("👤 Triggered by"; $actor)] else [] end)
+  + (if $platforms != "" then [field("🧱 Platforms"; $platforms)] else [] end)
   + (if $notification_type == "image-start" then
-      [field("GHCR image"; $ghcr_image)]
-      + (if $dockerhub_image != "" then [field("Docker Hub image"; $dockerhub_image)] else [] end)
+      [field("📦 GHCR image"; $ghcr_image)]
+      + (if $dockerhub_image != "" then [field("🐳 Docker Hub image"; $dockerhub_image)] else [] end)
     else
-      [field("GHCR publication"; ($publication_status | if . == "" then "unconfirmed" else . end))]
-      + (if $dockerhub_url != "unavailable" then [field("Docker Hub mirror"; ($mirror_status | if . == "" then "unconfirmed" else . end))] else [] end)
-      + (if $publication_status == "success" and $digest != "unconfirmed" then [field("Published tags"; $tags), field("Digest"; $digest)] else [] end)
-      + (if $ghcr_url != "unavailable" then [field("GHCR"; $ghcr_url)] else [] end)
-      + (if $dockerhub_url != "unavailable" then [field("Docker Hub"; $dockerhub_url)] else [] end)
+      [field("📦 GHCR publication"; ($publication_status | if . == "" then "unconfirmed" else . end))]
+      + (if $dockerhub_url != "unavailable" then [field("🐳 Docker Hub mirror"; ($mirror_status | if . == "" then "unconfirmed" else . end))] else [] end)
+      + (if $publication_status == "success" and $digest != "unconfirmed" then [field("🏷️ Published tags"; $tags), field("🧾 Digest"; $digest)] else [] end)
+      + (if $ghcr_url != "unavailable" then [field("📦 GHCR"; $ghcr_url)] else [] end)
+      + (if $dockerhub_url != "unavailable" then [field("🐳 Docker Hub"; $dockerhub_url)] else [] end)
     end);
 
 def docs_fields:
-  [field("Repository"; $repository), field("Ref"; $ref)]
-  + (if $workflow_name != "" then [field("Workflow"; $workflow_name)] else [] end)
-  + (if $actor != "" then [field("Triggered by"; $actor)] else [] end)
+  [field("📁 Repository"; $repository), field("🌿 Ref"; $ref)]
+  + (if $workflow_name != "" then [field("⚙️ Workflow"; $workflow_name)] else [] end)
+  + (if $actor != "" then [field("👤 Triggered by"; $actor)] else [] end)
   + (if $notification_type == "docs-verdict" then
-      [field("Documentation build"; $build_status), field("Pages deployment"; $deploy_status)]
+      [field("🛠️ Documentation build"; $build_status), field("🚀 Pages deployment"; $deploy_status)]
     else [] end)
-  + (if $site_url != "" and $site_url != "unavailable" then [field("Documentation site"; $site_url)] else [] end);
+  + (if $site_url != "" and $site_url != "unavailable" then [field("📚 Documentation site"; $site_url)] else [] end);
 
 def fact:
   ($notification.subject // $image_name) as $subject
@@ -73,8 +73,8 @@ def render:
       url: $url,
       color: $notification.color,
       fields: ((if $notification_type | startswith("docs-") then docs_fields else image_fields end)
-        + (if $failure_stage != "" and $outcome != "start" and $outcome != "success" then [field("Stage needing attention"; $failure_stage)] else [] end)
-        + [field("View run"; $url)]),
+        + (if $failure_stage != "" and $outcome != "start" and $outcome != "success" then [field("⚠️ Stage needing attention"; $failure_stage)] else [] end)
+        + [field("🔗 View run"; $url)]),
       footer: {text: $notification.footer},
       timestamp: now | todate
     }]
