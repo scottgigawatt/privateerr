@@ -9,7 +9,7 @@
 #
 # Default Alpine image tag that can be overridden using build args.
 #
-ARG ALPINE_TAG=3.24@sha256:be2656061b536c1883c4034790e21d0a09c5aaaf51968b89368a3c0371ea2c9a
+ARG ALPINE_TAG=3.24@sha256:f59abe656b692d901e184be3445e084786602108599d2a51d229c0f5a48c71bf
 
 #
 # Stage 1 of 6: Obtain a static ShellCheck binary for every supported CPU.
@@ -21,7 +21,7 @@ FROM koalaman/shellcheck:v0.11.0@sha256:61862eba1fcf09a484ebcc6feea46f1782532571
 # Stage 2 of 6: Obtain the current Docker client without a daemon or extra plugins.
 # Alpine's packaged client lags behind upstream security releases.
 #
-FROM docker:29.9.3-cli@sha256:4d742ab934c2149b628bf26369ac3ec51cb91e2e28fe6722a0e86a6d6efc4bd5 AS docker-cli
+FROM docker:29.9.3-cli@sha256:2357639ad1ea7d0194134bf3292622fd4e562483966ed674e5d7c945b5f3b28d AS docker-cli
 
 #
 # Stage 3 of 6: Obtain the reviewed official Compose binary for every supported CPU.
@@ -37,7 +37,7 @@ FROM alpine:${ALPINE_TAG} AS tools
 #
 # Re-declare the Alpine tag after FROM so labels can record the base image.
 #
-ARG ALPINE_TAG=3.24@sha256:be2656061b536c1883c4034790e21d0a09c5aaaf51968b89368a3c0371ea2c9a
+ARG ALPINE_TAG=3.24@sha256:f59abe656b692d901e184be3445e084786602108599d2a51d229c0f5a48c71bf
 
 #
 # Default install locations and image metadata.
