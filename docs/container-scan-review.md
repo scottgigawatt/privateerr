@@ -22,7 +22,7 @@ The immutable index digests are:
 
 Both `latest` images retain zlib 1.3.2-r1 with CVE-2026-4738; `edge` includes zlib 1.4-r0. Buccaneerr also needs signed stable Alpine updates from git 2.54.0-r0 to 2.54.1-r0 and Node.js 24.22.1-r1 to 24.22.3-r0. Its Docker CLI, Compose, and actionlint binaries report the newly disclosed Go standard-library CVE-2026-97054.
 
-The unreleased weekly dependency update refreshes the Docker CLI donor digest, adopts official Compose 5.7.1 built with Go 1.27.4, and copies donor binaries before the APK refresh so changed pins invalidate cached OS-package installation. Published channels retain the findings above until a separately authorized publication. A stable release is required to advance `latest`. Fresh local Buccaneerr builds on all three supported platforms have no OS-package findings and retain 1 HIGH, 1 MEDIUM, and 4 UNKNOWN findings. The signed actionlint package and current official Docker CLI donor still use older Go runtimes; those CVE-2026-97054 entries remain visible without exceptions.
+The weekly dependency update refreshes the Docker CLI donor digest, adopts official Compose 5.7.1 built with Go 1.27.4, and copies donor binaries before the APK refresh so changed pins invalidate cached OS-package installation. The published-image table records the immutable snapshots above; successful main builds advance `edge`. A separately authorized stable release is required to advance `latest`. Fresh local Buccaneerr builds on all three supported platforms have no OS-package findings and retain 1 HIGH, 1 MEDIUM, and 4 UNKNOWN findings. The signed actionlint package and current official Docker CLI donor still use older Go runtimes; those CVE-2026-97054 entries remain visible without exceptions.
 
 These totals do not cover every nested archive. The separate [Python bootstrap-wheel assessment](#python-bootstrap-wheel) still requires review; zero whole-image findings do not establish vulnerability-free images.
 
@@ -82,7 +82,6 @@ The [scope guard](https://github.com/scottgigawatt/privateerr/blob/main/test/pol
 | Control | Current reason to retain it |
 | --- | --- |
 | KaTeX override at 0.19.1 | The math extension still requires `^0.16.0`; removing the override restores the older range affected by [CVE-2026-103923](https://github.com/advisories/GHSA-238p-pmpm-9mq7). |
-| Markdownlint's re2js override at 2.9.1 | Markdownlint still pins 2.8.6, affected by [CVE-2026-116795](https://github.com/le0pard/re2js/security/advisories/GHSA-gg6h-894w-4m9c). Remove the override when a compatible upstream dependency includes its fix. |
 | Active virtualenv seed-wheel cleanup | Keep complete upstream wheels selected for Python 3.14, their integrity checks, and the unchanged upstream SBOM. Remove only inactive wheel archives. |
 | Date compatibility shim | The unmodified PIA token script still calls `date --date='1 day'`; the wrapper translates that syntax for BusyBox. |
 | Targeted Hadolint exceptions | DL3018 permits stable APK security refreshes. The two DL3064 comments cover non-secret Privateerr install-path names. |
