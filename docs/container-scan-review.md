@@ -98,7 +98,6 @@ The [scope guard](https://github.com/scottgigawatt/privateerr/blob/main/test/pol
 | Control | Current reason to retain it |
 | --- | --- |
 | KaTeX override at 0.19.1 | The math extension still requires `^0.16.0`; removing the override restores the older range affected by [CVE-2026-103923](https://github.com/advisories/GHSA-238p-pmpm-9mq7). |
-| Markdownlint's re2js override at 2.9.1 | Markdownlint still pins 2.8.6, affected by [CVE-2026-116795](https://github.com/le0pard/re2js/security/advisories/GHSA-gg6h-894w-4m9c). Remove the override when a compatible upstream dependency includes its fix. |
 | Active virtualenv seed-wheel cleanup | Keep complete upstream wheels selected for Python 3.14, their integrity checks, and the unchanged upstream SBOM. Remove only inactive wheel archives. |
 | Date compatibility shim | The unmodified PIA token script still calls `date --date='1 day'`; the wrapper translates that syntax for BusyBox. |
 | Targeted Hadolint exceptions | DL3018 permits stable APK security refreshes. The two DL3064 comments cover non-secret Privateerr install-path names. |
