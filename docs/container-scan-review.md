@@ -1,64 +1,62 @@
 # Container security review
 
-Use this page to assess current published image findings, retained security controls, and the conditions for removing the temporary Compose exception. Privateerr's application uses only the Python standard library; validation and documentation tools belong to the test-only Buccaneerr image.
+Use this page to assess published image findings, unreleased fixes, retained security controls, and the conditions for removing the temporary Compose exception. Privateerr uses only the Python standard library; validation and documentation tools belong to the test-only Buccaneerr image.
 
-## November 9, 2026 published image audit
+## November 13, 2026 published image audit
 
-Trivy 0.76.2 used comprehensive detection, every severity, unfixed findings, and an explicit empty ignore file. Its database was updated at `2026-11-09 06:57:06 UTC` and held constant. Registry indexes, runtime manifests, configurations, and complete layer contents were verified by SHA-256 and size. Each scan used a single-runtime OCI layout, and the reported architecture and ARM variant matched its selected manifest.
-
-Each row covers `linux/amd64`, `linux/arm64`, and `linux/arm/v7`:
+Trivy 0.76.2 used comprehensive detection, every severity, unfixed findings, and an explicit empty ignore file. Its database was updated at `2026-11-13 19:05:12 UTC` and held constant. Each scan selected an immutable runtime manifest and verified the reported architecture against that manifest. Each row covers `linux/amd64`, `linux/arm64`, and `linux/arm/v7`:
 
 | Published image | Whole-image findings per platform |
 | --- | --- |
 | Privateerr `edge` | 0 |
 | Privateerr `latest` | 1 MEDIUM |
-| Buccaneerr `edge` | 1 HIGH, 1 MEDIUM, 2 UNKNOWN |
-| Buccaneerr `latest` | 1 HIGH, 2 MEDIUM, 2 UNKNOWN |
+| Buccaneerr `edge` | 14 HIGH, 14 MEDIUM, 1 LOW, 6 UNKNOWN |
+| Buccaneerr `latest` | 14 HIGH, 15 MEDIUM, 1 LOW, 6 UNKNOWN |
 
-Both `latest` images retain zlib 1.3.2-r1 with CVE-2026-4738; their newer `edge` images include the fix in zlib 1.4-r0. Buccaneerr retains the four [Go-tool findings](#remaining-go-tool-findings) in both channels.
+The immutable index digests are:
 
-These totals do not cover every nested archive. The separate [Python bootstrap-wheel assessment](#python-bootstrap-wheel) still reports version-level findings; zero whole-image findings do not establish vulnerability-free images.
-
-Both reviewed `edge` images were built from source `5472e54a6e45763cea93da85c52fea43aa4a237e`; both `latest` images were built from `108a42bf25593d97d469eb57096fdedaf0d13a2d`. Their immutable index digests are:
-
-- Privateerr `edge`: `sha256:580b60343c353ff087b7217eb83e4c49b37bf939829fb11778ea20ef1f9b9993`
+- Privateerr `edge`: `sha256:b5877a368f8fc9e356a62f212af930ba1240cdb7db1f7594ec896a3ae07f2df7`
 - Privateerr `latest`: `sha256:3b274ca1e99ce00420deb733e90cd7d7c36e6bb65a54fb342f77f7d78dee6036`
-- Buccaneerr `edge`: `sha256:e875d3a06bbbfc8ec4c4ba0e91500b80b4ad92d1cef855b7d7fbb5f6ef82a4aa`
+- Buccaneerr `edge`: `sha256:0bf32609b2705d009f490c9b8dc598deb3f96b429733dfeda0a318bc71d54200`
 - Buccaneerr `latest`: `sha256:50795d35453c59375f591841bd2da8cfaef0f065bd7dfd91fd9678bcf3eceec0`
 
-Privateerr's Docker Hub indexes match GHCR for these channels. Buccaneerr is published only to GHCR. An `edge` fix does not advance `latest`; a separately authorized stable release is required to deliver the newer packages through that channel.
+Both `latest` images retain zlib 1.3.2-r1 with CVE-2026-4738; `edge` includes zlib 1.4-r0. Buccaneerr also needs signed stable Alpine updates from git 2.54.0-r0 to 2.54.1-r0 and Node.js 24.22.1-r1 to 24.22.3-r0. Its Docker CLI, Compose, and actionlint binaries report the newly disclosed Go standard-library CVE-2026-97054.
+
+The unreleased weekly dependency update refreshes the Docker CLI donor digest, adopts official Compose 5.7.1 built with Go 1.27.4, and copies donor binaries before the APK refresh so changed pins invalidate cached OS-package installation. Published channels retain the findings above until a separately authorized publication. A stable release is required to advance `latest`. A fresh local arm64 Buccaneerr build has no OS-package findings and retains 1 HIGH, 1 MEDIUM, and 4 UNKNOWN findings. The signed actionlint package and current official Docker CLI donor still use older Go runtimes; those CVE-2026-97054 entries remain visible without exceptions.
+
+These totals do not cover every nested archive. The separate [Python bootstrap-wheel assessment](#python-bootstrap-wheel) still requires review; zero whole-image findings do not establish vulnerability-free images.
 
 ## Remaining Go-tool findings
 
-Buccaneerr retains four unfiltered module-level findings: actionlint's Windows-specific [CVE-2026-39824](https://pkg.go.dev/vuln/GO-2026-5024), and Compose's [GO-2026-5932](https://pkg.go.dev/vuln/GO-2026-5932), [CVE-2026-78661](https://pkg.go.dev/vuln/GO-2026-6860), and [CVE-2026-97045](https://pkg.go.dev/vuln/GO-2026-6866). They are classified as two UNKNOWN, one HIGH, and one MEDIUM finding respectively. Upstream module fixes exist, but the latest official Compose donor remains 5.7.0. Do not rebuild its dependency graph locally or carry the exception onto a changed donor without a new assessment.
+Official Compose 5.7.1 still embeds `golang.org/x/net v0.60.0` and `golang.org/x/crypto v0.57.0`. Raw scans of every supported donor platform retain HIGH [CVE-2026-78661](https://pkg.go.dev/vuln/GO-2026-6860), MEDIUM [CVE-2026-97045](https://pkg.go.dev/vuln/GO-2026-6866), and UNKNOWN [GO-2026-5932](https://pkg.go.dev/vuln/GO-2026-5932). Module fixes exist upstream, but the current official donor has not adopted them. Preserve the official binary rather than rebuilding its dependency graph locally.
 
-Module metadata does not establish that every affected package is included or invoked by supported commands. The reviewed Compose binary omits the affected HTML parser package, as documented below. No actionlint exception is added, and these raw counts do not hide the Compose finding excluded from the narrower CI gate.
+Actionlint's [Windows-specific CVE-2026-39824](https://pkg.go.dev/vuln/GO-2026-5024) remains visible without an exception. Module metadata does not establish that every affected package is included or invoked by supported commands.
 
-## November 8, 2026 temporary Compose exception
+## November 13, 2026 temporary Compose exception
 
-This section is for maintainers reviewing the temporary CI exception for Buccaneerr. Trivy now classifies [CVE-2026-78661 / GO-2026-6860](https://pkg.go.dev/vuln/GO-2026-6860) as HIGH in Compose's `golang.org/x/net v0.60.0` module. The affected HTML parser is fixed upstream in x/net 0.62.0. At this check, the latest [official Compose release](https://github.com/docker/compose/releases/tag/v5.7.0) remained 5.7.0; no newer official donor containing that module fix was available. The exception is justified by absent affected code in the reviewed binary, not by an absence of an upstream module fix. The November 4 UNKNOWN and November 8 HIGH classifications come from dated scanner/database results for the same immutable donor; the earlier counts remain historical evidence.
+This section is for maintainers reviewing the temporary CI exception for Buccaneerr. The newer official Compose 5.7.1 donor fixes CVE-2026-97054 through Go 1.27.4, but retains the x/net 0.60.0 module affected by CVE-2026-78661. A new package and symbol assessment confirms the HTML parser remains absent on all supported platforms. The exception is justified by absent affected code, not an upstream module fix being unavailable.
 
-The [temporary exception](https://github.com/scottgigawatt/privateerr/blob/main/.trivyignore.yaml) excludes only `CVE-2026-78661` at `usr/local/lib/docker/cli-plugins/docker-compose`. Its owner is `scottgigawatt`. Trivy stops applying it on **November 22, 2026 at 00:00 UTC**. It applies only to the Buccaneerr scan in pull-request and publication workflows. Production Privateerr scans have no exception. Every other finding remains subject to the existing scan policy. Affected CI scans enable `TRIVY_SHOW_SUPPRESSED`, so the ignored finding and its justification remain visible. Raw audits continue to use `--ignorefile /dev/null`.
+The [temporary exception](https://github.com/scottgigawatt/privateerr/blob/main/.trivyignore.yaml) excludes only `CVE-2026-78661` at `usr/local/lib/docker/cli-plugins/docker-compose`. Its owner is `scottgigawatt`; the expiry remains **November 22, 2026 at 00:00 UTC**. It applies only to Buccaneerr scans, with suppressed findings visible. Production scans have no exception; every other finding remains subject to the existing gate. Raw audits use `--ignorefile /dev/null`.
 
 ### Verify the reviewed binary
 
-The reviewed donor is `docker/compose-bin:v5.7.0@sha256:a4de4851b16f18634f74de66f126d5de65f7c5cb5a9502d67ab83e9a96041a70`. A fresh read-only registry extraction verified the SHA-256 of its index, selected manifests, configurations, and layers before extracting `/docker-compose` with its original executable mode `0755`. Configuration architecture matched each requested Linux platform. No extracted binary was executed.
+The reviewed donor is `docker/compose-bin:v5.7.1@sha256:6a6704a7ccbc45eb4cc7e5b71dba685e9bc23705c580430f15034b2b5e46ec2b`. Docker Buildx extracted each Linux platform into a disposable directory without executing its binary. Go build metadata confirmed the architecture and ARMv7 variant.
 
-| Platform | Donor runtime manifest | Extracted binary SHA-256 |
+| Platform | Donor runtime manifest | Binary SHA-256 |
 | --- | --- | --- |
-| `linux/amd64` | `sha256:c34e6c54a19b3ac03edc915dd6115880c491a36fce89e0679962e5db6f36e81a` | `7758048ad38e580f22559603312874fec8bb638d021a9e64182385fc17cc12a2` |
-| `linux/arm64` | `sha256:631696b7b690e6009ad3155d78a9b998e7db8cf407b987aefa4ab159e2d25dca` | `15861535d14e26555736b49376c95e14bfd94285366c8446bfac7156a972e76f` |
-| `linux/arm/v7` | `sha256:1f08c4d07dd5f18fdf6be60c71bc3067e8cab0020e39f33a8678e610b89f5f44` | `d18e5c549fd3595b36846fe00d01e2af5a37d4baec7945c557a0abda9af63c91` |
+| `linux/amd64` | `sha256:7d12ba7faf83e8ed53e89b5142b664bedfa37ce141bc3dc0d44994dd3711fcf4` | `af426722a8af5de812fcee30cc1c39f0639f5f723cbadefb25e5d4db054064cf` |
+| `linux/arm64` | `sha256:332b5f5e9fef2296eb23280b9b815457e6558d67b52faafc13d301cef238a80a` | `f2f49f903240895fa764c0dca3a14548b754ad9426f6b609ccaf55ec5a3aa2a5` |
+| `linux/arm/v7` | `sha256:bea1e236427b5f44c28fd5a17da637ee5843235ff007e7496f195bca7469cc91` | `c03e0c93cf747f311d39f6920a33c461fd0f7a6246439aaf259766527caa28f5` |
 
-Go 1.27.3 and `govulncheck v1.9.0` inspected the binaries, which were built with Go 1.26.10. `go version -m` confirmed x/net 0.60.0. Both `go tool nm` and `govulncheck -mode=extract` recovered symbols successfully; neither found the affected `golang.org/x/net/html` package or its nested packages. Nonzero x/net symbol counts provide a positive control against an empty or failed extraction.
+Go 1.27.4 and `govulncheck v1.9.0` inspected binaries built with Go 1.27.4. Both `go tool nm` and `govulncheck -mode=extract` recovered symbols and found no `golang.org/x/net/html` package or nested packages. Nonzero x/net counts provide a positive control:
 
 | Platform | Recovered Go symbols | x/net symbols | HTML package symbols |
 | --- | --- | --- | --- |
-| `linux/amd64` | 37,364 | 396 | 0 |
-| `linux/arm64` | 37,311 | 395 | 0 |
-| `linux/arm/v7` | 37,648 | 396 | 0 |
+| `linux/amd64` | 36,931 | 383 | 0 |
+| `linux/arm64` | 36,865 | 382 | 0 |
+| `linux/arm/v7` | 36,870 | 383 | 0 |
 
-To repeat this check, use Go 1.27.3, `govulncheck v1.9.0`, and `jq`. Extract the binary from a manifest above into a disposable directory, verify its SHA-256, and set `COMPOSE_BINARY` to that local path. These commands inspect the binary without executing it:
+To repeat this check, use Go 1.27.4, `govulncheck v1.9.0`, and `jq`. Extract and hash-check a binary from the manifests above and set `COMPOSE_BINARY` to its local path. These commands inspect it without execution:
 
 ```sh
 go version -m "${COMPOSE_BINARY}"
@@ -68,30 +66,16 @@ govulncheck -mode=binary -scan=symbol -json "${COMPOSE_BINARY}" > compose-vulner
 jq -s -e '.[1].pkgSymbols as $symbols | ($symbols | length > 0) and any($symbols[]; (.pkg // "") | startswith("golang.org/x/net/")) and all($symbols[]; (.pkg != "golang.org/x/net/html") and ((.pkg // "") | startswith("golang.org/x/net/html/") | not))' compose-symbols.jsonl
 ```
 
-The final command must succeed. Retain the module-level reports: binary-mode govulncheck still reports GO-2026-6860 against x/net 0.60.0, but without an affected package or symbol trace. This review does not declare Compose vulnerability-free or establish that unrelated findings are harmless.
-
-### Check filtering and expiry
-
-The exact CI engine, Trivy 0.70.0, was tested locally using its checksum-verified official macOS ARM64 release archive (SHA-256 `68e543c51dcc96e1c344053a4fde9660cf602c25565d9f09dc17dd41e13b838a`). Its fresh database was updated at `2026-11-08 00:37:11 UTC` and held constant. Image-style `trivy rootfs` scans using both the CI default precise detection and comprehensive detection inspected the verified amd64 binary in an isolated filesystem at the reviewed path; the package and symbol review above covers all three platforms. A plain `trivy filesystem` scan does not provide equivalent compiled-binary coverage.
-
-| Actual Trivy 0.70.0 check | Result |
-| --- | --- |
-| HIGH/CRITICAL gate with an empty ignore file | Exit 1; the HIGH finding remains |
-| Same gate with the active exact-path exception | Exit 0; the finding is recorded as ignored |
-| Same gate with an expired copy of the exception | Exit 1; the finding returns |
-| Same CVE in a second binary at another path | Exit 1; the second binary remains affected by the gate |
-| All-severity, unfixed-inclusive raw and filtered reports | Only CVE-2026-78661 is excluded from active findings; CVE-2026-97045 and GO-2026-5932 remain visible |
-
-The JSON reports used `--show-suppressed`; the excluded finding appears in `ExperimentalModifiedFindings` with status `ignored`, its source file, and its statement. A passing filtered gate is not an unfiltered clean scan.
+The final command must succeed. Keep module-level reports: a missing package trace does not declare Compose vulnerability-free or establish that unrelated findings are harmless.
 
 ### Remove or reassess the exception
 
-The [scope guard](https://github.com/scottgigawatt/privateerr/blob/main/test/policy/check-compose-exception-policy.sh) and [rejection fixtures](https://github.com/scottgigawatt/privateerr/blob/main/test/helpers/test-compose-exception-policy.sh) run through pre-commit and `make test-workflows`. They reject a changed donor declaration, another path or advisory, a second exception, or an extended expiry. Trivy enforces the UTC expiry; the guard checks the reviewed policy values rather than the current clock.
+The [scope guard](https://github.com/scottgigawatt/privateerr/blob/main/test/policy/check-compose-exception-policy.sh) and [rejection fixtures](https://github.com/scottgigawatt/privateerr/blob/main/test/helpers/test-compose-exception-policy.sh) reject a changed donor, additional path or advisory, second exception, or extended expiry. Trivy enforces the UTC expiry.
 
-1. Before the expiry, check for an official donor containing x/net 0.62.0 or later. Review its binary contents and run unfiltered scans on every supported platform before accepting a pin update.
-2. Remove this exception sooner if the donor changes, affected HTML code becomes present, or the upstream fix can be adopted. A changed donor requires a new code-path assessment; the current exception cannot be carried forward automatically.
-3. When removing the exception, remove `.trivyignore.yaml`, its `trivyignores` and `TRIVY_SHOW_SUPPRESSED` workflow settings, the dedicated guard and fixture scripts, their calls in `test-workflow-helpers.sh`, and the dedicated pre-commit hook. Update the build path filter and this dated decision together.
-4. Run `make test-workflows`, the repository hooks, and strict documentation checks. Confirm the unfiltered image gate passes before merging a fix. Do not extend the exception solely to obtain a green build.
+1. Before expiry, check for an official donor containing x/net 0.62.0 or later. Inspect its binary contents and run unfiltered scans on every supported platform.
+2. Remove the exception when the upstream fix can be adopted. If the donor changes while the finding remains, repeat the package and symbol assessment; never carry the exception forward automatically or extend it solely to obtain a passing build.
+3. When removing it, remove `.trivyignore.yaml`, its workflow settings and build path filter, the dedicated guard and fixture scripts, their workflow-helper calls, and the pre-commit hook. Update this page and the security policy together.
+4. Run `make test-workflows`, repository hooks, and strict documentation checks. Confirm the image gate passes and review the unfiltered report before merging.
 
 ## Retained controls
 

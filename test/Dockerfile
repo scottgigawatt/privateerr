@@ -72,6 +72,14 @@ LABEL org.opencontainers.image.title="Buccaneerr" \
         org.opencontainers.image.base.name="docker.io/library/alpine:${ALPINE_TAG}"
 
 #
+# Copy pinned tool donors before refreshing signed OS packages.
+# Changed donor pins must invalidate the APK refresh cache as well.
+#
+COPY --from=shellcheck /bin/shellcheck /usr/local/bin/shellcheck
+COPY --from=docker-cli /usr/local/bin/docker /usr/local/bin/docker
+COPY --from=compose /docker-compose /usr/local/lib/docker/cli-plugins/docker-compose
+
+#
 # Refresh the patched Python interpreter and validation tools from stable Alpine.
 # BusyBox supplies portable AWK and core utilities; Python checker versions are
 # locked separately so linting and documentation use the same current Ruff release.
@@ -112,13 +120,6 @@ RUN apk add --no-cache --virtual .python-build-deps py3-pip && \
 # Make the isolated Python checkers available to repository checks.
 #
 ENV PATH="/opt/precommit/bin:${PATH}"
-
-#
-# Copy tool binaries from digest-pinned upstream images.
-#
-COPY --from=shellcheck /bin/shellcheck /usr/local/bin/shellcheck
-COPY --from=docker-cli /usr/local/bin/docker /usr/local/bin/docker
-COPY --from=compose /docker-compose /usr/local/lib/docker/cli-plugins/docker-compose
 
 #
 # Copy npm dependency manifests for integrity-verified installation.

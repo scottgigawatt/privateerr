@@ -73,7 +73,7 @@ The protected build path then:
 
 Rebuilding the same commit keeps the pinned base image, but uncached APK installation can pick up newer packages from Alpine. Renovate updates base and tool pins separately. Pull the resulting `edge` image or publish a stable release to deliver fixes to `latest`.
 
-The [CVE-2026-78661-only exception](container-scan-review.md#november-8-2026-temporary-compose-exception) applies only to the reviewed test-only Buccaneerr Compose binary and expires on November 22, 2026 at 00:00 UTC. Other fixed HIGH and CRITICAL findings still fail CI.
+The [CVE-2026-78661-only exception](container-scan-review.md#november-13-2026-temporary-compose-exception) applies only to the reviewed test-only Buccaneerr Compose binary and expires on November 22, 2026 at 00:00 UTC. Other fixed HIGH and CRITICAL findings still fail CI.
 
 See the [dated container scan review](container-scan-review.md) for raw findings, current installer versions, reviewed image identities, and upstream evidence behind remaining package-level alerts. Its scan dates and image revisions matter; results for an `edge` image do not describe every stable release.
 
