@@ -56,7 +56,7 @@ Gluetun owns the tunnel, firewall, DNS, and port lease. Privateerr generates set
 
 ## Prepare a checkout
 
-You need an active PIA subscription, Git, Make, and Docker with Compose. Source builds also need Buildx and the [pinned PIA submodule](https://github.com/pia-foss/manual-connections/tree/645377e87238a52596c004f760d238e3faea68d1). Run these commands from the directory where you want the checkout:
+You need an active PIA subscription, Git, Make, and Docker with Compose. Source builds also need Buildx and the [pinned PIA submodule](./docker/pia-manual-connections). Run these commands from the directory where you want the checkout:
 
 ```sh
 git clone --recurse-submodules https://github.com/scottgigawatt/privateerr.git
