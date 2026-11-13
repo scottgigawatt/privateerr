@@ -56,7 +56,7 @@ sh "${POLICY}" "${TEST_ROOT}" >/dev/null
 #
 # A new donor needs new package/symbol evidence rather than a stale exception.
 #
-sed 's/v5.7.0@sha256:/v5.7.1@sha256:/' "${TEST_ROOT}/test/Dockerfile" > "${TEST_ROOT}/changed"
+sed 's/v5.7.1@sha256:/v5.7.2@sha256:/' "${TEST_ROOT}/test/Dockerfile" > "${TEST_ROOT}/changed"
 mv "${TEST_ROOT}/changed" "${TEST_ROOT}/test/Dockerfile"
 require_rejection 'a changed donor'
 reset_fixture
