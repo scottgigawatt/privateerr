@@ -5,14 +5,14 @@
     "description": "Hash-locked spelling, strict typing, and Markdown tools for Buccaneerr.",
     "license": "Apache-2.0",
     "dependencies": {
-        "cspell": "10.4.1",
-        "markdownlint-cli2": "0.24.0",
+        "cspell": "10.5.0",
+        "markdownlint-cli2": "0.24.1",
         "pyright": "1.1.414"
     },
     "overrides": {
         "katex": "0.19.1",
         "markdownlint": {
-            "re2js": "2.9.1"
+            "re2js": "2.10.0"
         }
     }
 }
