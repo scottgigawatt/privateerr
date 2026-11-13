@@ -21,13 +21,13 @@ FROM koalaman/shellcheck:v0.11.0@sha256:61862eba1fcf09a484ebcc6feea46f1782532571
 # Stage 2 of 6: Obtain the current Docker client without a daemon or extra plugins.
 # Alpine's packaged client lags behind upstream security releases.
 #
-FROM docker:29.9.3-cli@sha256:2357639ad1ea7d0194134bf3292622fd4e562483966ed674e5d7c945b5f3b28d AS docker-cli
+FROM docker:29.9.3-cli@sha256:5a7af0dcb0e46c803efe9b45371dd21cb500e5b4453250394ac6f06d49b6e6f1 AS docker-cli
 
 #
 # Stage 3 of 6: Obtain the reviewed official Compose binary for every supported CPU.
 # Keep official tooling intact rather than rebuilding its dependency graph.
 #
-FROM docker/compose-bin:v5.7.0@sha256:a4de4851b16f18634f74de66f126d5de65f7c5cb5a9502d67ab83e9a96041a70 AS compose
+FROM docker/compose-bin:v5.7.1@sha256:6a6704a7ccbc45eb4cc7e5b71dba685e9bc23705c580430f15034b2b5e46ec2b AS compose
 
 #
 # Stage 4 of 6: Keep all validation tools in the test-only Buccaneerr image.
@@ -72,6 +72,14 @@ LABEL org.opencontainers.image.title="Buccaneerr" \
         org.opencontainers.image.base.name="docker.io/library/alpine:${ALPINE_TAG}"
 
 #
+# Copy pinned tool donors before refreshing signed OS packages.
+# Changed donor pins must invalidate the APK refresh cache as well.
+#
+COPY --from=shellcheck /bin/shellcheck /usr/local/bin/shellcheck
+COPY --from=docker-cli /usr/local/bin/docker /usr/local/bin/docker
+COPY --from=compose /docker-compose /usr/local/lib/docker/cli-plugins/docker-compose
+
+#
 # Refresh the patched Python interpreter and validation tools from stable Alpine.
 # BusyBox supplies portable AWK and core utilities; Python checker versions are
 # locked separately so linting and documentation use the same current Ruff release.
@@ -112,13 +120,6 @@ RUN apk add --no-cache --virtual .python-build-deps py3-pip && \
 # Make the isolated Python checkers available to repository checks.
 #
 ENV PATH="/opt/precommit/bin:${PATH}"
-
-#
-# Copy tool binaries from digest-pinned upstream images.
-#
-COPY --from=shellcheck /bin/shellcheck /usr/local/bin/shellcheck
-COPY --from=docker-cli /usr/local/bin/docker /usr/local/bin/docker
-COPY --from=compose /docker-compose /usr/local/lib/docker/cli-plugins/docker-compose
 
 #
 # Copy npm dependency manifests for integrity-verified installation.
