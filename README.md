@@ -59,16 +59,16 @@ Privateerr packages the unmodified [Private Internet Access (PIA) manual connect
   </thead>
   <tbody>
     <tr>
-      <td nowrap valign="top">🏴‍☠️ <strong>Privateerr</strong></td>
-      <td valign="top">Creates the PIA WireGuard configuration file. Its built-in Python supervisor can refresh the configuration after a sustained VPN outage.</td>
+      <td nowrap valign="middle">🏴‍☠️ <strong>Privateerr</strong></td>
+      <td valign="middle">Creates the PIA WireGuard configuration file. Its built-in Python supervisor can refresh the configuration after a sustained VPN outage.</td>
     </tr>
     <tr>
-      <td nowrap valign="top">🛡️ <strong>Gluetun</strong></td>
-      <td valign="top">Runs the VPN tunnel, firewall, DNS, and PIA port forwarding.</td>
+      <td nowrap valign="middle">🛡️ <strong>Gluetun</strong></td>
+      <td valign="middle">Runs the VPN tunnel, firewall, DNS, and PIA port forwarding.</td>
     </tr>
     <tr>
-      <td nowrap valign="top">⚓ <strong>qBittorrent</strong></td>
-      <td valign="top">Uses the Gluetun VPN container's connection for its network traffic.</td>
+      <td nowrap valign="middle">⚓ <strong>qBittorrent</strong></td>
+      <td valign="middle">Uses the Gluetun VPN container's connection for its network traffic.</td>
     </tr>
   </tbody>
 </table>
