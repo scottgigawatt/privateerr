@@ -1,6 +1,6 @@
 # Privateerr 🏴‍☠️
 
-Privateerr generates [Private Internet Access (PIA)](https://www.privateinternetaccess.com/) WireGuard configuration and server metadata for Gluetun or another compatible VPN client. Its optional supervisor refreshes stale settings after sustained tunnel outages.
+Privateerr packages and ships the unmodified [Private Internet Access (PIA) manual connection scripts](https://github.com/pia-foss/manual-connections) in a lightweight Alpine Docker image. It generates WireGuard configuration and server metadata for Gluetun or another compatible VPN client. Its [optional supervisor](https://scottgigawatt.github.io/privateerr/automatic-recovery/) refreshes stale settings after sustained tunnel outages.
 
 <!-- markdownlint-disable-next-line MD033 MD041 -->
 <hr />
@@ -56,7 +56,7 @@ Gluetun owns the tunnel, firewall, DNS, and port lease. Privateerr generates set
 
 ## Prepare a checkout
 
-You need an active PIA subscription, Git, Make, and Docker with Compose. Source builds also need Buildx and the pinned PIA submodule. Run these commands from the directory where you want the checkout:
+You need an active PIA subscription, Git, Make, and Docker with Compose. Source builds also need Buildx and the [pinned PIA submodule](https://github.com/pia-foss/manual-connections/tree/645377e87238a52596c004f760d238e3faea68d1). Run these commands from the directory where you want the checkout:
 
 ```sh
 git clone --recurse-submodules https://github.com/scottgigawatt/privateerr.git
