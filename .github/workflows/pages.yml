@@ -205,6 +205,8 @@ jobs:
           SITE_URL: ${{ needs.deploy.outputs.page-url }}
           REPOSITORY: ${{ github.repository }}
           REF_NAME: ${{ github.ref_name }}
+          WORKFLOW_NAME: ${{ github.workflow }}
+          ACTOR: ${{ github.actor }}
         run: |
           sh .github/scripts/discord-notifier.sh \
               --type          docs-verdict \
@@ -214,4 +216,6 @@ jobs:
               --run-url       "${RUN_URL}" \
               --site-url      "${SITE_URL}" \
               --repository    "${REPOSITORY}" \
-              --ref-name      "${REF_NAME}"
+              --ref-name      "${REF_NAME}" \
+              --workflow-name "${WORKFLOW_NAME}" \
+              --actor         "${ACTOR}"
