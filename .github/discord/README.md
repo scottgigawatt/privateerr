@@ -38,9 +38,9 @@ A successful image message requires a successful pipeline result, a successful p
 
 ## Validate notification tags
 
-The published-tags field uses short tags such as `edge`, `sha-ABC123`, or `1.2.3`. [notification-tags.sh](../scripts/notification-tags.sh) accepts already-short tags or full references beginning with the exact expected image name followed by a colon. It preserves order and spelling, permits up to 128 ASCII characters per Docker tag, and rejects whitespace, digests, malformed tags, and references to another image. Blank lines are optional metadata. The whole list is validated before any output is printed; errors do not echo the rejected input.
+The published-tags row uses short tags such as `edge`, `sha-ABC123`, or `1.2.3`. [notification-tags.sh](../scripts/notification-tags.sh) accepts already-short tags or full references beginning with the exact expected image name followed by a colon. It preserves order and spelling, permits up to 128 ASCII characters per Docker tag, and rejects whitespace, digests, malformed tags, and references to another image. Blank lines are optional metadata. The whole list is validated before any output is printed; errors do not echo the rejected input.
 
-The image workflow normalizes these notification tags before exporting them between jobs. Build and registry-mirror steps continue to receive full image references. Removing unnecessary owner and image prefixes reduces collisions with GitHub's secret filtering without disabling or bypassing that filtering. A short tag can still coincidentally match a configured secret. If optional tag metadata is unavailable, the notifier omits the tags field and retains a confirmed digest; it never invents a tag.
+The image workflow normalizes these notification tags before exporting them between jobs. Build and registry-mirror steps continue to receive full image references. Removing unnecessary owner and image prefixes reduces collisions with GitHub's secret filtering without disabling or bypassing that filtering. A short tag can still coincidentally match a configured secret. If optional tag metadata is unavailable, the notifier omits the tags row and retains a confirmed digest; it never invents a tag.
 
 ## Edit presentation and copy
 
@@ -55,7 +55,7 @@ The image workflow normalizes these notification tags before exporting them betw
 
 1. Find the image and destination in `themes.jq`, or the `docs` definition for Pages messages.
 2. Edit the applicable `jokes` array. Each supported outcome has two short variants. Keep each joke independent of operational facts.
-3. Preserve the literal event title and factual first sentence. Use the workflow name only in the `Workflow` field, never as part of a sentence.
+3. Preserve the literal event title and factual first sentence. Use the workflow name only in the `Workflow` metadata row, never as part of a sentence.
 4. Render every changed variant using `--random-value 0` and `--random-value 1`, then run the helper suite.
 
 Themes contain data rather than executable shell. No message tokens are expanded. Metadata is passed as quoted arguments to `jq`, mentions are disabled, and fields and descriptions are bounded to fit Discord limits. Registry fields appear only where applicable. Each repository maintains its own assets; themed content is intentionally different across projects.
@@ -74,6 +74,8 @@ sh .github/scripts/discord-notifier.sh \
     --ref-name main \
     --ghcr-image ghcr.io/example/privateerr \
     --workflow-name "Example image workflow" \
+    --actor example-user \
+    --platforms linux/amd64,linux/arm64,linux/arm/v7 \
     --random-value 0 \
     --dry-run
 ```
@@ -113,4 +115,4 @@ To run only the notifier fixtures with a POSIX shell and `jq` on the host, use `
 
 The notifier fixtures cover every maintained image, destination, state, and joke variant; fixed colors; partial publication; missing evidence; metadata escaping and size limits; missing hooks; short-tag boundaries and atomic rejection; and sanitized HTTP/curl status reporting. Other workflow fixtures validate release policy and registry mirroring. These checks do not prove live Discord delivery or a healthy deployed application.
 
-If a notification fails, inspect the notification step and linked publishing run. Check destination configuration, required metadata, and whether the run was cancelled. A delivery error alone is not a reason to rebuild or republish an image. Live test messages require explicit authorization.
+If a notification fails, inspect the numeric HTTP/curl status line in the notification step and the linked publishing run. Check destination configuration, required metadata, and whether the run was cancelled. A delivery error alone is not a reason to rebuild or republish an image. Live test messages require explicit authorization.

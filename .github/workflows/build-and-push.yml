@@ -598,6 +598,7 @@ jobs:
               --ref-name "${REF_NAME}" \
               --workflow-name "${WORKFLOW_NAME}" \
               --actor "${ACTOR}" \
+              --platforms "linux/amd64,linux/arm64,linux/arm/v7" \
               --ghcr-image "${GHCR_IMAGE}" \
               --job-status "${JOB_STATUS}" \
               --publication-status "${PUBLICATION_STATUS}" \

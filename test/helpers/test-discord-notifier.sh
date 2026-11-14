@@ -123,14 +123,15 @@ jq -e '.embeds[0].description | contains("documentation build")' "${TEST_ROOT}/p
 render --type image-verdict --profile image-primary --job-status failure --publication-status failure \
     --published-tags ghcr.io/test/image:never-published --published-digest sha256:unconfirmed \
     > "${TEST_ROOT}/payload.json"
-jq -e '[.embeds[0].fields[].name] | index("🏷️ Published tags") == null' "${TEST_ROOT}/payload.json" >/dev/null
+jq -e '[.embeds[0].fields[].value] | join("\n") | contains("never-published") or contains("never-confirmed") or contains("sha256:unconfirmed") | not' "${TEST_ROOT}/payload.json" >/dev/null
 render --type image-verdict --profile image-primary --job-status success --publication-status success \
     --published-tags ghcr.io/test/image:never-confirmed > "${TEST_ROOT}/payload.json"
 assert_payload 16705372
-jq -e '[.embeds[0].fields[].name] | index("🏷️ Published tags") == null' "${TEST_ROOT}/payload.json" >/dev/null
+jq -e '[.embeds[0].fields[].value] | join("\n") | contains("never-published") or contains("never-confirmed") or contains("sha256:unconfirmed") | not' "${TEST_ROOT}/payload.json" >/dev/null
 render --type image-verdict --profile image-primary --job-status failure --publication-status success \
     --published-digest sha256:0123456789abcdef --failure-stage 'Registry verification' > "${TEST_ROOT}/payload.json"
-jq -e '.embeds[0].description | contains("GHCR publication completed")' "${TEST_ROOT}/payload.json" >/dev/null
+jq -e '.embeds[0] | (.description | contains("GHCR publication completed"))
+    and .fields[0].name == "⚠️ Stage needing attention" and .fields[1].name == "📋 Build context"' "${TEST_ROOT}/payload.json" >/dev/null
 
 #
 # Published notification tags are short and optional; a real digest remains useful
@@ -139,11 +140,11 @@ jq -e '.embeds[0].description | contains("GHCR publication completed")' "${TEST_
 render --type image-verdict --profile image-primary --job-status success --publication-status success \
     --published-tags 'ghcr.io/test/image:Version_1.2-RC
 sha-ABC' --published-digest sha256:0123456789abcdef > "${TEST_ROOT}/payload.json"
-jq -e '[.embeds[0].fields[] | select(.name == "🏷️ Published tags")][0].value == "Version_1.2-RC\nsha-ABC"' \
+jq -e '[.embeds[0].fields[] | select(.name == "\u200b")][0].value | startswith("**Tags: 🏷️** `Version_1.2-RC` · `sha-ABC`\n**Platforms:** **🧱** `amd64` · `arm64`\n**Workflow: ⚙️** ")' \
     "${TEST_ROOT}/payload.json" >/dev/null
 render --type image-verdict --profile image-primary --job-status success --publication-status success \
     --published-digest sha256:0123456789abcdef > "${TEST_ROOT}/payload.json"
-jq -e '([.embeds[0].fields[].name] | index("🏷️ Published tags") == null)
+jq -e '([.embeds[0].fields[].value] | join("\n") | contains("**Tags:") | not)
     and ([.embeds[0].fields[].name] | index("🧾 Digest") != null)' "${TEST_ROOT}/payload.json" >/dev/null
 
 #
@@ -158,13 +159,61 @@ render --type image-verdict --profile image-primary --job-status failure --publi
     --workflow-name "${long_value}" --actor "${long_value}" --platforms "${long_value}" \
     > "${TEST_ROOT}/payload.json"
 assert_payload 15548997
+jq -e '.embeds[0].fields | map(.value) | all((split("`") | length) % 2 == 1)
+    and any(contains(" · ..."))' "${TEST_ROOT}/payload.json" >/dev/null
 # The fixture must retain literal shell syntax instead of expanding it.
 # shellcheck disable=SC2016
 injection_value='$(touch never-created) `printf unsafe` "quoted"'
 render --type image-start --profile image-primary --workflow-name "${injection_value}" \
     > "${TEST_ROOT}/payload.json"
-jq -e --arg value "${injection_value}" '[.embeds[0].fields[] | select(.name == "⚙️ Workflow")][0].value == $value' \
+jq -e '([.embeds[0].fields[] | select(.name == "\u200b")][0].value | contains("never-created") and contains("quoted"))' \
     "${TEST_ROOT}/payload.json" >/dev/null
+
+#
+# Native grouped columns preserve links, evidence, and complete Markdown wrappers.
+#
+full_digest=sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+render --type image-verdict --profile image-primary --job-status failure --publication-status success \
+    --mirror-status failure --dockerhub-url https://hub.docker.com/r/test/image \
+    --ghcr-package-url https://github.com/test/repository/pkgs/container/image \
+    --actor 'renovate[bot]' --platforms linux/amd64,linux/arm64,linux/arm/v7 \
+    --published-tags edge --published-digest "${full_digest}" > "${TEST_ROOT}/payload.json"
+jq -e --arg digest "${full_digest}" '
+    .embeds[0].fields as $f
+    | $f[0].name == "📋 Build context" and $f[0].inline == true
+    and ($f[0].value | contains("[repository](https://github.com/test/repository)")
+      and contains("renovate\\[bot\\]") and (contains("https://github.com/renovate") | not))
+    and $f[1].name == "🧾 Details" and $f[1].inline == true
+    and ($f[1].value | contains("**GHCR:** ✅ success") and contains("**Docker Hub:** ❌ failure"))
+    and $f[2].name == "\u200b" and $f[2].inline == false
+    and ($f[2].value == "**Tags: 🏷️** `edge`\n**Platforms:** **🧱** `amd64` · `arm64` · `arm/v7`\n**Workflow: ⚙️** A funny workflow title")
+    and ([ $f[] | select(.name == "🧾 Digest") ][0].value == $digest)
+    and ([ $f[] | select(.name == "🔗 Quick links") ][0].value
+      | contains("[View run](https://example.invalid/run)") and contains("[GHCR image](") and contains("[Docker Hub image]("))
+' "${TEST_ROOT}/payload.json" >/dev/null
+
+render --type image-start --profile image-primary --actor test-contributor > "${TEST_ROOT}/payload.json"
+jq -e '.embeds[0].fields[0].value | contains("[test-contributor](https://github.com/test-contributor)")' \
+    "${TEST_ROOT}/payload.json" >/dev/null
+
+# Reject unsafe link destinations while keeping bounded metadata readable.
+render --type image-start --profile image-primary --repository 'bad/repo](https://evil.invalid)' \
+    --actor '@everyone](https://evil.invalid)' --run-url 'https://example.invalid/run)broken' \
+    --ref-name 'branch`spoof' > "${TEST_ROOT}/payload.json"
+jq -e '(.embeds[0] | has("url") | not) and (.embeds[0].fields | map(.value) | join("\n")
+    | contains("](https://evil.invalid)") == false
+    and contains("[View run]") == false and contains("`branch\u0027spoof`"))' "${TEST_ROOT}/payload.json" >/dev/null
+
+# Documentation uses the same columns without image-only platforms or registries.
+render --type docs-verdict --profile docs --build-status success --deploy-status failure \
+    --site-url https://example.invalid/docs > "${TEST_ROOT}/payload.json"
+jq -e '[.embeds[0].fields[] | select(.name != "⚠️ Stage needing attention")] as $f
+    | $f[0].inline == true and $f[1].inline == true
+    and ($f[1].value | contains("**Project: 📖**") and contains("**Target: 🗺️** GitHub Pages")
+      and contains("**Build:** ✅ success") and contains("**Pages:** ❌ failure"))
+    and ([ $f[].value ] | join("\n") | contains("**Platforms:") == false and contains("**GHCR:") == false)
+    and ([ $f[] | select(.name == "🔗 Quick links") ][0].value | contains("[Open documentation](https://example.invalid/docs)"))
+' "${TEST_ROOT}/payload.json" >/dev/null
 
 #
 # Unknown destinations fail rather than selecting an unrelated server identity.
