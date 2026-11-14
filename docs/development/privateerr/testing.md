@@ -101,6 +101,8 @@ make build-platforms
 
 These build images without starting the application stack. `make build` selects base plus build and produces `privateerr:local`; `make build-test-image` selects base plus test and produces `buccaneerr:local`. Both overlays use `pull_policy: build`. `make build-platforms` checks both image contexts for amd64, arm64, and arm/v7; qBittorrent supports amd64 and arm64. The [test tree](https://github.com/scottgigawatt/privateerr/blob/main/test/README.md) maps source locations.
 
+CI also tags the Privateerr build with the lowercase GitHub repository name for runtime checks and image scans.
+
 ## Validate documentation
 
 ```sh

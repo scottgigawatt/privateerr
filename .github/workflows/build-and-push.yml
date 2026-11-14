@@ -173,7 +173,7 @@ jobs:
     env:
       REGISTRY: ghcr.io
       IMAGE_PLATFORMS: linux/amd64,linux/arm64,linux/arm/v7
-      PRIVATEERR_LOCAL_IMAGE_REF: privateerr:local
+      PRIVATEERR_LOCAL_IMAGE_REF: ${{ github.event.repository.name }}:local
       BUCCANEERR_LOCAL_IMAGE_REF: buccaneerr:local
       PRIVATEERR_IMAGE_REF: ghcr.io/${{ github.repository }}
       BUCCANEERR_IMAGE_REF: ghcr.io/${{ github.repository_owner }}/buccaneerr
@@ -238,6 +238,7 @@ jobs:
           {
             printf 'IMAGE_CREATED=%s\n' "${created}"
             printf 'IMAGE_REVISION=%s\n' "${GITHUB_SHA}"
+            printf 'PRIVATEERR_LOCAL_IMAGE_REF=%s\n' "$(printf '%s' "${PRIVATEERR_LOCAL_IMAGE_REF}" | tr '[:upper:]' '[:lower:]')"
           } >> "${GITHUB_ENV}"
           printf 'created=%s\n' "${created}" >> "${GITHUB_OUTPUT}"
 
@@ -253,13 +254,15 @@ jobs:
           make test-precommit
 
       #
-      # Build both local image shapes before runtime tests and vulnerability scans.
+      # Alias the local Privateerr build under this repository's name for checks.
+      # Buccaneerr retains its companion image name.
       #
       - name: "Hammer the Docker Hulls ⚒️"
         id: local-build
         run: |
           make build
           make build-test-image
+          docker image tag privateerr:local "${PRIVATEERR_LOCAL_IMAGE_REF}"
           PRIVATEERR_TEST_IMAGE="${PRIVATEERR_LOCAL_IMAGE_REF}" make test-recovery-api
 
       #
@@ -276,8 +279,11 @@ jobs:
             exit 0
           fi
 
-          # Exercise legacy generation independently of the example's recovery default.
+          # Exercise generation without automatic recovery.
           PRIVATEERR_AUTO_RECOVER=false BUCCANEERR_TEST_RECOVERY=false make test-e2e
+
+          # Refresh the inspection alias after Compose rebuilds the local image.
+          docker image tag privateerr:local "${PRIVATEERR_LOCAL_IMAGE_REF}"
 
       #
       # Always stop test resources and restore checked-in example configuration.

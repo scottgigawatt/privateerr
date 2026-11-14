@@ -108,14 +108,6 @@ class ComposeTests(unittest.TestCase):
                 command.extend(["--file", str(ROOT / "docker-compose.test.yml")])
 
             # Exclude shell overrides and private .env contents from the public-model fixtures.
-            subprocess.run(
-                [*command, "config", "--quiet"],
-                env={"PATH": os.environ["PATH"]},
-                capture_output=True,
-                text=True,
-                check=True,
-                timeout=30,
-            )
             result = subprocess.run(
                 [*command, "config", "--format", "json"],
                 env={"PATH": os.environ["PATH"]},

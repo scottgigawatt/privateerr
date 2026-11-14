@@ -53,7 +53,7 @@ services:
       QBITTORRENT_API_URL: ${QBITTORRENT_API_URL}                                  # Application API inside the shared VPN namespace
       BUCCANEERR_GLUETUN_URL: ${BUCCANEERR_GLUETUN_URL}                            # Local Gluetun control API
       PRIVATEERR_GLUETUN_API_KEY: ${PRIVATEERR_GLUETUN_API_KEY}                    # Shared key for read-only recovery verification
-      BUCCANEERR_TEST_RECOVERY: ${BUCCANEERR_TEST_RECOVERY}                        # true briefly interrupts the demo VPN and verifies automatic recovery
+      BUCCANEERR_TEST_RECOVERY: ${BUCCANEERR_TEST_RECOVERY}                        # true briefly interrupts the test VPN and verifies automatic recovery
       BUCCANEERR_RECOVERY_WAIT_SECONDS: ${BUCCANEERR_RECOVERY_WAIT_SECONDS}        # Maximum seconds for automatic recovery
       BUCCANEERR_APPLICATION_WAIT_SECONDS: ${BUCCANEERR_APPLICATION_WAIT_SECONDS}  # Maximum seconds for application port synchronization
       BUCCANEERR_VPN_INTERFACE: ${BUCCANEERR_VPN_INTERFACE}                        # Expected application VPN interface

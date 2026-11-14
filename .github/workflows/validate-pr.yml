@@ -35,7 +35,7 @@ jobs:
 
     env:
       IMAGE_PLATFORMS: linux/amd64,linux/arm64,linux/arm/v7
-      PRIVATEERR_LOCAL_IMAGE_REF: privateerr:local
+      PRIVATEERR_LOCAL_IMAGE_REF: ${{ github.event.repository.name }}:local
       BUCCANEERR_LOCAL_IMAGE_REF: buccaneerr:local
 
     steps:
@@ -72,6 +72,7 @@ jobs:
           {
             printf 'IMAGE_CREATED=%s\n' "${created}"
             printf 'IMAGE_REVISION=%s\n' "${GITHUB_SHA}"
+            printf 'PRIVATEERR_LOCAL_IMAGE_REF=%s\n' "$(printf '%s' "${PRIVATEERR_LOCAL_IMAGE_REF}" | tr '[:upper:]' '[:lower:]')"
           } >> "${GITHUB_ENV}"
 
       #
@@ -91,13 +92,14 @@ jobs:
         run: make test-precommit
 
       #
-      # Build the publishable Privateerr and test-only Buccaneerr images,
-      # then prove every supported target architecture can be assembled.
+      # Alias the local Privateerr build under this repository's name for checks.
+      # Buccaneerr retains its companion image name.
       #
       - name: "Hammer the Docker Hulls ⚒️"
         run: |
           make build
           make build-test-image
+          docker image tag privateerr:local "${PRIVATEERR_LOCAL_IMAGE_REF}"
           PRIVATEERR_TEST_IMAGE="${PRIVATEERR_LOCAL_IMAGE_REF}" make test-recovery-api
 
       #
