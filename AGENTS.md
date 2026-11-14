@@ -12,7 +12,7 @@
 
 Privateerr packages the official, unmodified [PIA manual connection scripts](https://github.com/pia-foss/manual-connections) into a small Docker image that generates WireGuard configuration and Gluetun metadata. Privateerr is not a VPN client: Gluetun owns the tunnel and port lease. The optional standard-library Python supervisor renews stale PIA registrations through Gluetun's authenticated API without restarting containers.
 
-The default Compose example starts Privateerr, Gluetun, and qBittorrent. The test-only Buccaneerr service requires the `test` profile and verifies forwarding, application settings, and recovery through a temporary firewall fault inside the shared VPN namespace. Web UI ports and API endpoints remain driven by environment settings.
+The base Compose file starts only the published Privateerr, Gluetun, and qBittorrent images. Optional build and test overlays select local development behavior. Including `docker-compose.test.yml` adds Buccaneerr and activates live validation without a profile; it verifies forwarding, application settings, and recovery through a temporary firewall fault inside the shared VPN namespace. Web UI ports and API endpoints remain driven by environment settings.
 
 | Path | Responsibility |
 | --- | --- |
@@ -30,7 +30,9 @@ The default Compose example starts Privateerr, Gluetun, and qBittorrent. The tes
 | `scripts/docs/`, `docs/`, `mkdocs.yml` | Documentation build driver, guides, and Material site configuration |
 | `config/` | Service configuration, persistent bind mounts, and generated VPN state |
 | `.github/` | Workflows, workflow helpers, templates, Renovate policy, and CODEOWNERS |
-| `docker-compose.yml`, `example.env` | One-file deployment stack and its ordered example settings |
+| `docker-compose.yml`, `example.env` | Self-contained published-image deployment and its ordered example settings |
+| `docker-compose.build.yml` | Optional Privateerr build and `privateerr:local` image selection |
+| `docker-compose.test.yml` | Optional Buccaneerr live validator, build, and `buccaneerr:local` image selection |
 
 This file supplies repository-wide guidance. Before editing a directory, inspect any applicable nested `AGENTS.md` and relevant `.agents/skills/` instructions if present. Nested guidance may refine local work; report conflicts with the requested scope instead of silently changing unrelated guidance. Keep these instructions self-sufficient, with no dependency on another repository's style or workflow policy.
 
@@ -110,7 +112,9 @@ Run `make spellcheck` across project-owned files. Correct misspellings; genuine 
 
 ## Containers and deployment constraints
 
-Primary deployment target: Synology DSM Container Manager. Secondary development target: macOS with Docker Desktop. Preserve one main `docker-compose.yml`; avoid runtime designs requiring multiple Compose files or application profiles. Reserve the `test` profile for optional Buccaneerr validation; application startup must not enable it.
+Primary deployment target: Synology DSM Container Manager. Secondary development target: macOS with Docker Desktop. Keep `docker-compose.yml` self-contained for published-image deployment with only Privateerr, Gluetun, and qBittorrent, no build definitions, and no application profiles. Local development uses explicit optional overlays; normal startup must not include the test overlay.
+
+Apply Compose files in this order: base, optional build overlay, optional test overlay. Keep the same `.env` and project name across every combination. Make delegates project naming to the base file's `name: ${COMPOSE_PROJECT_NAME}` by default; `PRIVATEERR_COMPOSE_PROJECT_NAME` is an optional explicit override, not a second default identity. `docker-compose.build.yml` adds only Privateerr's build definition, `image: privateerr:local`, and `pull_policy: build`. `docker-compose.test.yml` owns the complete Buccaneerr service, its build definition, `image: buccaneerr:local`, and `pull_policy: build`; including it selects the validator without a profile. Base plus test validates the published Privateerr image. All three files validate locally built Privateerr and Buccaneerr. Never tag a local Compose build with the published registry image name.
 
 Keep Privateerr deployments unprivileged with all Linux capabilities dropped and `no-new-privileges`. UID 0 remains necessary for the unmodified upstream scripts; do not equate UID 0 with permission to add privileged mode or capabilities. Docker owns initial namespace IPv6 settings; the Python generator skips redundant writes.
 
@@ -152,16 +156,17 @@ User-facing Make output may be lightly pirate-themed while clearly describing th
 | `make config`, `make env`, `make print-config`, `make print-env` | Print configuration or environment content that can expose secrets; keep output private |
 | `make build`, `make build-test-image`, `make build-platforms` | Build images or check architectures; can fetch dependencies and create Buildx resources |
 | `make up`, `make up-pull`, `make all` | Pull published images and start only Privateerr, Gluetun, and qBittorrent; require PIA credentials and operational authorization |
-| `make up-build` | Pull Gluetun/qBittorrent, build Privateerr, and start the three services without pulling over the local image |
-| `make wireguard-config` | Generate real VPN state; requires PIA credentials and operational authorization |
-| `make down` | Stops the selected Compose project; preserves volumes and images |
+| `make up-build` | Use base plus build overlay to build `privateerr:local` and start the three services with published Gluetun/qBittorrent |
+| `make wireguard-config` | Use base plus build overlay to generate real VPN state; requires PIA credentials and operational authorization |
+| `make test-e2e` | Use all three Compose files to build both local images, start four services, and inject a live VPN fault by default |
+| `make down` | Use all three Compose files to stop the selected project, including Buccaneerr; preserve volumes and images |
 | `make backup` | Archives the full config directory, potentially including secrets; protect and verify the archive |
 | `make restore-vpn-examples` | Overwrites generated VPN files with checked-in examples |
 | `make reset-test-stack` | Stops the selected stack and restores examples; use after authorized disposable e2e runs |
 | `make clean-artifacts` | Removes disposable developer artifacts only; must preserve deployment state, examples, containers, volumes, images, and `.env` |
 | `make remove-stack` | Removes selected project Docker resources, repository-owned Buildx cache, and transient runtime state; restores examples and preserves `.env`, `backups/`, and persistent bind-mounted config |
 
-Destructive targets require an explicitly disposable project, verified ownership boundaries, and authorization. Back up needed data first and understand the recovery path. Never use global Docker prune or delete unrelated resources. The `reset-test-stack` recipe must complete profile-aware teardown before restoring examples, including under parallel Make execution. Never restore files while another writer is active.
+Destructive targets require an explicitly disposable project, verified ownership boundaries, and authorization. Back up needed data first and understand the recovery path. Never use global Docker prune or delete unrelated resources. `down`, `reset-test-stack`, and `remove-stack` must inspect the full three-file Compose model so optional services and local image references remain visible. The `reset-test-stack` recipe must complete teardown before restoring examples, including under parallel Make execution. Never restore files while another writer is active.
 
 ## Documentation standards
 

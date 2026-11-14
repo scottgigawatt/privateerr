@@ -35,8 +35,8 @@ jobs:
 
     env:
       IMAGE_PLATFORMS: linux/amd64,linux/arm64,linux/arm/v7
-      PRIVATEERR_LOCAL_IMAGE_REF: ghcr.io/scottgigawatt/privateerr
-      BUCCANEERR_LOCAL_IMAGE_REF: ghcr.io/scottgigawatt/buccaneerr
+      PRIVATEERR_LOCAL_IMAGE_REF: ${{ github.event.repository.name }}:local
+      BUCCANEERR_LOCAL_IMAGE_REF: buccaneerr:local
 
     steps:
       #
@@ -72,6 +72,7 @@ jobs:
           {
             printf 'IMAGE_CREATED=%s\n' "${created}"
             printf 'IMAGE_REVISION=%s\n' "${GITHUB_SHA}"
+            printf 'PRIVATEERR_LOCAL_IMAGE_REF=%s\n' "$(printf '%s' "${PRIVATEERR_LOCAL_IMAGE_REF}" | tr '[:upper:]' '[:lower:]')"
           } >> "${GITHUB_ENV}"
 
       #
@@ -91,14 +92,15 @@ jobs:
         run: make test-precommit
 
       #
-      # Build the publishable Privateerr and test-only Buccaneerr images,
-      # then prove every supported target architecture can be assembled.
+      # Alias the local Privateerr build under this repository's name for checks.
+      # Buccaneerr retains its companion image name.
       #
       - name: "Hammer the Docker Hulls ⚒️"
         run: |
           make build
           make build-test-image
-          PRIVATEERR_TEST_IMAGE="${PRIVATEERR_LOCAL_IMAGE_REF}:latest" make test-recovery-api
+          docker image tag privateerr:local "${PRIVATEERR_LOCAL_IMAGE_REF}"
+          PRIVATEERR_TEST_IMAGE="${PRIVATEERR_LOCAL_IMAGE_REF}" make test-recovery-api
 
       #
       # Prove every supported target architecture builds before enforcing
@@ -114,7 +116,7 @@ jobs:
       - name: "Inspect Privateerr for Bilge Rot 🔍"
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25  # v0.36.0
         with:
-          image-ref: ${{ env.PRIVATEERR_LOCAL_IMAGE_REF }}:latest
+          image-ref: ${{ env.PRIVATEERR_LOCAL_IMAGE_REF }}
           format: table
           vuln-type: os,library
           severity: CRITICAL,HIGH
@@ -129,7 +131,7 @@ jobs:
           TRIVY_SHOW_SUPPRESSED: "true"
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25  # v0.36.0
         with:
-          image-ref: ${{ env.BUCCANEERR_LOCAL_IMAGE_REF }}:latest
+          image-ref: ${{ env.BUCCANEERR_LOCAL_IMAGE_REF }}
           format: table
           vuln-type: os,library
           severity: CRITICAL,HIGH

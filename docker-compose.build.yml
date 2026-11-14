@@ -1,0 +1,30 @@
+#
+# Copyright 2025-2026 Scott Gigawatt
+#
+# SPDX-License-Identifier: Apache-2.0
+#
+# docker-compose.build.yml: Docker Compose overlay for building Privateerr
+#                           from this checkout instead of using a published image.
+#
+
+#
+# Include this file after docker-compose.yml for local Privateerr builds.
+#
+services:
+  #
+  # Extend Privateerr with its source build and a separate local image tag.
+  #
+  privateerr:
+    # Docker image build and container information
+    image: privateerr:local                          # Keep local builds separate from published images
+    pull_policy: build                               # Build this checkout instead of pulling the image
+    build:                                           # Define build context and arguments
+      context: docker                                # Directory containing the Dockerfile
+      dockerfile: Dockerfile                         # Dockerfile used for building the image
+      args:                                          # Arguments passed to the Dockerfile build stage
+        ALPINE_TAG: ${ALPINE_TAG}                    # Base Alpine image version
+        PIA_BIN_HOME: ${PIA_BIN_HOME}                # Directory where PIA scripts will reside
+        PRIVATEERR_BIN_HOME: ${PRIVATEERR_BIN_HOME}  # Directory where helper scripts will reside
+        IMAGE_CREATED: ${IMAGE_CREATED}              # OCI image creation timestamp
+        IMAGE_REVISION: ${IMAGE_REVISION}            # OCI image source revision
+        IMAGE_VERSION: ${PRIVATEERR_TAG}             # OCI image version

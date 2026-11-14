@@ -24,7 +24,7 @@ set -eu
 repository_root=$(CDPATH='' cd -- "$(dirname -- "$0")/../.." && pwd)
 suite=${1:-all}
 : "${BUCCANEERR_TEST_IMAGE:=privateerr-buccaneerr:test}"
-: "${PRIVATEERR_TEST_IMAGE:=privateerr:recovery-review}"
+: "${PRIVATEERR_TEST_IMAGE:=privateerr:local}"
 : "${DOCKER_BIN:=docker}"
 
 #

@@ -9,7 +9,8 @@
 #          leaving repository files, bind-mounted config, and backups intact.
 #
 # Usage: scripts/compose/nuke.sh --docker-bin <path> --compose-mode <mode>
-#        --compose-file <path> --env-file <path> --down-timeout <seconds>
+#        --compose-file <path> [--compose-file <path> ...] --env-file <path>
+#        --down-timeout <seconds>
 #        [--compose-bin <path>] [--project-name <name>] [--profile <name>]
 #        [--dockerfile <path> ...] [--base-image-awk <path>]
 #        [--builder-name <name>] [--additional-image <reference> ...]
@@ -21,7 +22,7 @@
 docker_bin="docker"
 compose_bin=""
 compose_mode=""
-compose_file=""
+compose_files_reverse=""
 env_file=""
 project_name=""
 compose_profile=""
@@ -79,6 +80,39 @@ append_value() {
 }
 
 #
+# prepend_value: Add one value before an existing newline-delimited list.
+#
+# Parameters: $1 - Value to prepend.
+#             $2 - Existing list.
+#
+# Returns: Prints the updated list.
+#
+prepend_value() {
+    if [ -n "$2" ]; then
+        printf '%s\n%s' "$1" "$2"
+    else
+        printf '%s' "$1"
+    fi
+}
+
+#
+# require_list_value: Reject values that cannot safely occupy one list entry.
+#
+# Parameters: $1 - Option name for diagnostics.
+#             $2 - Single value to store.
+#
+# Returns: Exits with a diagnostic for an empty value or line break.
+#
+require_list_value() {
+    case "$2" in
+        "" | *"
+"* | *"$(printf '\r')"*)
+            fail "$1 must be non-empty and contain no line breaks."
+            ;;
+    esac
+}
+
+#
 # require_command: Confirm a command name or executable path is available.
 #
 # Parameters: $1 - Command name or path.
@@ -110,32 +144,22 @@ compose_project() {
         set -- --profile "${compose_profile}" "$@"
     fi
 
+    # Prepending reversed entries retains the caller's Compose layer order and quoting.
+    while IFS= read -r compose_file; do
+        set -- --file "${compose_file}" "$@"
+    done <<EOF
+${compose_files_reverse}
+EOF
+    set -- --env-file "${env_file}" "$@"
+
+    if [ -n "${project_name}" ]; then
+        set -- --project-name "${project_name}" "$@"
+    fi
+
     if [ "${compose_mode}" = "plugin" ]; then
-        if [ -n "${project_name}" ]; then
-            "${docker_bin}" compose \
-                --project-name "${project_name}" \
-                --env-file "${env_file}" \
-                --file "${compose_file}" \
-                "$@"
-        else
-            "${docker_bin}" compose \
-                --env-file "${env_file}" \
-                --file "${compose_file}" \
-                "$@"
-        fi
+        "${docker_bin}" compose "$@"
     else
-        if [ -n "${project_name}" ]; then
-            "${compose_bin}" \
-                --project-name "${project_name}" \
-                --env-file "${env_file}" \
-                --file "${compose_file}" \
-                "$@"
-        else
-            "${compose_bin}" \
-                --env-file "${env_file}" \
-                --file "${compose_file}" \
-                "$@"
-        fi
+        "${compose_bin}" "$@"
     fi
 }
 
@@ -209,7 +233,8 @@ while [ "$#" -gt 0 ]; do
             ;;
         --compose-file)
             [ "$#" -ge 2 ] || fail "Missing value for --compose-file."
-            compose_file=$2
+            require_list_value "$1" "$2"
+            compose_files_reverse=$(prepend_value "$2" "${compose_files_reverse}")
             shift 2
             ;;
         --env-file)
@@ -235,6 +260,7 @@ while [ "$#" -gt 0 ]; do
             ;;
         --dockerfile)
             [ "$#" -ge 2 ] || fail "Missing value for --dockerfile."
+            require_list_value "$1" "$2"
             dockerfiles=$(append_value "${dockerfiles}" "$2")
             shift 2
             ;;
@@ -250,6 +276,7 @@ while [ "$#" -gt 0 ]; do
             ;;
         --additional-image)
             [ "$#" -ge 2 ] || fail "Missing value for --additional-image."
+            require_list_value "$1" "$2"
             additional_images=$(append_value "${additional_images}" "$2")
             shift 2
             ;;
@@ -262,13 +289,17 @@ done
 #
 # Validate every input before issuing a destructive command.
 #
-[ -n "${compose_file}" ] || fail "--compose-file is required."
+[ -n "${compose_files_reverse}" ] || fail "--compose-file is required."
 [ -n "${env_file}" ] || fail "--env-file is required."
 [ -n "${down_timeout}" ] || fail "--down-timeout is required."
 case "${down_timeout}" in
     *[!0-9]*) fail "--down-timeout must be a non-negative integer." ;;
 esac
-[ -f "${compose_file}" ] || fail "Compose file does not exist: ${compose_file}"
+while IFS= read -r compose_file; do
+    [ -f "${compose_file}" ] || fail "Compose file does not exist: ${compose_file}"
+done <<EOF
+${compose_files_reverse}
+EOF
 [ -f "${env_file}" ] || fail "Environment file does not exist: ${env_file}"
 require_command "${docker_bin}"
 require_command awk
@@ -329,6 +360,33 @@ compose_project config --quiet \
 compose_project config --images \
     >"${temporary_directory}/service-images.raw" \
     || fail "Docker Compose could not list images for ${project_description}."
+
+# Capture original image references before teardown, even when layers select a different image.
+compose_project ps --all --quiet \
+    >"${temporary_directory}/project-containers" \
+    || fail "Docker Compose could not list containers for ${project_description}."
+
+while IFS= read -r container_id; do
+    [ -n "${container_id}" ] || continue
+
+    case "${container_id}" in
+        *[!0-9a-f]*) fail "Docker Compose returned an invalid container ID." ;;
+    esac
+
+    runtime_image=$("${docker_bin}" container inspect \
+        --format '{{.Config.Image}}' "${container_id}") \
+        || fail "Could not inspect a container image for ${project_description}."
+    require_list_value "Container image reference" "${runtime_image}"
+
+    # An inspected image ID could remove other tags; retain only original named references.
+    case "${runtime_image}" in
+        sha256:*) fail "Container image must be a named reference, not an image ID." ;;
+        *[!0-9a-f]*) ;;
+        *) fail "Container image must be a named reference, not an image ID." ;;
+    esac
+
+    printf '%s\n' "${runtime_image}" >>"${temporary_directory}/service-images.raw"
+done <"${temporary_directory}/project-containers"
 sort -u "${temporary_directory}/service-images.raw" \
     >"${temporary_directory}/service-images"
 

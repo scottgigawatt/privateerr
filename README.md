@@ -200,7 +200,7 @@ To use your own VPN client, [run the published Privateerr image once](https://sc
 
 - [Automatic recovery and region selection](https://scottgigawatt.github.io/privateerr/automatic-recovery/): understand the built-in supervisor or change a region.
 - [Maintenance and images](https://scottgigawatt.github.io/privateerr/advanced-usage/): update, back up, stop, or choose an image channel.
-- [Use Make or build locally](https://scottgigawatt.github.io/privateerr/advanced-usage/#use-make): optional shortcuts after the stack works.
+- [Use Make or build locally](https://scottgigawatt.github.io/privateerr/advanced-usage/#choose-compose-files-for-development): choose optional Compose files and shortcuts after the stack works.
 - [Developer guides and Python reference](https://scottgigawatt.github.io/privateerr/development/privateerr/): architecture, tests, and source contracts.
 - [Support](https://scottgigawatt.github.io/privateerr/SUPPORT/), [contributing](https://scottgigawatt.github.io/privateerr/CONTRIBUTING/), [security policy](https://scottgigawatt.github.io/privateerr/SECURITY/), and [Code of Conduct](https://scottgigawatt.github.io/privateerr/CODE_OF_CONDUCT/).
 

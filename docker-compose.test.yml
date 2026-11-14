@@ -1,0 +1,73 @@
+#
+# Copyright 2025-2026 Scott Gigawatt
+#
+# SPDX-License-Identifier: Apache-2.0
+#
+# docker-compose.test.yml: Docker Compose overlay for building and running
+#                          Buccaneerr against the selected disposable test stack.
+#
+
+#
+# Labels for the explicitly selected VPN validation container.
+#
+x-test-disable-watchtower-updates: &test-disable-watchtower-updates  # Disable unattended Watchtower updates
+  - "com.centurylinklabs.watchtower.enable=false"                    # Require intentional updates for this container
+
+#
+# Include this file after docker-compose.yml to enable Buccaneerr validation.
+#
+services:
+  #
+  # Configure the service that validates Gluetun and port forwarding.
+  #
+  buccaneerr:
+    # Docker image build and container information
+    image: buccaneerr:local                                               # Keep local validation builds separate from published images
+    pull_policy: build                                                    # Build this checkout instead of pulling the image
+    build:                                                                # Define build context and Dockerfile
+      context: .                                                          # Restricted root context includes test sources and docs dependencies
+      dockerfile: test/Dockerfile                                         # Dockerfile used for validation tools
+      args:                                                               # Arguments passed to the Buccaneerr image
+        ALPINE_TAG: ${ALPINE_TAG}                                         # Base Alpine image version
+        BUCCANEERR_BIN_HOME: ${BUCCANEERR_BIN_HOME}                       # Directory where Buccaneerr scripts will reside
+        IMAGE_CREATED: ${IMAGE_CREATED}                                   # OCI image creation timestamp
+        IMAGE_REVISION: ${IMAGE_REVISION}                                 # OCI image source revision
+        IMAGE_VERSION: ${BUCCANEERR_TAG}                                  # OCI image version
+    container_name: ${COMPOSE_PROJECT_NAME}-buccaneerr-${BUCCANEERR_TAG}  # Buccaneerr container name
+    restart: "no"                                                         # Buccaneerr exits with pass/fail status
+    network_mode: service:gluetun                                         # Test from inside Gluetun's network namespace
+
+    # Allow the test-only validator to inject and remove a VPN endpoint failure
+    cap_add:
+      - NET_ADMIN  # Change firewall rules only inside the shared test namespace
+
+    # Apply Docker labels to the container
+    labels: *test-disable-watchtower-updates  # VPN validation component; update intentionally
+
+    # Define the container environment
+    environment:
+      BUCCANEERR_CONFIG_PATH: ${BUCCANEERR_CONFIG_PATH}                            # Mounted generated config directory
+      BUCCANEERR_GLUETUN_PATH: ${BUCCANEERR_GLUETUN_PATH}                          # Mounted Gluetun state directory
+      BUCCANEERR_HEALTH_URL: ${BUCCANEERR_HEALTH_URL}                              # Gluetun unauthenticated health URL
+      BUCCANEERR_REQUIRE_PORT_FORWARD: ${BUCCANEERR_REQUIRE_PORT_FORWARD}          # Require port-forwarding success
+      QBITTORRENT_API_URL: ${QBITTORRENT_API_URL}                                  # Application API inside the shared VPN namespace
+      BUCCANEERR_GLUETUN_URL: ${BUCCANEERR_GLUETUN_URL}                            # Local Gluetun control API
+      PRIVATEERR_GLUETUN_API_KEY: ${PRIVATEERR_GLUETUN_API_KEY}                    # Shared key for read-only recovery verification
+      BUCCANEERR_TEST_RECOVERY: ${BUCCANEERR_TEST_RECOVERY}                        # true briefly interrupts the test VPN and verifies automatic recovery
+      BUCCANEERR_RECOVERY_WAIT_SECONDS: ${BUCCANEERR_RECOVERY_WAIT_SECONDS}        # Maximum seconds for automatic recovery
+      BUCCANEERR_APPLICATION_WAIT_SECONDS: ${BUCCANEERR_APPLICATION_WAIT_SECONDS}  # Maximum seconds for application port synchronization
+      BUCCANEERR_VPN_INTERFACE: ${BUCCANEERR_VPN_INTERFACE}                        # Expected application VPN interface
+      BUCCANEERR_LOG_PATH: ${BUCCANEERR_LOG_PATH}                                  # Buccaneerr log file path
+
+    # Mount host directories into the container
+    volumes:
+      - ${BUCCANEERR_CONFIG_PATH_HOST}:/config:ro        # Generated Privateerr outputs
+      - ${BUCCANEERR_GLUETUN_PATH_HOST}:/gluetun:ro      # Gluetun state outputs
+      - ${BUCCANEERR_CONFIG_HOME}:/buccaneerr-config:rw  # Buccaneerr service config directory
+
+    # Specify container service dependencies
+    depends_on:
+      gluetun:
+        condition: service_healthy  # Wait for Gluetun to report healthy
+      qbittorrent:
+        condition: service_healthy  # Validate only after the application Web UI is ready

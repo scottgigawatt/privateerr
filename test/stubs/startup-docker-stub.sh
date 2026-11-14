@@ -81,6 +81,11 @@ case " $* " in
             exit 44
         fi
         ;;
+    *" run "*)
+        if [ "${STARTUP_STUB_FAIL:-}" = run ]; then
+            exit 46
+        fi
+        ;;
     *" down "*)
         # A delay exposes restoration scheduled beside down under parallel Make.
 

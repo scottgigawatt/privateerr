@@ -13,6 +13,7 @@
     //
     "cSpell.words": [
         "scrollfix",
+        "scrollwrap",
         "Donath",
         "endmacro",
         "rootfs",
@@ -349,8 +350,11 @@
     "shellcheck.enable": true,
 
     //
-    // Validate repository YAML with SchemaStore and the Compose specification.
+    // Recognize MkDocs' Python formatter tag while keeping YAML schema validation.
     //
+    "yaml.customTags": [
+        "tag:yaml.org,2002:python/name:pymdownx.superfences.fence_code_format"
+    ],
     "yaml.format.enable": true,
     "yaml.schemaStore.enable": true,
     "yaml.schemas": {
