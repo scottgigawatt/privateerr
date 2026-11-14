@@ -24,6 +24,6 @@ The production image does not include these test dependencies. The restricted re
 Credential-free checks and live checks prove different things. Start with the [test selection guide](../docs/development/privateerr/testing.md#run-offline-checks); use real Docker or PIA tests only when the changed behavior needs them.
 
 > [!CAUTION]
-> Live tests use PIA credentials, replace VPN files, and deliberately interrupt a test endpoint. Use a disposable checkout and preserve needed configuration. Never run test-example restoration against an active deployment.
+> Live tests use PIA credentials, replace VPN files, and deliberately interrupt a test endpoint. Use a disposable checkout and save any VPN configuration files you need before testing. Never run test-example restoration against an active deployment.
 
 After the complete example test, follow [safe shutdown and example restoration](../docs/advanced-usage.md#restore-vpn-examples). Keep real credentials, generated VPN state, and private logs out of commits.

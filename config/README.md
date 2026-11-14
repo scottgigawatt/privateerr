@@ -8,4 +8,4 @@ These directories hold persistent logs and shared VPN state. Treat them as sensi
 | [privateerr/](privateerr/README.md) | Supervisor and upstream-generation logs |
 | [buccaneerr/](buccaneerr/README.md) | Test-validator logs |
 
-Generation and example restoration can replace VPN files. Stop their supervisor and preserve needed state first. Use [test-example restoration](../docs/advanced-usage.md#restore-vpn-examples) only in a disposable checkout, never in an active deployment.
+Generation and example restoration can replace VPN files. Stop the Privateerr container writing to that directory and save any PIA WireGuard configuration files you need first. Use [test-example restoration](../docs/advanced-usage.md#restore-vpn-examples) only in a disposable checkout, never in an active deployment.

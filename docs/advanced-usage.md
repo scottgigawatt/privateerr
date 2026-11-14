@@ -8,7 +8,7 @@ Use this guide after the [quickstart](https://github.com/scottgigawatt/privateer
 
 `docker compose down` stops the selected stack and removes its containers and network while keeping volumes, images, and bind-mounted configuration.
 
-To update, preserve needed state and check the image's [release notes](https://github.com/scottgigawatt/privateerr/releases), then repeat the quickstart's pull and startup commands for all three services together. This can interrupt traffic. Pulling an image alone does not update a running container.
+Before updating, back up `.env` and configuration as described below and check the image's [release notes](https://github.com/scottgigawatt/privateerr/releases), then repeat the quickstart's pull and startup commands for all three services together. This can interrupt traffic. Pulling an image alone does not update a running container.
 
 The Privateerr container installs its Gluetun startup wrapper and qBittorrent forwarding hook into the shared `config/gluetun/scripts/` directory at startup. The two managed filenames are replaced; keep custom scripts under other names. The Privateerr container and Gluetun VPN container must mount the complete shared directory. UID 0 needs write and traverse access to it.
 
@@ -62,7 +62,7 @@ Use the [developer testing guide](development/privateerr/testing.md) for build v
 
 ### Restore test examples
 
-Example restoration replaces `config/gluetun/wireguard/wg0.conf` and `privateerr.env`. It is not a backup restore. Use it only in a disposable test checkout after preserving needed state:
+Example restoration replaces `config/gluetun/wireguard/wg0.conf` and `privateerr.env`. It is not a backup restore. Use it only in a disposable test checkout after saving any VPN configuration files you need:
 
 ```sh
 make reset-test-stack

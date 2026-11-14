@@ -407,3 +407,13 @@ body::before {
   height: 1.3em;
   fill: currentcolor;
 }
+
+/* Keep identifier labels together while prose columns wrap in scrollable tables. */
+.md-typeset table:not([class]) td {
+  vertical-align: middle;
+}
+
+.md-typeset table:not([class]) td:first-child code {
+  white-space: nowrap;
+  word-break: normal;
+}

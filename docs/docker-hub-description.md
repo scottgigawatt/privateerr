@@ -21,7 +21,7 @@ Privateerr supports `linux/amd64`, `linux/arm64`, and `linux/arm/v7`. Docker sel
 The supplied Compose example enables the supervisor with a shared private API key. Privateerr installs the Gluetun startup wrapper and forwarding hook into the shared configuration directory; no manual script download is needed. When using the image in your own deployment, enable `PRIVATEERR_AUTO_RECOVER` explicitly to use monitoring.
 
 > [!WARNING]
-> Keep credentials and generated VPN files private. Generation can replace saved files; stop other writers and preserve needed state first.
+> Keep credentials and generated VPN files private. Generation replaces saved VPN files. Save any PIA WireGuard configuration files you need, and stop other Privateerr containers writing to the same mounted directory first.
 
 Privateerr retains UID 0 for PIA's scripts; the supplied Compose drops all Linux capabilities and enables `no-new-privileges`. Privateerr's healthy status means configuration is ready, so check Gluetun's tunnel health too.
 

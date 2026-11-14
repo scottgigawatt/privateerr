@@ -52,7 +52,7 @@ Automatic selection is the default. To choose a region yourself:
     PIA_PREFERRED_REGION=YOUR-CHOSEN-PIA-REGION-ID
     ```
 
-3. Preserve needed configuration, then stop the stack, generate fresh settings, and start all three containers. This interrupts traffic, replaces VPN files, and removes the selected project's containers and network; volumes and images are retained. Run each command only after the previous one succeeds:
+3. Save any PIA WireGuard configuration files you need, then stop the stack, generate a new configuration file and matching metadata, and start all three containers. This interrupts traffic, replaces VPN files, and removes the selected project's containers and network; volumes and images are retained. Run each command only after the previous one succeeds:
 
     ```sh
     docker compose down
@@ -134,7 +134,7 @@ Privateerr retains UID 0 for PIA's unmodified scripts while dropping all Linux c
 
 ## Disable recovery
 
-Set `PRIVATEERR_AUTO_RECOVER=false` in `.env`, then repeat the quickstart's startup command. This recreates affected containers, interrupts traffic, and replaces saved VPN files; preserve needed state first. Gluetun resumes its configured health-restart policy, and Privateerr generates fresh files at startup.
+Set `PRIVATEERR_AUTO_RECOVER=false` in `.env`, then repeat the quickstart's startup command. This recreates affected containers, interrupts traffic, and replaces saved VPN files. Save any PIA WireGuard configuration files you need before continuing. Gluetun resumes its configured health-restart policy, and Privateerr generates fresh files at startup.
 
 To create a PIA WireGuard configuration file for another VPN client and then exit, [run the published Privateerr image once](advanced-usage.md#generate-without-make).
 
