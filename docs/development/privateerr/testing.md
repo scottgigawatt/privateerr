@@ -1,6 +1,6 @@
 # Test Privateerr 🧪
 
-Choose the smallest check that proves the changed behavior. The host needs Docker and Make; Buccaneerr provides the pinned tools. Image and hook preparation can download dependencies. No live VPN is needed for prose or Markdown changes.
+Choose the smallest check that proves the changed behavior. The host needs Docker and Make; Buccaneerr provides the pinned tools. Image and hook preparation can download dependencies. No live VPN is needed for prose or Markdown changes. Normal deployment uses only the base Compose file; build and live-test tasks use the [explicit development overlays](../../advanced-usage.md#choose-compose-files-for-development).
 
 ## Run offline checks
 
@@ -38,8 +38,8 @@ make test-precommit
 The credential-free runtime suite needs a local Unix Docker socket and a built Privateerr image. Initialize the pinned PIA submodule using the [contributor setup](../../CONTRIBUTING.md#development-checkout), then build and select the same image:
 
 ```sh
-docker build --tag privateerr:recovery-review --file docker/Dockerfile docker
-PRIVATEERR_TEST_IMAGE=privateerr:recovery-review make test-recovery-api
+make build
+make test-recovery-api
 ```
 
 The suite runs Buccaneerr with Docker socket access and starts real Gluetun v3.41.3 and qBittorrent in uniquely named, labeled containers. Synthetic VPN files and an empty scripts directory verify image-owned script installation before readiness, authentication, connection-field updates, unrelated-setting preservation, invalid-update rejection, application port/interface synchronization, and unchanged network/container identity. It cleans up only its verified resources and does not establish a PIA tunnel.
@@ -69,13 +69,27 @@ The same live-test warning applies: this starts the selected Compose project, re
 make test-e2e
 ```
 
-It enables the `test` profile and starts Privateerr, Gluetun, qBittorrent, and Buccaneerr. The validator removes its temporary firewall rule on completion or failure. `BUCCANEERR_TEST_RECOVERY=false` selects connectivity-only validation; the default recovery deadline is 600 seconds.
+This combines `docker-compose.yml`, `docker-compose.build.yml`, and `docker-compose.test.yml` with the same `.env` and project name. It builds `privateerr:local` and `buccaneerr:local`, then starts Privateerr, Gluetun, qBittorrent, and Buccaneerr. Including the test file selects the validator; no profile is required. The validator removes its temporary firewall rule on completion or failure. `BUCCANEERR_TEST_RECOVERY=false` selects connectivity-only validation; the default recovery deadline is 600 seconds.
+
+To validate the published Privateerr image instead, include only the base and test files. Run these commands from the same disposable checkout, using its configured `.env`. Run the startup command only after the image pull succeeds:
+
+```sh
+docker compose --env-file .env \
+  -f docker-compose.yml -f docker-compose.test.yml \
+  pull privateerr gluetun qbittorrent
+docker compose --env-file .env \
+  -f docker-compose.yml -f docker-compose.test.yml \
+  up --build --force-recreate --remove-orphans \
+  --abort-on-container-exit --exit-code-from buccaneerr
+```
+
+Buccaneerr exits with the validation result and Compose stops the other services. A zero exit status indicates that the selected checks passed; it does not measure torrent throughput. Keep the logs private and investigate failures before retrying.
 
 Afterward, [stop the test stack and restore examples](../../advanced-usage.md#restore-vpn-examples). `make reset-test-stack` waits for successful shutdown before replacing files. Never restore examples against an active deployment.
 
 ## Check lifecycle ownership
 
-After changing cleanup behavior, run `test/runtime/test-compose-cleanup-live.sh` only with authorization to create disposable Docker resources. It creates unique projects and unrelated sentinels, proving that `down` retains volumes/images and `nuke` removes only its owned resources and builder. It does not use repository credentials, config, or backups.
+After changing cleanup behavior, run `test/runtime/test-compose-cleanup-live.sh` only with authorization to create disposable Docker resources. It creates unique projects and unrelated sentinels, proving that `down` retains volumes/images and `make remove-stack` removes only its owned resources and builder. It does not use repository credentials, config, or backups.
 
 ## Build the images
 
@@ -85,7 +99,7 @@ make build-test-image
 make build-platforms
 ```
 
-These build images without starting the application stack. Privateerr and Buccaneerr support amd64, arm64, and arm/v7; qBittorrent supports amd64 and arm64. The [test tree](https://github.com/scottgigawatt/privateerr/blob/main/test/README.md) maps source locations.
+These build images without starting the application stack. `make build` selects base plus build and produces `privateerr:local`; `make build-test-image` selects base plus test and produces `buccaneerr:local`. Both overlays use `pull_policy: build`. `make build-platforms` checks both image contexts for amd64, arm64, and arm/v7; qBittorrent supports amd64 and arm64. The [test tree](https://github.com/scottgigawatt/privateerr/blob/main/test/README.md) maps source locations.
 
 ## Validate documentation
 

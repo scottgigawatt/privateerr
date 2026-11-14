@@ -15,6 +15,12 @@ Use Make as the normal interface to these host helpers. Read a script's header b
 | [`docs/build.sh`](docs/build.sh) | Build/preview documentation with read-only source and locked tools |
 | [`compose/test.sh`](compose/test.sh) | Run named suites in Buccaneerr |
 
+## Choose the Compose scope
+
+Normal `make up` uses only `docker-compose.yml`. Local Privateerr builds add `docker-compose.build.yml`; live application validation adds `docker-compose.test.yml`. The test file selects Buccaneerr without a profile and can deliberately interrupt the VPN. Keep the same `.env` and project name. See [Compose file selection](../docs/advanced-usage.md#choose-compose-files-for-development) for the complete target mapping.
+
+`compose/test.sh` builds and runs a separate tool container for named checks; offline suites do not start the application stack or include the live-test overlay. Lifecycle helpers use the complete Compose model when stopping or removing a project so optional Buccaneerr resources remain visible.
+
 ## Respect operational boundaries
 
 Backups can contain secrets and are not application-consistent while writers run. Preserve `.env` and Docker-managed volumes separately. See [maintenance and backup limits](../docs/advanced-usage.md#maintenance-reference).

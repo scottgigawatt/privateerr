@@ -52,6 +52,21 @@ git submodule update --init --recursive
 
 Use the [developer testing guide](development/privateerr/testing.md) for build validation and tests.
 
+### Choose Compose files for development
+
+Normal deployment needs only [`docker-compose.yml`](https://github.com/scottgigawatt/privateerr/blob/main/docker-compose.yml), which contains the three published runtime images and no build or test service. Optional files add local development tasks:
+
+| Task | Files after `docker-compose.yml` | Image selection |
+| --- | --- | --- |
+| Run published images | None | Published Privateerr, Gluetun, and qBittorrent |
+| Build Privateerr locally | `docker-compose.build.yml` | `privateerr:local` plus published Gluetun/qBittorrent |
+| Validate published Privateerr | `docker-compose.test.yml` | Published runtime images plus locally built `buccaneerr:local` |
+| Validate local Privateerr | `docker-compose.build.yml`, then `docker-compose.test.yml` | Locally built Privateerr and Buccaneerr plus published Gluetun/qBittorrent |
+
+Pass the base file first and keep the same `.env` and project name for every combination. Make and direct Compose commands use `COMPOSE_PROJECT_NAME` from `.env` by default. If you explicitly set Make's `PRIVATEERR_COMPOSE_PROJECT_NAME` override, retain it for later commands and cleanup. Both overlays select local image names with `pull_policy: build`; they do not overwrite the published registry tags. Including the test file selects Buccaneerr without a profile and can deliberately interrupt the VPN. Follow the [live test procedure](development/privateerr/testing.md#validate-the-complete-example) before starting that combination.
+
+`make up` uses the base file. `make up-build`, `make build`, and `make wireguard-config` use base plus build; `make build-test-image` uses base plus test; `make test-e2e` uses all three. `make down`, `make reset-test-stack`, and `make remove-stack` use the complete model so they include Buccaneerr and the local image references.
+
 ### Clean developer artifacts
 
 `make clean-artifacts` removes disposable developer artifacts. It preserves deployments, `.env`, configuration, backups, containers, volumes, and images.
@@ -68,7 +83,7 @@ Example restoration replaces `config/gluetun/wireguard/wg0.conf` and `privateerr
 make reset-test-stack
 ```
 
-This stops the selected stack, including the `test` profile, and restores examples only after shutdown succeeds. For separate control, run `make down`, wait for success, then `make restore-vpn-examples`. Never restore examples while a supervisor is writing those files or against an active deployment. Confirm that only example data remains before committing.
+This stops the selected stack using all three Compose files, including Buccaneerr, and restores examples only after shutdown succeeds. For separate control, run `make down`, wait for success, then `make restore-vpn-examples`. Never restore examples while a supervisor is writing those files or against an active deployment. Confirm that only example data remains before committing.
 
 <a id="registry-publishing"></a>
 

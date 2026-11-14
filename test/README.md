@@ -1,6 +1,8 @@
 # Privateerr tests 🧪
 
-Buccaneerr contains Privateerr's test tooling. Normal `make up` and `make up-build` start only Privateerr, Gluetun, and qBittorrent; the live validator requires the `test` profile.
+Buccaneerr contains Privateerr's test tooling. Normal `make up` uses the published-image base Compose file; `make up-build` adds the Privateerr build overlay. Both start only Privateerr, Gluetun, and qBittorrent.
+
+The complete live validator belongs to `docker-compose.test.yml`, which builds `buccaneerr:local` with `pull_policy: build`. Including that file selects the validator without a profile. Base plus test validates published Privateerr; `make test-e2e` includes all three Compose files to validate `privateerr:local`. Keep the same `.env` and project name. Follow [Compose file selection](../docs/advanced-usage.md#choose-compose-files-for-development) before selecting a live test.
 
 ## Find the right check
 

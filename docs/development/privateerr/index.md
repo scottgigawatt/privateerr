@@ -34,4 +34,8 @@ The production image retains UID 0 for upstream scripts while the example drops 
 
 The supplied Compose example enables the built-in recovery supervisor. In a custom deployment, `PRIVATEERR_AUTO_RECOVER` defaults to `false`; recovery settings are validated only when enabled. `Config.one_shot` requires both keepalive and recovery disabled. This mode creates matching VPN files and exits without installing or changing Gluetun scripts. See [configuration-only generation](../../advanced-usage.md#generate-without-make).
 
+## Select a development task
+
+The base `docker-compose.yml` runs only the three published runtime images. Optional overlays select local builds or the Buccaneerr validator; [Compose file selection](../../advanced-usage.md#choose-compose-files-for-development) explains the combinations, image names, and shared project identity. Including the test file activates live validation without a profile and can interrupt the VPN. Use a disposable checkout and follow the [testing procedure](testing.md) for prerequisites, expected results, and cleanup.
+
 Keep environment contracts, file paths, and port-forwarding ownership stable. Follow the [architecture](architecture.md) before changing startup or persistence, and run the [relevant validation](testing.md) before updating a pull request.

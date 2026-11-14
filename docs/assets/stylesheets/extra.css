@@ -417,3 +417,15 @@ body::before {
   white-space: nowrap;
   word-break: normal;
 }
+
+/* Keep Compose filenames readable inside this table's horizontal scroll wrapper. */
+@media screen and (max-width: 44.984375em) {
+  #choose-compose-files-for-development + p + .md-typeset__scrollwrap table {
+    min-width: 40rem;
+  }
+}
+
+#choose-compose-files-for-development + p + .md-typeset__scrollwrap td:nth-child(2) code {
+  white-space: nowrap;
+  word-break: normal;
+}

@@ -31,7 +31,7 @@ on:
       - "config/**"
       - "docker/**"
       - "docs/docker-hub-description.md"
-      - "docker-compose.yml"
+      - "docker-compose*.yml"
       - "example.env"
       - "test/**"
       - ".dockerignore"
@@ -173,8 +173,8 @@ jobs:
     env:
       REGISTRY: ghcr.io
       IMAGE_PLATFORMS: linux/amd64,linux/arm64,linux/arm/v7
-      PRIVATEERR_LOCAL_IMAGE_REF: ghcr.io/${{ github.repository }}
-      BUCCANEERR_LOCAL_IMAGE_REF: ghcr.io/${{ github.repository_owner }}/buccaneerr
+      PRIVATEERR_LOCAL_IMAGE_REF: privateerr:local
+      BUCCANEERR_LOCAL_IMAGE_REF: buccaneerr:local
       PRIVATEERR_IMAGE_REF: ghcr.io/${{ github.repository }}
       BUCCANEERR_IMAGE_REF: ghcr.io/${{ github.repository_owner }}/buccaneerr
       DOCKERHUB_PRIVATEERR_IMAGE_REF: docker.io/${{ github.repository_owner }}/privateerr
@@ -260,7 +260,7 @@ jobs:
         run: |
           make build
           make build-test-image
-          PRIVATEERR_TEST_IMAGE="${PRIVATEERR_LOCAL_IMAGE_REF}:latest" make test-recovery-api
+          PRIVATEERR_TEST_IMAGE="${PRIVATEERR_LOCAL_IMAGE_REF}" make test-recovery-api
 
       #
       # Run the credential-backed e2e voyage when both optional PIA secrets exist.
@@ -295,7 +295,7 @@ jobs:
         id: scan-privateerr
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25  # v0.36.0
         with:
-          image-ref: ${{ env.PRIVATEERR_LOCAL_IMAGE_REF }}:latest
+          image-ref: ${{ env.PRIVATEERR_LOCAL_IMAGE_REF }}
           format: table
           vuln-type: os,library
           severity: CRITICAL,HIGH
@@ -311,7 +311,7 @@ jobs:
           TRIVY_SHOW_SUPPRESSED: "true"
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25  # v0.36.0
         with:
-          image-ref: ${{ env.BUCCANEERR_LOCAL_IMAGE_REF }}:latest
+          image-ref: ${{ env.BUCCANEERR_LOCAL_IMAGE_REF }}
           format: table
           vuln-type: os,library
           severity: CRITICAL,HIGH

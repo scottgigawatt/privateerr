@@ -26,6 +26,12 @@ set -eu
 #
 printf '%s\n' "$*" >>"${NUKE_STUB_LOG}"
 
+# Retain argument boundaries for paths with spaces in layered Compose fixtures.
+if [ -n "${NUKE_STUB_ARGUMENT_LOG:-}" ]; then
+    printf '%s\n' '--call--' >>"${NUKE_STUB_ARGUMENT_LOG}"
+    printf '<%s>\n' "$@" >>"${NUKE_STUB_ARGUMENT_LOG}"
+fi
+
 #
 # Report plugin or standalone Compose availability.
 #
@@ -42,10 +48,14 @@ case " $* " in
         exit 0
         ;;
     *" config --images "*)
+        if [ "${NUKE_STUB_FAIL_DISCOVERY:-}" = "images" ]; then
+            exit 46
+        fi
+
         printf '%s\n' \
-            'test/service:local' \
+            "${NUKE_STUB_MODEL_IMAGE:-test/service:local}" \
             'test/absent:latest' \
-            'test/service:local'
+            "${NUKE_STUB_MODEL_IMAGE:-test/service:local}"
 
         # Expose the test-only image only when its profile is part of the model.
         if [ "${NUKE_STUB_REQUIRE_PROFILE:-false}" = "true" ]; then
@@ -54,6 +64,25 @@ case " $* " in
             esac
         fi
 
+        exit 0
+        ;;
+    *" ps --all --quiet "*)
+        if [ "${NUKE_STUB_FAIL_DISCOVERY:-}" = "ps" ]; then
+            exit 44
+        fi
+
+        if [ -n "${NUKE_STUB_RUNTIME_IMAGE:-}" ]; then
+            printf '%s\n' "${NUKE_STUB_CONTAINER_ID:-0123456789ab}"
+        fi
+
+        exit 0
+        ;;
+    *" container inspect --format "*)
+        if [ "${NUKE_STUB_FAIL_DISCOVERY:-}" = "inspect" ]; then
+            exit 45
+        fi
+
+        printf '%s\n' "${NUKE_STUB_RUNTIME_IMAGE:?Runtime image fixture is required}"
         exit 0
         ;;
     *" down --timeout "*)
@@ -74,6 +103,10 @@ case " $* " in
         exit 0
         ;;
     *" image rm "*)
+        if [ -n "${NUKE_STUB_SHARED_IMAGE:-}" ] && [ "${3:-}" = "${NUKE_STUB_SHARED_IMAGE}" ]; then
+            exit 47
+        fi
+
         case " $* " in
             *" test/shared-base:1 "*) exit 43 ;;
             *) exit 0 ;;

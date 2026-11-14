@@ -17,6 +17,7 @@ awk_bin="${AWK_BIN:-awk}"
 compose_file=""
 docker_bin="docker"
 env_file=""
+project_name=""
 
 #
 # Fail on errors and unset variables.
@@ -44,6 +45,7 @@ usage() {
         "  -e, --env-file <path>" \
         "  -f, --compose-file <path>" \
         "  -d, --docker-bin <command>" \
+        "  -p, --project-name <name>" \
         "  -h, --help"
 }
 
@@ -82,6 +84,17 @@ while [ "$#" -gt 0 ]; do
             docker_bin=$2
             shift 2
             ;;
+        -p | --project-name)
+            require_option_argument "$1" "$#"
+
+            if [ -z "$2" ]; then
+                printf '%s must not be empty.\n' "$1" >&2
+                exit 2
+            fi
+
+            project_name=$2
+            shift 2
+            ;;
         -h | --help)
             usage
             exit 0
@@ -118,6 +131,13 @@ if [ ! -f "${status_formatter}" ]; then
     exit 1
 fi
 
+# Build optional project selection without overriding the environment-derived default.
+set -- --env-file "${env_file}" --file "${compose_file}"
+
+if [ -n "${project_name}" ]; then
+    set -- --project-name "${project_name}" "$@"
+fi
+
 #
 # Prefer Docker Compose v2 and retain support for a standalone v1 installation.
 # Compose owns project-name resolution, so nested .env defaults remain correct.
@@ -125,8 +145,7 @@ fi
 if "${docker_bin}" compose version >/dev/null 2>&1; then
     # Use the modern Docker Compose v2 command to display the project status.
     compose_status=$("${docker_bin}" compose \
-        --env-file "${env_file}" \
-        --file "${compose_file}" \
+        "$@" \
         ps \
         --format '{{.Name}}\t{{.Service}}\t{{.Status}}\t{{.Ports}}')
 
@@ -136,8 +155,7 @@ if "${docker_bin}" compose version >/dev/null 2>&1; then
 elif command -v docker-compose >/dev/null 2>&1; then
     # Use the legacy Docker Compose v1 command to display the project status.
     docker-compose \
-        --env-file "${env_file}" \
-        --file "${compose_file}" \
+        "$@" \
         ps
 else
     echo "Neither 'docker compose' nor 'docker-compose' is available." >&2

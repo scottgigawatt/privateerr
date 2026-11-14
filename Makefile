@@ -179,15 +179,17 @@ STRIP_COMMENTS_AWK         ?= scripts/awk/strip-comments.awk
 #
 # Docker Compose options.
 #
-PRIVATEERR_COMPOSE_PROJECT_NAME ?= privateerr
+PRIVATEERR_COMPOSE_PROJECT_NAME ?=
 COMPOSE_FILE                    ?= docker-compose.yml
+COMPOSE_BUILD_FILE              ?= docker-compose.build.yml
+COMPOSE_TEST_FILE               ?= docker-compose.test.yml
+COMPOSE_PROJECT_NAME_OPTION      = $(if $(strip $(PRIVATEERR_COMPOSE_PROJECT_NAME)),--project-name "$(PRIVATEERR_COMPOSE_PROJECT_NAME)")
 COMPOSE_DOWN_TIMEOUT            ?= 30
 COMPOSE_ENV_FILE                ?= $(ENV_FILE)
 COMPOSE_DOWN_OPTIONS            ?= --timeout $(COMPOSE_DOWN_TIMEOUT) --remove-orphans
 COMPOSE_NUKE_OPTIONS            ?= --timeout $(COMPOSE_DOWN_TIMEOUT) --volumes --remove-orphans --rmi all
 COMPOSE_BUILD_OPTIONS           ?= --pull --no-cache
 COMPOSE_UP_OPTIONS              ?= --detach --no-build --pull never
-COMPOSE_TEST_PROFILE            ?= test
 COMPOSE_LOGS_OPTIONS            ?= --follow
 
 #
@@ -290,15 +292,18 @@ DOCKER_COMPOSE := $(shell \
 endif
 
 #
-# Bind Compose and its implicit --build paths to the repository-owned builder.
-# Keep the project name explicit instead of deriving it from the checkout path.
+# Use the base file and its environment-defined project name for normal operation.
+# Explicit build and test layers share that context and the repository-owned builder.
 #
 PRIVATEERR_COMPOSE = \
 	BUILDX_BUILDER="$(BUILDX_BUILDER_NAME)" \
 	$(DOCKER_COMPOSE) \
-	--project-name "$(PRIVATEERR_COMPOSE_PROJECT_NAME)" \
+	$(COMPOSE_PROJECT_NAME_OPTION) \
 	--env-file "$(COMPOSE_ENV_FILE)" \
 	--file "$(COMPOSE_FILE)"
+PRIVATEERR_BUILD_COMPOSE = $(PRIVATEERR_COMPOSE) --file "$(COMPOSE_BUILD_FILE)"
+PRIVATEERR_TEST_IMAGE_COMPOSE = $(PRIVATEERR_COMPOSE) --file "$(COMPOSE_TEST_FILE)"
+PRIVATEERR_TEST_COMPOSE = $(PRIVATEERR_BUILD_COMPOSE) --file "$(COMPOSE_TEST_FILE)"
 
 #
 # Terminal presentation settings. Recipe-time checks enable color only for
@@ -499,8 +504,8 @@ $(UP_PULL): $(UP)
 $(UP_BUILD): $(CHECK_PIA) $(ENSURE_BUILDX_BUILDER)
 	$(call announce,Building Privateerr and starting the application stack. ⚒️)
 	$(PRIVATEERR_COMPOSE) pull $(DEPENDENCY_SERVICES)
-	$(PRIVATEERR_COMPOSE) build $(COMPOSE_BUILD_OPTIONS) $(PRIVATEERR_SERVICE)
-	$(PRIVATEERR_COMPOSE) up $(COMPOSE_UP_OPTIONS) $(APPLICATION_SERVICES)
+	$(PRIVATEERR_BUILD_COMPOSE) build $(COMPOSE_BUILD_OPTIONS) $(PRIVATEERR_SERVICE)
+	$(PRIVATEERR_BUILD_COMPOSE) up $(COMPOSE_UP_OPTIONS) $(APPLICATION_SERVICES)
 
 #
 # $(DOWN): Stops containers and removes containers and networks.
@@ -511,7 +516,7 @@ $(UP_BUILD): $(CHECK_PIA) $(ENSURE_BUILDX_BUILDER)
 #
 $(DOWN): $(BUILD_DEPENDS) $(CHECK_ENV)
 	$(call announce,Stopping the Privateerr stack; preserving volumes and images.)
-	$(PRIVATEERR_COMPOSE) --profile "$(COMPOSE_TEST_PROFILE)" down $(COMPOSE_DOWN_OPTIONS)
+	$(PRIVATEERR_TEST_COMPOSE) down $(COMPOSE_DOWN_OPTIONS)
 
 #
 # $(PS): Displays the current Compose project in a compact status table.
@@ -523,6 +528,7 @@ $(DOWN): $(BUILD_DEPENDS) $(CHECK_ENV)
 $(PS): $(BUILD_DEPENDS) $(CHECK_ENV)
 	$(COMPOSE_STATUS_CMD) \
 		--docker-bin "$(DOCKER_BIN)" \
+		$(COMPOSE_PROJECT_NAME_OPTION) \
 		--env-file "$(COMPOSE_ENV_FILE)" \
 		--compose-file "$(COMPOSE_FILE)"
 
@@ -584,7 +590,7 @@ $(PRINT_ENV): $(CHECK_ENV)
 #
 $(BUILD): $(BUILD_DEPENDS) $(CHECK_ENV) $(ENSURE_BUILDX_BUILDER)
 	$(call announce,Building the Privateerr image. ⚒️)
-	$(PRIVATEERR_COMPOSE) build $(COMPOSE_BUILD_OPTIONS) $(PRIVATEERR_SERVICE)
+	$(PRIVATEERR_BUILD_COMPOSE) build $(COMPOSE_BUILD_OPTIONS) $(PRIVATEERR_SERVICE)
 
 #
 # $(BUILD_PLATFORMS): Verifies both images build for published architectures.
@@ -639,7 +645,7 @@ $(TEST_RECOVERY):
 #
 $(TEST_E2E): $(CHECK_PIA) $(ENSURE_BUILDX_BUILDER)
 	$(call announce,Starting Privateerr$(COMMA) Gluetun$(COMMA) qBittorrent$(COMMA) and Buccaneerr for e2e validation. 🌊)
-	$(PRIVATEERR_COMPOSE) --profile "$(COMPOSE_TEST_PROFILE)" up $(COMPOSE_TEST_OPTIONS) $(TEST_SERVICES)
+	$(PRIVATEERR_TEST_COMPOSE) up $(COMPOSE_TEST_OPTIONS) $(TEST_SERVICES)
 
 #
 # $(BACKUP): Archives the complete Privateerr config directory.
@@ -696,9 +702,10 @@ $(REMOVE_STACK): $(BUILD_DEPENDS) $(CHECK_ENV)
 	$(COMPOSE_NUKE_CMD) \
 		--docker-bin "$(DOCKER_BIN)" \
 		--compose-file "$(COMPOSE_FILE)" \
+		--compose-file "$(COMPOSE_BUILD_FILE)" \
+		--compose-file "$(COMPOSE_TEST_FILE)" \
 		--env-file "$(COMPOSE_ENV_FILE)" \
-		--project-name "$(PRIVATEERR_COMPOSE_PROJECT_NAME)" \
-		--profile "$(COMPOSE_TEST_PROFILE)" \
+		$(COMPOSE_PROJECT_NAME_OPTION) \
 		--down-timeout "$(COMPOSE_DOWN_TIMEOUT)" \
 		$(foreach dockerfile,$(DOCKERFILES),--dockerfile "$(dockerfile)") \
 		--base-image-awk "$(DOCKERFILE_BASE_IMAGES_AWK)" \
@@ -770,7 +777,7 @@ $(HELP):
 #
 $(WIREGUARD_CONFIG): $(CHECK_PIA) $(ENSURE_BUILDX_BUILDER)
 	$(call announce,Building Privateerr and generating a PIA WireGuard configuration file and Gluetun metadata. 📜)
-	$(PRIVATEERR_COMPOSE) run \
+	$(PRIVATEERR_BUILD_COMPOSE) run \
 		$(COMPOSE_PRIVATEERR_ONLY_OPTIONS) \
 		$(PRIVATEERR_SERVICE)
 
@@ -791,7 +798,7 @@ $(LIST_PIA_REGIONS):
 #
 $(BUILD_TEST_IMAGE): $(BUILD_DEPENDS) $(CHECK_ENV) $(ENSURE_BUILDX_BUILDER)
 	$(call announce,Building the Buccaneerr image. 🔎)
-	$(PRIVATEERR_COMPOSE) build $(COMPOSE_BUILD_OPTIONS) $(BUCCANEERR_SERVICE)
+	$(PRIVATEERR_TEST_IMAGE_COMPOSE) build $(COMPOSE_BUILD_OPTIONS) $(BUCCANEERR_SERVICE)
 
 #
 # $(LINT): Check Python formatting, imports, correctness, and shell scripts in Buccaneerr.

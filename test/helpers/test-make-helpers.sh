@@ -256,6 +256,19 @@ if grep -F '[::]' "${test_output}/ps.out" >/dev/null; then
 fi
 
 #
+# An explicit project override must reach the status helper unchanged.
+#
+COMPOSE_TEST_LOG="${test_output}/docker.log" \
+    scripts/compose/ps.sh \
+        --docker-bin "$(pwd)/test/stubs/compose-docker-stub.sh" \
+        --project-name selected-project \
+        --env-file "${test_output}/stack.env" \
+        --compose-file "${test_output}/compose.yml" \
+        >"${test_output}/ps-selected.out"
+grep -F -- 'compose --project-name selected-project --env-file' \
+    "${test_output}/docker.log" >/dev/null
+
+#
 # Isolate real Make startup recipes behind a Docker stub and disposable state.
 #
 startup_root="${test_output}/startup"
@@ -264,10 +277,15 @@ mkdir -p "${startup_root}/bin"
 ln -s "${startup_stub}" "${startup_root}/bin/docker"
 ln -s "${startup_stub}" "${startup_root}/bin/cp"
 : >"${startup_root}/compose.yml"
+: >"${startup_root}/build.yml"
+: >"${startup_root}/test.yml"
 : >"${startup_root}/stack.env"
 printf '%s\n' 'example wireguard state' >"${startup_root}/example-wg.conf"
 printf '%s\n' 'example metadata state' >"${startup_root}/example-metadata.env"
 startup_compose="compose --project-name startup-project --env-file ${startup_root}/stack.env --file ${startup_root}/compose.yml"
+startup_build_compose="${startup_compose} --file ${startup_root}/build.yml"
+startup_test_image_compose="${startup_compose} --file ${startup_root}/test.yml"
+startup_test_compose="${startup_build_compose} --file ${startup_root}/test.yml"
 
 #
 # startup_reset: Reset failure switches, action logs, and generated-state fixtures.
@@ -297,7 +315,7 @@ startup_make() {
         STARTUP_STUB_ROOT="${startup_root}" \
         STARTUP_STUB_DOWN_DONE="${startup_root}/down.done" \
         PATH="${startup_root}/bin:${PATH}" \
-        NO_COLOR=1 make --no-print-directory "$@" \
+        NO_COLOR=1 make --no-print-directory \
             DOCKER_BIN="${startup_stub}" \
             DOCKER_COMPOSE="${startup_stub} compose" \
             DOCKER_BUILDX="${startup_stub} buildx" \
@@ -307,10 +325,13 @@ startup_make() {
             ENV_FILE="${startup_root}/stack.env" \
             COMPOSE_ENV_FILE="${startup_root}/stack.env" \
             COMPOSE_FILE="${startup_root}/compose.yml" \
+            COMPOSE_BUILD_FILE="${startup_root}/build.yml" \
+            COMPOSE_TEST_FILE="${startup_root}/test.yml" \
             PRIVATEERR_EXAMPLE_WG_CONFIG="${startup_root}/example-wg.conf" \
             PRIVATEERR_EXAMPLE_METADATA="${startup_root}/example-metadata.env" \
             PRIVATEERR_GENERATED_WG_CONFIG="${startup_root}/wg.conf" \
             PRIVATEERR_GENERATED_METADATA="${startup_root}/metadata.env" \
+            "$@" \
             >"${startup_root}/make.out" 2>&1
 }
 
@@ -337,7 +358,7 @@ startup_assert_builder_log() {
     test "$(grep -c '^buildx inspect startup-builder$' "${startup_root}/actions.log")" -eq 1
     awk '
         /^buildx inspect startup-builder$/ { ready = 1; next }
-        /^compose .* (pull|build|up) / && !ready { exit 1 }
+        /^compose .* (pull|build|up|run) / && !ready { exit 1 }
     ' "${startup_root}/actions.log"
     awk '!/^buildx inspect startup-builder$/' "${startup_root}/actions.log" \
         >"${startup_root}/compose-actions.log"
@@ -357,14 +378,51 @@ ${startup_compose} up --detach --no-build --pull never privateerr gluetun qbitto
 done
 
 #
+# With no Make override, Compose uses the same project identity as a direct command.
+#
+startup_reset
+startup_make up PRIVATEERR_COMPOSE_PROJECT_NAME=
+startup_default_compose="compose --env-file ${startup_root}/stack.env --file ${startup_root}/compose.yml"
+startup_assert_log "${startup_default_compose} config --environment
+${startup_default_compose} pull privateerr gluetun qbittorrent
+${startup_default_compose} up --detach --no-build --pull never privateerr gluetun qbittorrent"
+
+#
+# Image-only build targets select only the overlay they need.
+#
+startup_reset
+startup_make build
+startup_assert_builder_log "${startup_build_compose} build --pull --no-cache privateerr"
+startup_reset
+startup_make build-test-image
+startup_assert_builder_log "${startup_test_image_compose} build --pull --no-cache buccaneerr"
+
+#
+# One-time generation builds the local image and disables recovery and keepalive.
+#
+startup_reset
+startup_make wireguard-config
+startup_assert_builder_log "${startup_compose} config --environment
+${startup_build_compose} run --build --rm --no-deps --env PRIVATEERR_AUTO_RECOVER=false --env PRIVATEERR_KEEPALIVE=false privateerr"
+startup_reset
+
+if STARTUP_STUB_FAIL=run startup_make wireguard-config; then
+    echo "One-time generation ignored a failed Compose run." >&2
+    exit 1
+fi
+
+startup_assert_builder_log "${startup_compose} config --environment
+${startup_build_compose} run --build --rm --no-deps --env PRIVATEERR_AUTO_RECOVER=false --env PRIVATEERR_KEEPALIVE=false privateerr"
+
+#
 # Build-first startup pulls only dependencies, then builds and preserves Privateerr locally.
 #
 startup_reset
 startup_make -j4 up-build
 startup_assert_builder_log "${startup_compose} config --environment
 ${startup_compose} pull gluetun qbittorrent
-${startup_compose} build --pull --no-cache privateerr
-${startup_compose} up --detach --no-build --pull never privateerr gluetun qbittorrent"
+${startup_build_compose} build --pull --no-cache privateerr
+${startup_build_compose} up --detach --no-build --pull never privateerr gluetun qbittorrent"
 
 #
 # Missing credentials and failed dependency pulls must stop every startup path.
@@ -413,7 +471,7 @@ fi
 
 startup_assert_builder_log "${startup_compose} config --environment
 ${startup_compose} pull gluetun qbittorrent
-${startup_compose} build --pull --no-cache privateerr"
+${startup_build_compose} build --pull --no-cache privateerr"
 
 #
 # Builder creation failures abort before any dependency pull or service start.
@@ -449,7 +507,7 @@ ${startup_compose} up --detach --no-build --pull never privateerr gluetun qbitto
 startup_reset
 startup_make -j4 test-e2e
 startup_assert_builder_log "${startup_compose} config --environment
-${startup_compose} --profile test up --build --force-recreate --remove-orphans --abort-on-container-exit --exit-code-from buccaneerr privateerr gluetun qbittorrent buccaneerr"
+${startup_test_compose} up --build --force-recreate --remove-orphans --abort-on-container-exit --exit-code-from buccaneerr privateerr gluetun qbittorrent buccaneerr"
 startup_reset
 
 if STARTUP_STUB_FAIL=up startup_make -j4 test-e2e; then
@@ -458,10 +516,10 @@ if STARTUP_STUB_FAIL=up startup_make -j4 test-e2e; then
 fi
 
 startup_assert_builder_log "${startup_compose} config --environment
-${startup_compose} --profile test up --build --force-recreate --remove-orphans --abort-on-container-exit --exit-code-from buccaneerr privateerr gluetun qbittorrent buccaneerr"
+${startup_test_compose} up --build --force-recreate --remove-orphans --abort-on-container-exit --exit-code-from buccaneerr privateerr gluetun qbittorrent buccaneerr"
 
 #
-# Centralized service names, options, and profile settings must reach the real recipes.
+# Centralized service names, options, and layer paths must reach the real recipes.
 #
 startup_reset
 startup_make -j4 up-build \
@@ -469,29 +527,29 @@ startup_make -j4 up-build \
     COMPOSE_BUILD_OPTIONS='--pull --progress plain' COMPOSE_UP_OPTIONS='--detach --no-build --pull never --wait'
 startup_assert_builder_log "${startup_compose} config --environment
 ${startup_compose} pull tunnel torrent
-${startup_compose} build --pull --progress plain generator
-${startup_compose} up --detach --no-build --pull never --wait generator tunnel torrent"
+${startup_build_compose} build --pull --progress plain generator
+${startup_build_compose} up --detach --no-build --pull never --wait generator tunnel torrent"
 startup_reset
-startup_make -j4 test-e2e COMPOSE_TEST_PROFILE=acceptance BUCCANEERR_SERVICE=validator
+startup_make -j4 test-e2e COMPOSE_TEST_FILE="${startup_root}/acceptance.yml" BUCCANEERR_SERVICE=validator
 startup_assert_builder_log "${startup_compose} config --environment
-${startup_compose} --profile acceptance up --build --force-recreate --remove-orphans --abort-on-container-exit --exit-code-from validator privateerr gluetun qbittorrent validator"
+${startup_build_compose} --file ${startup_root}/acceptance.yml up --build --force-recreate --remove-orphans --abort-on-container-exit --exit-code-from validator privateerr gluetun qbittorrent validator"
 
 #
-# Teardown includes profiled test resources while retaining ordinary volume and image safety.
+# Teardown includes optional test resources while retaining ordinary volume and image safety.
 #
 startup_reset
 startup_make -j4 down
-startup_assert_log "${startup_compose} --profile test down --timeout 30 --remove-orphans"
+startup_assert_log "${startup_test_compose} down --timeout 30 --remove-orphans"
 startup_reset
-startup_make -j4 down COMPOSE_TEST_PROFILE=acceptance COMPOSE_DOWN_TIMEOUT=47
-startup_assert_log "${startup_compose} --profile acceptance down --timeout 47 --remove-orphans"
+startup_make -j4 down COMPOSE_TEST_FILE="${startup_root}/acceptance.yml" COMPOSE_DOWN_TIMEOUT=47
+startup_assert_log "${startup_build_compose} --file ${startup_root}/acceptance.yml down --timeout 47 --remove-orphans"
 
 #
 # Even under parallel Make, both restoration copies wait for successful teardown.
 #
 startup_reset
 STARTUP_STUB_DOWN_DELAY=1 startup_make -j4 reset-test-stack
-startup_assert_log "${startup_compose} --profile test down --timeout 30 --remove-orphans
+startup_assert_log "${startup_test_compose} down --timeout 30 --remove-orphans
 copy ${startup_root}/example-wg.conf ${startup_root}/wg.conf
 copy ${startup_root}/example-metadata.env ${startup_root}/metadata.env"
 cmp "${startup_root}/example-wg.conf" "${startup_root}/wg.conf"
@@ -503,7 +561,7 @@ if STARTUP_STUB_DOWN_DELAY=1 STARTUP_STUB_FAIL=down startup_make -j4 reset-test-
     exit 1
 fi
 
-startup_assert_log "${startup_compose} --profile test down --timeout 30 --remove-orphans"
+startup_assert_log "${startup_test_compose} down --timeout 30 --remove-orphans"
 printf '%s\n' 'preserved wireguard state' >"${startup_root}/preserved-wg.conf"
 printf '%s\n' 'preserved metadata state' >"${startup_root}/preserved-metadata.env"
 cmp "${startup_root}/preserved-wg.conf" "${startup_root}/wg.conf"
@@ -548,7 +606,14 @@ NO_COLOR=1 make --dry-run remove-stack \
     COMPOSE_ENV_FILE=example.env \
     >"${test_output}/nuke.out"
 grep -F 'scripts/compose/nuke.sh' "${test_output}/nuke.out" >/dev/null
-grep -F -- '--project-name "privateerr"' "${test_output}/nuke.out" >/dev/null
+if grep -F -- '--project-name' "${test_output}/nuke.out" >/dev/null; then
+    echo "Default cleanup overrides the environment-defined Compose project." >&2
+    exit 1
+fi
+
+for compose_layer in docker-compose.yml docker-compose.build.yml docker-compose.test.yml; do
+    grep -F -- "--compose-file \"${compose_layer}\"" "${test_output}/nuke.out" >/dev/null
+done
 grep -F -- '--builder-name "privateerr-local"' "${test_output}/nuke.out" >/dev/null
 test "$(grep -c 'make --no-print-directory clean-artifacts' "${test_output}/nuke.out")" -eq 1
 test "$(grep -c 'make --no-print-directory restore-vpn-examples' "${test_output}/nuke.out")" -eq 1

@@ -8,7 +8,7 @@
 # test-recovery-api.py: Validate settings replacement against an isolated real Gluetun.
 #
 # Usage: make test-recovery-api, make test-recovery-live, or scripts/compose/test.sh smoke
-# Requires a built privateerr:recovery-review image and Docker.
+# Requires a built privateerr:local image and Docker.
 # Pass --env-file .env to additionally test live PIA recovery.
 #
 
@@ -32,7 +32,7 @@ from privateerr.data import object_fields
 from privateerr.settings import ConnectionSettings
 
 ROOT = Path(__file__).resolve().parents[2]
-IMAGE = os.environ.get("PRIVATEERR_TEST_IMAGE", "privateerr:recovery-review")
+IMAGE = os.environ.get("PRIVATEERR_TEST_IMAGE", "privateerr:local")
 GLUETUN = os.environ.get(
     "GLUETUN_TEST_IMAGE",
     "qmcgaw/gluetun:v3.41.3@sha256:fa19cc76b2af13d57a8d3dc3066f2ada061b1c761b8aecf989b3877c0486e027",
