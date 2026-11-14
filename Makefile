@@ -421,8 +421,8 @@ $(BUILD_DEPENDS):
 		$(if $(shell which $(exe) 2> /dev/null),,$(error "No $(exe) in PATH")))
 	@# Verify Docker Compose availability.
 	@$(DOCKER_COMPOSE) version >/dev/null 2>&1 || { \
-		$(call print_line_inline,$(COLOR_ERROR),Docker Compose be missin'.); \
-		$(call print_detail_inline,$(COLOR_MUTED),Install docker compose or docker-compose. 🧭); \
+		$(call print_line_inline,$(COLOR_ERROR),Docker Compose is unavailable.); \
+		$(call print_detail_inline,$(COLOR_MUTED),Install Docker Compose and make sure Docker is running.); \
 		exit 1; \
 	}
 
@@ -433,8 +433,8 @@ $(BUILD_DEPENDS):
 #
 $(CHECK_ENV):
 	@if [ ! -f "$(ENV_FILE)" ]; then \
-		$(call print_line_inline,$(COLOR_ERROR),No $(ENV_FILE) found. The ship needs a chart before it sails. 🗺️); \
-		$(call print_detail_inline,$(COLOR_MUTED),Copy $(EXAMPLE_ENV_FILE) to $(ENV_FILE) and set real PIA credentials.); \
+		$(call print_line_inline,$(COLOR_ERROR),No $(ENV_FILE) settings file found.); \
+		$(call print_detail_inline,$(COLOR_MUTED),Run cp $(EXAMPLE_ENV_FILE) $(ENV_FILE)$(COMMA) then set your PIA credentials and shared API key.); \
 		exit 1; \
 	fi
 
@@ -510,7 +510,7 @@ $(UP_BUILD): $(CHECK_PIA) $(ENSURE_BUILDX_BUILDER)
 #   $(CHECK_ENV) - Ensure .env exists before running Compose commands.
 #
 $(DOWN): $(BUILD_DEPENDS) $(CHECK_ENV)
-	$(call announce,Droppin' anchor for the Privateerr project. ⚓)
+	$(call announce,Stopping the Privateerr stack; preserving volumes and images.)
 	$(PRIVATEERR_COMPOSE) --profile "$(COMPOSE_TEST_PROFILE)" down $(COMPOSE_DOWN_OPTIONS)
 
 #
@@ -725,10 +725,10 @@ $(HELP):
 	$(call help_line,$(PS),Show a compact container status table.)
 	$(call help_line,$(LOGS),Follow stack logs.)
 	$(call help_heading,🔎 Inspect configuration)
-	$(call help_line,$(CONFIG),Print Docker Compose's rendered configuration.)
-	$(call help_line,$(ENV),Print resolved Compose environment values.)
+	$(call help_line,$(CONFIG),Print rendered Compose configuration (may expose secrets).)
+	$(call help_line,$(ENV),Print resolved environment values (may expose secrets).)
 	$(call help_line,$(PRINT_CONFIG),Print raw Compose configuration without comments.)
-	$(call help_line,$(PRINT_ENV),Print raw environment settings without comments.)
+	$(call help_line,$(PRINT_ENV),Print raw environment settings (may expose secrets).)
 	$(call help_heading,🧪 Build and test)
 	$(call help_line,$(BUILD),Build the Privateerr image.)
 	$(call help_line,$(BUILD_PLATFORMS),Check every published image architecture.)
@@ -755,7 +755,7 @@ $(HELP):
 	$(call help_line,$(CLEAN),Remove only disposable developer artifacts.)
 	$(call help_line,$(NUKE),‼️ DANGER ‼️ remove project Docker resources and transient state.)
 	$(call help_heading,🧭 Privateerr tools)
-	$(call help_line,$(RUN_PRIVATEERR),Generate WireGuard config and Gluetun metadata.)
+	$(call help_line,$(RUN_PRIVATEERR),Build Privateerr and create VPN configuration files once.)
 	$(call help_line,$(LIST_PIA_REGIONS),List all PIA region IDs and port-forwarding support.)
 	$(call help_line,$(BUILD_BUCCANEERR),Build the Buccaneerr test image.)
 	$(call announce_warning,⚠️  Destructive targets never run automatically. Run make backup first.)

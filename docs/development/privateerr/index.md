@@ -32,6 +32,6 @@ The production image retains UID 0 for upstream scripts while the example drops 
 
 ## Understand startup modes
 
-The supplied Compose example enables recovery. Image-only deployments that omit `PRIVATEERR_AUTO_RECOVER` retain generation and keepalive behavior. Recovery validates its additional settings only when enabled. In unreleased source, `Config.one_shot` requires both keepalive and recovery disabled; it produces matching files and exits without installing or changing Gluetun scripts. See [one-shot behavior and release status](https://github.com/scottgigawatt/privateerr#generate-a-wireguard-configuration-).
+The supplied Compose example enables the built-in recovery supervisor. In a custom deployment, `PRIVATEERR_AUTO_RECOVER` defaults to `false`; recovery settings are validated only when enabled. `Config.one_shot` requires both keepalive and recovery disabled. This mode creates matching VPN files and exits without installing or changing Gluetun scripts. See [configuration-only generation](../../advanced-usage.md#generate-without-make).
 
 Keep environment contracts, file paths, and port-forwarding ownership stable. Follow the [architecture](architecture.md) before changing startup or persistence, and run the [relevant validation](testing.md) before updating a pull request.

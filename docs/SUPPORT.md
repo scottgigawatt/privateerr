@@ -41,7 +41,7 @@ Include:
 - The Privateerr, Gluetun, and Buccaneerr image tags involved.
 - Your operating system, Docker version, and Docker Compose version.
 - The exact command and a minimal reproduction.
-- Whether `make config` succeeds.
+- Whether `docker compose --env-file .env config --quiet` succeeds.
 - Sanitized logs or output.
 
 ## Request a documentation improvement

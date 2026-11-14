@@ -15,8 +15,8 @@
 #
 # Public site identity and search metadata.
 #
-site_name: Privateerr Developer Documentation
-site_description: Architecture, contributor guides, and Python API reference for Privateerr and its recovery supervisor.
+site_name: Privateerr Documentation
+site_description: Run Privateerr with Gluetun and qBittorrent, maintain your VPN stack, and explore developer guides.
 site_url: https://scottgigawatt.github.io/privateerr/
 copyright: Copyright &copy; 2025-2026 Scott Gigawatt
 
@@ -32,11 +32,12 @@ edit_uri: edit/main/docs/
 # explicit navigation hierarchy.
 #
 nav:
-  - Start: index.md
+  - Start:
+      - Overview: index.md
+      - Quickstart: https://github.com/scottgigawatt/privateerr#quickstart
   - Operate:
       - Automatic recovery: automatic-recovery.md
       - Maintenance and images: advanced-usage.md
-      - Guide map: project-guides/index.md
   - Develop:
       - Source overview: development/privateerr/index.md
       - Architecture: development/privateerr/architecture.md
