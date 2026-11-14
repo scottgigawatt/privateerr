@@ -104,14 +104,51 @@ You need an active PIA subscription, Git, Docker with Compose, and `openssl` to 
 
 3. Open `.env` in a text editor. Replace the example values for the settings below; keep other defaults for the first launch.
 
-    | ⚙️ Setting | ✏️ What to enter |
-    | --- | --- |
-    | 🔐 `PIA_USER` and `PIA_PASS` | Your PIA VPN credentials. The username is `p` or `P` followed by seven digits, not your email address. |
-    | 🔑 `PRIVATEERR_GLUETUN_API_KEY` | The key from step 2. |
-    | 👤 `QBITTORRENT_PUID` and `QBITTORRENT_PGID` | The user and group IDs that should own qBittorrent's files; find them with `id -u` and `id -g` on the Docker host. |
-    | 🕒 `QBITTORRENT_TZ` | Your time zone, such as `America/New_York`. |
-    | 📂 `HOST_TORRENTS_DOWNLOADS_PATH` | Your host's downloads directory; the default is `./downloads/torrents`. |
-    | 🔌 `QBITTORRENT_WEBUI_PORT` | Keep `8080` unless that host port is already used. |
+    <!-- Keep each variable name and its emoji together in GitHub's table renderer. -->
+    <!-- markdownlint-disable MD033 -->
+    <table>
+      <thead>
+        <tr>
+          <th scope="col" align="center" width="25%" nowrap>⚙️ Setting</th>
+          <th scope="col" align="center" width="75%" nowrap>✏️ What to enter</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td nowrap valign="middle">🔐 <samp>PIA_USER</samp></td>
+          <td valign="middle">Your PIA VPN username: <code>p</code> or <code>P</code> followed by seven digits, not your email address.</td>
+        </tr>
+        <tr>
+          <td nowrap valign="middle">🔒 <samp>PIA_PASS</samp></td>
+          <td valign="middle">Your PIA VPN password.</td>
+        </tr>
+        <tr>
+          <td nowrap valign="middle">🔑 <samp>PRIVATEERR_GLUETUN_API_KEY</samp></td>
+          <td valign="middle">The shared API key generated in step 2.</td>
+        </tr>
+        <tr>
+          <td nowrap valign="middle">👤 <samp>QBITTORRENT_PUID</samp></td>
+          <td valign="middle">The user ID that should own qBittorrent's files; find it with <code>id -u</code> on the Docker host.</td>
+        </tr>
+        <tr>
+          <td nowrap valign="middle">👥 <samp>QBITTORRENT_PGID</samp></td>
+          <td valign="middle">The group ID that should own qBittorrent's files; find it with <code>id -g</code> on the Docker host.</td>
+        </tr>
+        <tr>
+          <td nowrap valign="middle">🕒 <samp>QBITTORRENT_TZ</samp></td>
+          <td valign="middle">Your time zone, such as <code>America/New_York</code>.</td>
+        </tr>
+        <tr>
+          <td nowrap valign="middle">📂 <samp>HOST_TORRENTS_DOWNLOADS_PATH</samp></td>
+          <td valign="middle">Your host's downloads directory; the default is <code>./downloads/torrents</code>.</td>
+        </tr>
+        <tr>
+          <td nowrap valign="middle">🔌 <samp>QBITTORRENT_WEBUI_PORT</samp></td>
+          <td valign="middle">Keep <code>8080</code> unless that host port is already used.</td>
+        </tr>
+      </tbody>
+    </table>
+    <!-- markdownlint-enable MD033 -->
 
     Keep `PIA_VPN_PROTOCOL=wireguard`, `PIA_CONNECT=false`, `PRIVATEERR_KEEPALIVE=true`, and `PRIVATEERR_AUTO_RECOVER=true`. The example selects a region that supports port forwarding. The Privateerr container and the Gluetun VPN container must mount the same host configuration directory, `config/gluetun/`. Keep their default directory settings for this first launch.
 
