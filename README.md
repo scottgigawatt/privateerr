@@ -48,11 +48,31 @@ Privateerr packages the unmodified [Private Internet Access (PIA) manual connect
 
 ## Start with the three-container stack
 
-| 🐳 Container | 🧭 What it does |
-| --- | --- |
-| 🏴‍☠️ **Privateerr** | Creates the PIA WireGuard configuration file. Its built-in Python supervisor can refresh the configuration after a sustained VPN outage. |
-| 🛡️ **Gluetun** | Runs the VPN tunnel, firewall, DNS, and PIA port forwarding. |
-| ⚓ **qBittorrent** | Uses the Gluetun VPN container's connection for its network traffic. |
+<!-- Keep emoji and short container names together in GitHub's table renderer. -->
+<!-- markdownlint-disable MD033 -->
+<table>
+  <thead>
+    <tr>
+      <th scope="col" align="left" nowrap>🐳 Container</th>
+      <th scope="col" align="left" nowrap>🧭 What it does</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td nowrap valign="top">🏴‍☠️ <strong>Privateerr</strong></td>
+      <td valign="top">Creates the PIA WireGuard configuration file. Its built-in Python supervisor can refresh the configuration after a sustained VPN outage.</td>
+    </tr>
+    <tr>
+      <td nowrap valign="top">🛡️ <strong>Gluetun</strong></td>
+      <td valign="top">Runs the VPN tunnel, firewall, DNS, and PIA port forwarding.</td>
+    </tr>
+    <tr>
+      <td nowrap valign="top">⚓ <strong>qBittorrent</strong></td>
+      <td valign="top">Uses the Gluetun VPN container's connection for its network traffic.</td>
+    </tr>
+  </tbody>
+</table>
+<!-- markdownlint-enable MD033 -->
 
 The quickstart below uses published images; you do not need to build an image. For a larger media stack, [Plundarr](https://scottgigawatt.github.io/plundarr/) generates the Compose project for you; [Plundarrpedia](https://scottgigawatt.github.io/plundarrpedia/) guides the wider setup.
 
