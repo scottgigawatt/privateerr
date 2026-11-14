@@ -53,6 +53,8 @@ assert_payload() {
         and (.embeds[0] | .color == $color
           and (.title | length <= 256)
           and (.description | length <= 4096)
+          and ([.fields[] | select(.name | test("Registry targets$|Digest$|Quick links$"))
+            | .name | startswith("\u200b\n")] | all)
           and ([.fields[] | (.name | length <= 256) and (.value | length > 0 and length <= 1024)] | all)
           and (([.title, .description, .footer.text, (.fields[] | .name, .value)] | map(length) | add) <= 6000)
           and (.description | contains("A funny workflow title") | not))
