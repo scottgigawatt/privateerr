@@ -80,6 +80,8 @@ sh .github/scripts/discord-notifier.sh \
     --ref-name main \
     --ghcr-image ghcr.io/example/privateerr \
     --workflow-name "Example image workflow" \
+    --actor example-user \
+    --platforms linux/amd64,linux/arm64,linux/arm/v7 \
     --random-value 0 \
     --dry-run
 ```
@@ -119,4 +121,4 @@ To run only the notifier fixtures with a POSIX shell and `jq` on the host, use `
 
 The notifier fixtures cover every maintained image, destination, state, and joke variant; fixed colors; partial publication; missing evidence; metadata escaping and size limits; missing hooks; short-tag boundaries and atomic rejection; and sanitized HTTP/curl status reporting. Other workflow fixtures validate release policy and registry mirroring. These checks do not prove live Discord delivery or a healthy deployed application.
 
-If a notification fails, inspect the notification step and linked publishing run. Check destination configuration, required metadata, and whether the run was cancelled. A delivery error alone is not a reason to rebuild or republish an image. Live test messages require explicit authorization.
+If a notification fails, inspect the numeric HTTP/curl status line in the notification step and the linked publishing run. Check destination configuration, required metadata, and whether the run was cancelled. A delivery error alone is not a reason to rebuild or republish an image. Live test messages require explicit authorization.
