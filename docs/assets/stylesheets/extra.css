@@ -335,3 +335,28 @@ body::before {
     transition-duration: 0.01ms !important;
   }
 }
+
+/*
+ *
+ * Keep the mobile section title aligned with its matching tab and sidebar icon.
+ *
+ */
+.md-nav__title .md-nav__section-title {
+  display: flex;
+  align-items: center;
+  line-height: 1.4;
+  white-space: normal;
+}
+
+.md-nav__title .md-nav__section-icon {
+  display: inline-flex;
+  flex-shrink: 0;
+  margin-inline-end: 0.4rem;
+  vertical-align: middle;
+}
+
+.md-nav__title .md-nav__section-icon svg {
+  width: 1.3em;
+  height: 1.3em;
+  fill: currentcolor;
+}
