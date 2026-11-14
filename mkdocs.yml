@@ -32,7 +32,7 @@ edit_uri: edit/main/docs/
 # explicit navigation hierarchy.
 #
 nav:
-  - Start:
+  - Start here:
       - Overview: index.md
       - Quickstart: https://github.com/scottgigawatt/privateerr/blob/main/README.md#quickstart
   - Operate:
@@ -232,7 +232,7 @@ extra:
   # Keep tab icons independent of the first page in each section.
   #
   nav_icons:
-    Start: material/ship-wheel
+    Start here: material/ship-wheel
     Operate: material/cog-outline
     Develop: material/compass-outline
     Python reference: material/language-python

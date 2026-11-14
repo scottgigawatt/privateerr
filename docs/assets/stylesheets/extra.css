@@ -20,6 +20,7 @@
 
 /* Cool white surfaces with deep navy navigation and sapphire blue links. */
 [data-md-color-scheme="default"] {
+  --privateerr-nav-heading-background: #dce8f7;
   --md-primary-fg-color: #193f70;
   --md-primary-fg-color--light: #35669c;
   --md-primary-fg-color--dark: #17365b;
@@ -37,6 +38,7 @@
 
 /* Midnight navy surfaces with cool white text and icy blue links. */
 [data-md-color-scheme="slate"] {
+  --privateerr-nav-heading-background: #223a5c;
   color-scheme: dark;
   --md-hue: 215;
   --md-primary-fg-color: #102039;
@@ -333,6 +335,51 @@ body::before {
   *::after {
     scroll-behavior: auto !important;
     transition-duration: 0.01ms !important;
+  }
+}
+
+/*
+ *
+ * Center sidebar headings in theme-colored highlights without a shadow offset.
+ * Keep desktop heading styles separate from mobile drawer controls.
+ *
+ */
+.md-sidebar--secondary .md-nav__title {
+  background: var(--privateerr-nav-heading-background);
+  border: 1px solid var(--privateerr-border);
+  border-radius: 0.3rem;
+  box-shadow: none;
+  color: var(--md-default-fg-color);
+  line-height: 1.5;
+  padding: 0.4rem 0.6rem;
+}
+
+@media screen and (min-width: 76.25em) {
+  .md-sidebar--primary .md-nav--lifted > .md-nav__list > .md-nav__item--active > .md-nav__link {
+    align-items: center;
+    background: var(--privateerr-nav-heading-background);
+    border: 1px solid var(--privateerr-border);
+    border-radius: 0.3rem;
+    box-shadow: none;
+    color: var(--md-default-fg-color);
+    line-height: 1.5;
+    margin-inline: -0.6rem 0;
+    padding: 0.4rem 0.6rem;
+  }
+
+  .md-sidebar--primary .md-nav--lifted > .md-nav__list > .md-nav__item--active > .md-nav__link > .md-nav__link {
+    align-items: center;
+    color: inherit;
+    line-height: inherit;
+    margin: 0;
+  }
+
+  .md-sidebar--primary .md-nav--lifted > .md-nav__list > .md-nav__item--active > .md-nav__link span[aria-hidden] {
+    display: inline-flex;
+  }
+
+  .md-sidebar--primary .md-nav--lifted > .md-nav__list > .md-nav__item--active > .md-nav__link svg {
+    margin-top: 0;
   }
 }
 

@@ -2,7 +2,7 @@
 icon: material/language-python
 ---
 
-# Python reference map 📚
+# Python reference map 🐍
 
 These pages render public names directly from `docker/privateerr` using mkdocstrings. Type signatures and source links come from the same revision as the guides; do not maintain a second handwritten API listing.
 
