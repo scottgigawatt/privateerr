@@ -102,10 +102,10 @@ for selection in 0 1; do
     render --type docs-start --profile docs --random-value "${selection}" > "${TEST_ROOT}/payload.json"
     assert_payload "${docs_color}"
 
-    for state in success failure cancelled skipped neutral unknown; do
+    for state in success failure cancelled skipped neutral timed_out startup_failure action_required unknown; do
         case "${state}" in
             success) color=5763719 ;;
-            failure) color=15548997 ;;
+            failure | timed_out | startup_failure) color=15548997 ;;
             cancelled | skipped | neutral) color=10070709 ;;
             *) color=16705372 ;;
         esac
