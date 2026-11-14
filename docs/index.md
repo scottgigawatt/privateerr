@@ -4,20 +4,20 @@ icon: material/ship-wheel
 
 # Privateerr documentation 🏴‍☠️
 
-Privateerr creates PIA WireGuard settings and can refresh them after a sustained outage. Gluetun runs the VPN connection; qBittorrent uses it.
+The Privateerr container creates a PIA WireGuard configuration file and can refresh the configuration after a sustained outage. The Gluetun VPN container runs the VPN connection; qBittorrent uses that connection.
 
 ## Get a working stack
 
-[Follow the quickstart](https://github.com/scottgigawatt/privateerr#quickstart) to clone the project, edit `.env`, and start the three published images. Finish by checking VPN health and signing in to qBittorrent.
+[Follow the quickstart](https://github.com/scottgigawatt/privateerr/blob/main/README.md#quickstart) to clone the project, edit `.env`, and start the three published images. Finish by checking VPN health and signing in to qBittorrent.
 
-Only need a VPN configuration file? [Run Privateerr once](advanced-usage.md#generate-without-make), then use the output with your VPN client.
+Only need a PIA WireGuard configuration file? [Run the published Privateerr image once](advanced-usage.md#generate-without-make), then use the output with your VPN client.
 
 ## Run and maintain
 
 - [Automatic recovery](automatic-recovery.md): check monitoring, choose a region, and diagnose failures.
 - [Maintenance and images](advanced-usage.md): update, back up, stop, or use Make.
 - [Support](SUPPORT.md) and [private vulnerability reporting](SECURITY.md).
-- [Plundarr](https://github.com/scottgigawatt/plundarr): generate a larger media stack using Privateerr.
+- [Plundarr](https://scottgigawatt.github.io/plundarr/): generate a larger media stack using Privateerr.
 - [Plundarrpedia](https://scottgigawatt.github.io/plundarrpedia/): follow the wider platform walkthrough.
 
 ## Build or contribute

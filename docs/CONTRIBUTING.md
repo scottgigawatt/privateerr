@@ -4,7 +4,7 @@ Help improve configuration generation, Gluetun integration, tests, or documentat
 
 ## Before you start ⚓
 
-Read the [README](https://github.com/scottgigawatt/privateerr#readme), [documentation standards](documentation-style.md), [security policy](SECURITY.md), and [Code of Conduct](CODE_OF_CONDUCT.md). Search existing issues before opening one.
+Read the [README](https://github.com/scottgigawatt/privateerr/blob/main/README.md), [documentation standards](documentation-style.md), [security policy](SECURITY.md), and [Code of Conduct](CODE_OF_CONDUCT.md). Search existing issues before opening one.
 
 Keep upstream PIA scripts unmodified. Never contribute credentials, live VPN files, private logs, or operator-specific values. Production code uses the Python standard library; test dependencies belong in Buccaneerr.
 

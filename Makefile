@@ -33,18 +33,18 @@ TEST_WORKFLOWS=test-workflows
 TEST_RECOVERY=test-recovery
 TEST_E2E=test-e2e
 BACKUP=backup
-RESTORE_TEST_CONFIG=restore-test-config
-CLEAN_TEST=clean-test
-CLEAN=clean
-NUKE=nuke
+RESTORE_VPN_EXAMPLES=restore-vpn-examples
+RESET_TEST_STACK=reset-test-stack
+CLEAN_ARTIFACTS=clean-artifacts
+REMOVE_STACK=remove-stack
 HELP=help
 
 #
 # Project target names.
 #
-RUN_PRIVATEERR=run-privateerr
+WIREGUARD_CONFIG=wireguard-config
 LIST_PIA_REGIONS=list-pia-regions
-BUILD_BUCCANEERR=build-buccaneerr
+BUILD_TEST_IMAGE=build-test-image
 LINT=lint
 TEST_TYPES=test-types
 FORMAT=format
@@ -83,19 +83,19 @@ COMMON_TARGETS= \
 	$(TEST_RECOVERY) \
 	$(TEST_E2E) \
 	$(BACKUP) \
-	$(RESTORE_TEST_CONFIG) \
-	$(CLEAN_TEST) \
-	$(CLEAN) \
-	$(NUKE) \
+	$(RESTORE_VPN_EXAMPLES) \
+	$(RESET_TEST_STACK) \
+	$(CLEAN_ARTIFACTS) \
+	$(REMOVE_STACK) \
 	$(HELP)
 
 #
 # Project targets.
 #
 PROJECT_TARGETS= \
-	$(RUN_PRIVATEERR) \
+	$(WIREGUARD_CONFIG) \
 	$(LIST_PIA_REGIONS) \
-	$(BUILD_BUCCANEERR) \
+	$(BUILD_TEST_IMAGE) \
 	$(LINT) \
 	$(TEST_TYPES) \
 	$(FORMAT) \
@@ -653,30 +653,30 @@ $(BACKUP):
 		"$(CONFIG_BACKUP_NAME)"
 
 #
-# $(RESTORE_TEST_CONFIG): Restores checked-in example config files after live tests.
+# $(RESTORE_VPN_EXAMPLES): Restores checked-in example config files after live tests.
 #
 # Dependencies: None.
 #
-$(RESTORE_TEST_CONFIG):
-	$(call announce,Restoring example config files. 🧭)
-	cp $(PRIVATEERR_EXAMPLE_WG_CONFIG) $(PRIVATEERR_GENERATED_WG_CONFIG)
-	cp $(PRIVATEERR_EXAMPLE_METADATA) $(PRIVATEERR_GENERATED_METADATA)
+$(RESTORE_VPN_EXAMPLES):
+	$(call announce_warning,Replacing saved WireGuard configuration and PIA metadata with test examples. Stop any Privateerr containers using this directory first. ⚠️)
+	cp "$(PRIVATEERR_EXAMPLE_WG_CONFIG)" "$(PRIVATEERR_GENERATED_WG_CONFIG)"
+	cp "$(PRIVATEERR_EXAMPLE_METADATA)" "$(PRIVATEERR_GENERATED_METADATA)"
 
 #
-# $(CLEAN_TEST): Stops and removes containers, then restores example config files.
+# $(RESET_TEST_STACK): Stops and removes containers, then restores example config files.
 #
 # Dependencies:
 #   $(DOWN) - Stop and remove the stack.
 #
-$(CLEAN_TEST): $(DOWN)
-	@$(MAKE) --no-print-directory $(RESTORE_TEST_CONFIG)
+$(RESET_TEST_STACK): $(DOWN)
+	@$(MAKE) --no-print-directory $(RESTORE_VPN_EXAMPLES)
 
 #
-# $(CLEAN): Removes only disposable developer artifacts.
+# $(CLEAN_ARTIFACTS): Removes only disposable developer artifacts.
 #
 # Dependencies: None.
 #
-$(CLEAN):
+$(CLEAN_ARTIFACTS):
 	$(call announce,Clearing disposable developer artifacts. 🧹)
 	rm -rf $(CLEAN_ARTIFACT_PATHS)
 	find "$(CLEAN_ARTIFACT_FIND_ROOT)" \
@@ -684,14 +684,15 @@ $(CLEAN):
 		\( $(CLEAN_ARTIFACT_FIND_MATCH) \) -exec rm -rf {} +
 
 #
-# $(NUKE): Removes project Docker resources and disposable runtime state.
+# $(REMOVE_STACK): Removes project Docker resources and disposable runtime state.
 #
 # Dependencies:
 #   $(BUILD_DEPENDS) - Ensure build dependencies are installed.
 #   $(CHECK_ENV) - Ensure .env exists before running Compose commands.
 #
-$(NUKE): $(BUILD_DEPENDS) $(CHECK_ENV)
-	$(call announce_warning,‼️ DANGER ‼️ Removing containers$(COMMA) volumes$(COMMA) images$(COMMA) scoped build cache$(COMMA) logs$(COMMA) and generated state. 💣)
+$(REMOVE_STACK): $(BUILD_DEPENDS) $(CHECK_ENV)
+	$(call announce_warning,‼️ DANGER ‼️ Removing this project's containers$(COMMA) networks$(COMMA) volumes$(COMMA) eligible images$(COMMA) and build cache. 💣)
+	$(call announce_warning,VPN runtime files and logs will be deleted; WireGuard configuration and PIA metadata will be replaced with test examples.)
 	$(COMPOSE_NUKE_CMD) \
 		--docker-bin "$(DOCKER_BIN)" \
 		--compose-file "$(COMPOSE_FILE)" \
@@ -704,10 +705,10 @@ $(NUKE): $(BUILD_DEPENDS) $(CHECK_ENV)
 		--builder-name "$(BUILDX_BUILDER_NAME)" \
 		--additional-image "$(BUILDX_PRIVATEERR_IMAGE_TAG)" \
 		--additional-image "$(BUILDX_BUCCANEERR_IMAGE_TAG)"
-	@$(MAKE) --no-print-directory $(CLEAN)
+	@$(MAKE) --no-print-directory $(CLEAN_ARTIFACTS)
 	@echo "Removing generated logs and Gluetun state. 🧽"
 	rm -rf $(RUNTIME_ARTIFACT_PATHS)
-	@$(MAKE) --no-print-directory $(RESTORE_TEST_CONFIG)
+	@$(MAKE) --no-print-directory $(RESTORE_VPN_EXAMPLES)
 
 #
 # $(HELP): Print help information.
@@ -750,25 +751,25 @@ $(HELP):
 	$(call help_line,$(DOCS_SERVE),Preview developer documentation at localhost:8000.)
 	$(call help_heading,🧹 Maintenance)
 	$(call help_line,$(BACKUP),Archive the complete config directory.)
-	$(call help_line,$(RESTORE_TEST_CONFIG),Restore checked-in example VPN config.)
-	$(call help_line,$(CLEAN_TEST),Stop the stack and restore example test config.)
-	$(call help_line,$(CLEAN),Remove only disposable developer artifacts.)
-	$(call help_line,$(NUKE),‼️ DANGER ‼️ remove project Docker resources and transient state.)
+	$(call help_line,$(RESTORE_VPN_EXAMPLES),‼️ DANGER ‼️ replace saved WireGuard configuration and PIA metadata with test examples.)
+	$(call help_line,$(RESET_TEST_STACK),‼️ DANGER ‼️ stop the selected stack$(COMMA) then replace VPN files with test examples; disposable tests only.)
+	$(call help_line,$(CLEAN_ARTIFACTS),Delete generated docs$(COMMA) test logs$(COMMA) and Python caches; keep deployments.)
+	$(call help_line,$(REMOVE_STACK),‼️ DANGER ‼️ delete stack containers$(COMMA) volumes$(COMMA) images$(COMMA) cache and logs; replace VPN files with examples.)
 	$(call help_heading,🧭 Privateerr tools)
-	$(call help_line,$(RUN_PRIVATEERR),Build Privateerr and create VPN configuration files once.)
+	$(call help_line,$(WIREGUARD_CONFIG),Build Privateerr locally$(COMMA) generate a PIA WireGuard configuration file and Gluetun metadata$(COMMA) then exit.)
 	$(call help_line,$(LIST_PIA_REGIONS),List all PIA region IDs and port-forwarding support.)
-	$(call help_line,$(BUILD_BUCCANEERR),Build the Buccaneerr test image.)
-	$(call announce_warning,⚠️  Destructive targets never run automatically. Run make backup first.)
+	$(call help_line,$(BUILD_TEST_IMAGE),Build Buccaneerr$(COMMA) the image used for Privateerr validation tools.)
+	$(call announce_warning,⚠️  Reset and removal commands are for disposable tests. Verify backups of .env$(COMMA) config$(COMMA) and volumes first.)
 
 #
-# $(RUN_PRIVATEERR): Runs only Privateerr to generate WireGuard config and metadata.
+# $(WIREGUARD_CONFIG): Builds and runs Privateerr once to generate a PIA WireGuard configuration file and Gluetun metadata.
 #
 # Dependencies:
 #   $(BUILD_DEPENDS) - Ensure build dependencies are installed.
 #   $(CHECK_PIA) - Reject missing or example PIA credentials.
 #
-$(RUN_PRIVATEERR): $(CHECK_PIA) $(ENSURE_BUILDX_BUILDER)
-	$(call announce,Generating WireGuard config and Gluetun metadata. 📜)
+$(WIREGUARD_CONFIG): $(CHECK_PIA) $(ENSURE_BUILDX_BUILDER)
+	$(call announce,Building Privateerr and generating a PIA WireGuard configuration file and Gluetun metadata. 📜)
 	$(PRIVATEERR_COMPOSE) run \
 		$(COMPOSE_PRIVATEERR_ONLY_OPTIONS) \
 		$(PRIVATEERR_SERVICE)
@@ -782,13 +783,13 @@ $(LIST_PIA_REGIONS):
 	@$(PIA_REGIONS_CMD)
 
 #
-# $(BUILD_BUCCANEERR): Builds only the Buccaneerr image.
+# $(BUILD_TEST_IMAGE): Builds only the Buccaneerr image.
 #
 # Dependencies:
 #   $(BUILD_DEPENDS) - Ensure build dependencies are installed.
 #   $(CHECK_ENV) - Ensure .env exists before running Compose commands.
 #
-$(BUILD_BUCCANEERR): $(BUILD_DEPENDS) $(CHECK_ENV) $(ENSURE_BUILDX_BUILDER)
+$(BUILD_TEST_IMAGE): $(BUILD_DEPENDS) $(CHECK_ENV) $(ENSURE_BUILDX_BUILDER)
 	$(call announce,Building the Buccaneerr image. 🔎)
 	$(PRIVATEERR_COMPOSE) build $(COMPOSE_BUILD_OPTIONS) $(BUCCANEERR_SERVICE)
 

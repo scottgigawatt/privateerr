@@ -34,7 +34,7 @@ edit_uri: edit/main/docs/
 nav:
   - Start:
       - Overview: index.md
-      - Quickstart: https://github.com/scottgigawatt/privateerr#quickstart
+      - Quickstart: https://github.com/scottgigawatt/privateerr/blob/main/README.md#quickstart
   - Operate:
       - Automatic recovery: automatic-recovery.md
       - Maintenance and images: advanced-usage.md

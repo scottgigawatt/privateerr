@@ -58,7 +58,7 @@ Never print or commit real credentials, private keys, API tokens, generated VPN 
 After authorized live tests in a disposable checkout, restore the checked-in example files from `test/examples/example-wg0.conf` and `test/examples/example-privateerr.env`:
 
 ```sh
-make restore-test-config
+make restore-vpn-examples
 ```
 
 This overwrites both destination files; never run it against an operator's active VPN configuration. Use the term "example files" rather than "dummy files". Verify restoration and working-tree status before handoff.
@@ -150,18 +150,18 @@ User-facing Make output may be lightly pirate-themed while clearly describing th
 | --- | --- |
 | `make help` | Prints the command chart without starting the stack |
 | `make config`, `make env`, `make print-config`, `make print-env` | Print configuration or environment content that can expose secrets; keep output private |
-| `make build`, `make build-buccaneerr`, `make build-platforms` | Build images or check architectures; can fetch dependencies and create Buildx resources |
+| `make build`, `make build-test-image`, `make build-platforms` | Build images or check architectures; can fetch dependencies and create Buildx resources |
 | `make up`, `make up-pull`, `make all` | Pull published images and start only Privateerr, Gluetun, and qBittorrent; require PIA credentials and operational authorization |
 | `make up-build` | Pull Gluetun/qBittorrent, build Privateerr, and start the three services without pulling over the local image |
-| `make run-privateerr` | Generate real VPN state; requires PIA credentials and operational authorization |
+| `make wireguard-config` | Generate real VPN state; requires PIA credentials and operational authorization |
 | `make down` | Stops the selected Compose project; preserves volumes and images |
 | `make backup` | Archives the full config directory, potentially including secrets; protect and verify the archive |
-| `make restore-test-config` | Overwrites generated VPN files with checked-in examples |
-| `make clean-test` | Stops the selected stack and restores examples; use after authorized disposable e2e runs |
-| `make clean` | Removes disposable developer artifacts only; must preserve deployment state, examples, containers, volumes, images, and `.env` |
-| `make nuke` | Removes selected project Docker resources, repository-owned Buildx cache, and transient runtime state; restores examples and preserves `.env`, `backups/`, and persistent bind-mounted config |
+| `make restore-vpn-examples` | Overwrites generated VPN files with checked-in examples |
+| `make reset-test-stack` | Stops the selected stack and restores examples; use after authorized disposable e2e runs |
+| `make clean-artifacts` | Removes disposable developer artifacts only; must preserve deployment state, examples, containers, volumes, images, and `.env` |
+| `make remove-stack` | Removes selected project Docker resources, repository-owned Buildx cache, and transient runtime state; restores examples and preserves `.env`, `backups/`, and persistent bind-mounted config |
 
-Destructive targets require an explicitly disposable project, verified ownership boundaries, and authorization. Back up needed data first and understand the recovery path. Never use global Docker prune or delete unrelated resources. The `clean-test` recipe must complete profile-aware teardown before restoring examples, including under parallel Make execution. Never restore files while another writer is active.
+Destructive targets require an explicitly disposable project, verified ownership boundaries, and authorization. Back up needed data first and understand the recovery path. Never use global Docker prune or delete unrelated resources. The `reset-test-stack` recipe must complete profile-aware teardown before restoring examples, including under parallel Make execution. Never restore files while another writer is active.
 
 ## Documentation standards
 
@@ -208,9 +208,9 @@ Select checks from the actual changed behavior and recipes. Report exact command
 | Live PIA recovery | `make test-recovery-live` | Credentials and live VPN; explicit authorization required |
 | Full application e2e | `make test-e2e` | Starts all four services, generates secrets, and injects a recovery fault by default |
 
-For Docker or workflow changes, run `make help`, `make config`, `make build`, `make build-buccaneerr`, `make build-platforms`, `make test`, `make test-workflows`, and `make test-precommit` as applicable. Validate Compose with a secret-free test environment and check architectures when image dependencies or build stages change. `make config` prints the rendered model and requires an environment file; do not capture real secrets in validation output.
+For Docker or workflow changes, run `make help`, `make config`, `make build`, `make build-test-image`, `make build-platforms`, `make test`, `make test-workflows`, and `make test-precommit` as applicable. Validate Compose with a secret-free test environment and check architectures when image dependencies or build stages change. `make config` prints the rendered model and requires an environment file; do not capture real secrets in validation output.
 
-Behavior changes affecting generation, Gluetun handoff, or forwarding warrant authorized live e2e coverage plus safe cleanup with `make clean-test` and verification of restored examples. If live testing is outside scope or credentials are unavailable, report the gap; never obtain or use production credentials merely to satisfy a checklist. Do not leave generated VPN config or metadata in the working tree.
+Behavior changes affecting generation, Gluetun handoff, or forwarding warrant authorized live e2e coverage plus safe cleanup with `make reset-test-stack` and verification of restored examples. If live testing is outside scope or credentials are unavailable, report the gap; never obtain or use production credentials merely to satisfy a checklist. Do not leave generated VPN config or metadata in the working tree.
 
 ## Handoff and review
 

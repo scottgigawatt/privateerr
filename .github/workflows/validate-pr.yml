@@ -97,7 +97,7 @@ jobs:
       - name: "Hammer the Docker Hulls ⚒️"
         run: |
           make build
-          make build-buccaneerr
+          make build-test-image
           PRIVATEERR_TEST_IMAGE="${PRIVATEERR_LOCAL_IMAGE_REF}:latest" make test-recovery-api
 
       #

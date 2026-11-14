@@ -1,10 +1,10 @@
 # Automatic Gluetun recovery 🧭
 
-Privateerr's built-in Python supervisor checks Gluetun and refreshes stale PIA WireGuard settings after a sustained VPN outage. Gluetun runs the tunnel, firewall, DNS, and forwarded port. The supervisor updates Gluetun through its authenticated API; it does not restart containers. Existing connections can still disconnect while the VPN reconnects.
+The built-in Python supervisor in the Privateerr container checks the Gluetun VPN container and refreshes stale PIA WireGuard configuration after a sustained VPN outage. Gluetun runs the tunnel, firewall, DNS, and forwarded port. The supervisor updates Gluetun through its authenticated API; it does not restart containers. Existing connections can still disconnect while the VPN reconnects.
 
 ## Configure recovery
 
-The [quickstart](https://github.com/scottgigawatt/privateerr#quickstart) enables automatic recovery and creates its shared API key. Keep `PRIVATEERR_AUTO_RECOVER=true` and `PRIVATEERR_KEEPALIVE=true` in `.env`.
+The [quickstart](https://github.com/scottgigawatt/privateerr/blob/main/README.md#quickstart) enables automatic recovery and creates its shared API key. Keep `PRIVATEERR_AUTO_RECOVER=true` and `PRIVATEERR_KEEPALIVE=true` in `.env`.
 
 Check monitoring locally:
 
@@ -109,7 +109,7 @@ Monitoring begins after the grace period. Continuous failure must then reach the
 
 ## Compatibility and limits
 
-Recovery requires keepalive, `PIA_CONNECT=false`, a private shared API key, one Privateerr writer, and a directory mount containing both VPN files and retained recovery state. Privateerr cannot start a stopped Gluetun container, repair Docker, restore unavailable PIA services, fix credentials, or escape an unavailable pinned region.
+Recovery requires keepalive, `PIA_CONNECT=false`, a private shared API key, and a directory mount containing both VPN files and retained recovery state. Only one Privateerr container may write to that directory at a time. Privateerr cannot start a stopped Gluetun VPN container, repair Docker, restore unavailable PIA services, fix credentials, or escape an unavailable pinned region.
 
 <a id="understand-container-and-application-limits"></a>
 <a id="try-the-qbittorrent-example"></a>
@@ -136,7 +136,7 @@ Privateerr retains UID 0 for PIA's unmodified scripts while dropping all Linux c
 
 Set `PRIVATEERR_AUTO_RECOVER=false` in `.env`, then repeat the quickstart's startup command. This recreates affected containers, interrupts traffic, and replaces saved VPN files; preserve needed state first. Gluetun resumes its configured health-restart policy, and Privateerr generates fresh files at startup.
 
-To create a one-time static WireGuard configuration for another VPN client and then exit, use [configuration-only generation](advanced-usage.md#generate-without-make).
+To create a PIA WireGuard configuration file for another VPN client and then exit, [run the published Privateerr image once](advanced-usage.md#generate-without-make).
 
 ## Configure a custom deployment
 
