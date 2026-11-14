@@ -87,11 +87,11 @@ def image_fields:
           else [] end) | join("\n")); true)]
   + supporting_fields($published)
   + (if $notification_type == "image-start" then
-      [field("📦 Registry targets";
+      [field("\u200b\n📦 Registry targets";
         (["**GHCR: 📦** " + ($ghcr_image | code(120))]
           + (if $dockerhub_image != "" then ["**Docker Hub: 🐳** " + ($dockerhub_image | code(120))] else [] end) | join("\n")); false)]
     else [] end)
-  + (if $published then [field("🧾 Digest"; ($digest | text(300)); false)] else [] end);
+  + (if $published then [field("\u200b\n🧾 Digest"; ($digest | text(300)); false)] else [] end);
 
 def docs_fields:
   context_fields
@@ -107,7 +107,7 @@ def quick_links:
     + (if $notification_type | startswith("docs-") then [link("Open documentation"; $site_url)]
       else [link("GHCR image"; $ghcr_url), link("Docker Hub image"; $dockerhub_url)] end)
     | map(select(. != "")) | join(" · ")) as $links
-  | if $links != "" then [field("🔗 Quick links"; $links; false)] else [] end;
+  | if $links != "" then [field("\u200b\n🔗 Quick links"; $links; false)] else [] end;
 
 def fact:
   ($notification.subject // $image_name) as $subject

@@ -53,6 +53,8 @@ assert_payload() {
         and (.embeds[0] | .color == $color
           and (.title | length <= 256)
           and (.description | length <= 4096)
+          and ([.fields[] | select(.name | test("Registry targets$|Digest$|Quick links$"))
+            | .name | startswith("\u200b\n")] | all)
           and ([.fields[] | (.name | length <= 256) and (.value | length > 0 and length <= 1024)] | all)
           and (([.title, .description, .footer.text, (.fields[] | .name, .value)] | map(length) | add) <= 6000)
           and (.description | contains("A funny workflow title") | not))
@@ -100,10 +102,10 @@ for selection in 0 1; do
     render --type docs-start --profile docs --random-value "${selection}" > "${TEST_ROOT}/payload.json"
     assert_payload "${docs_color}"
 
-    for state in success failure cancelled skipped neutral unknown; do
+    for state in success failure cancelled skipped neutral timed_out startup_failure action_required unknown; do
         case "${state}" in
             success) color=5763719 ;;
-            failure) color=15548997 ;;
+            failure | timed_out | startup_failure) color=15548997 ;;
             cancelled | skipped | neutral) color=10070709 ;;
             *) color=16705372 ;;
         esac
@@ -145,7 +147,7 @@ jq -e '[.embeds[0].fields[] | select(.name == "\u200b")][0].value | startswith("
 render --type image-verdict --profile image-primary --job-status success --publication-status success \
     --published-digest sha256:0123456789abcdef > "${TEST_ROOT}/payload.json"
 jq -e '([.embeds[0].fields[].value] | join("\n") | contains("**Tags:") | not)
-    and ([.embeds[0].fields[].name] | index("🧾 Digest") != null)' "${TEST_ROOT}/payload.json" >/dev/null
+    and ([.embeds[0].fields[].name] | index("\u200b\n🧾 Digest") != null)' "${TEST_ROOT}/payload.json" >/dev/null
 
 #
 # Simultaneously large inputs exercise the aggregate budget and literal escaping.
@@ -187,8 +189,8 @@ jq -e --arg digest "${full_digest}" '
     and ($f[1].value | contains("**GHCR:** ✅ success") and contains("**Docker Hub:** ❌ failure"))
     and $f[2].name == "\u200b" and $f[2].inline == false
     and ($f[2].value == "**Tags: 🏷️** `edge`\n**Platforms:** **🧱** `amd64` · `arm64` · `arm/v7`\n**Workflow: ⚙️** A funny workflow title")
-    and ([ $f[] | select(.name == "🧾 Digest") ][0].value == $digest)
-    and ([ $f[] | select(.name == "🔗 Quick links") ][0].value
+    and ([ $f[] | select(.name == "\u200b\n🧾 Digest") ][0].value == $digest)
+    and ([ $f[] | select(.name == "\u200b\n🔗 Quick links") ][0].value
       | contains("[View run](https://example.invalid/run)") and contains("[GHCR image](") and contains("[Docker Hub image]("))
 ' "${TEST_ROOT}/payload.json" >/dev/null
 
@@ -212,7 +214,7 @@ jq -e '[.embeds[0].fields[] | select(.name != "⚠️ Stage needing attention")]
     and ($f[1].value | contains("**Project: 📖**") and contains("**Target: 🗺️** GitHub Pages")
       and contains("**Build:** ✅ success") and contains("**Pages:** ❌ failure"))
     and ([ $f[].value ] | join("\n") | contains("**Platforms:") == false and contains("**GHCR:") == false)
-    and ([ $f[] | select(.name == "🔗 Quick links") ][0].value | contains("[Open documentation](https://example.invalid/docs)"))
+    and ([ $f[] | select(.name == "\u200b\n🔗 Quick links") ][0].value | contains("[Open documentation](https://example.invalid/docs)"))
 ' "${TEST_ROOT}/payload.json" >/dev/null
 
 #
