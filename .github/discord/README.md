@@ -36,12 +36,6 @@ Privateerr publishes to GHCR and Docker Hub; the test-only Buccaneerr image publ
 
 A successful image message requires a successful pipeline result, a successful push outcome, and a digest. Metadata calculated before a failed push is never labeled as published tags. A later failure retains evidence of a completed GHCR push and names the stage needing attention. Docker Hub mirror status is reported separately; a GHCR digest alone does not prove a successful mirror. Review the linked run before using a partially verified image.
 
-## Read the embed
-
-The two inline columns group **Build context** (repository, ref, and linked GitHub user) beside **Details** (image or documentation project and actual registry or build/deployment results). Repository links display the repository name and retain the full owner/repository destination. Bot logins and unsafe identifiers remain plain text rather than linking to an unverified profile. A pipeline failure can appear beside a successful GHCR result when a later required check failed; read both the message and the individual results.
-
-A full-width block below the columns shows confirmed short tags, shortened platform names such as `amd64` and `arm/v7`, and the workflow name on adjacent lines when available. Start notices list registry targets separately. Confirmed image digests remain complete, and **Quick links** provides the run and applicable registry or documentation destinations. Missing optional metadata is omitted; an ellipsis indicates an abbreviated tag or platform list. Discord controls column wrapping and spacing, including on narrow screens.
-
 ## Validate notification tags
 
 The published-tags row uses short tags such as `edge`, `sha-ABC123`, or `1.2.3`. [notification-tags.sh](../scripts/notification-tags.sh) accepts already-short tags or full references beginning with the exact expected image name followed by a colon. It preserves order and spelling, permits up to 128 ASCII characters per Docker tag, and rejects whitespace, digests, malformed tags, and references to another image. Blank lines are optional metadata. The whole list is validated before any output is printed; errors do not echo the rejected input.
