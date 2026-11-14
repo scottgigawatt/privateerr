@@ -259,7 +259,7 @@ jobs:
         id: local-build
         run: |
           make build
-          make build-buccaneerr
+          make build-test-image
           PRIVATEERR_TEST_IMAGE="${PRIVATEERR_LOCAL_IMAGE_REF}:latest" make test-recovery-api
 
       #
@@ -285,7 +285,7 @@ jobs:
       - name: "Swab the Test Deck 🧽"
         id: cleanup
         if: always()
-        run: make clean-test
+        run: make reset-test-stack
 
       #
       # Reject fixed HIGH or CRITICAL vulnerabilities before either image

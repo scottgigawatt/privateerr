@@ -4,7 +4,7 @@ Help improve configuration generation, Gluetun integration, tests, or documentat
 
 ## Before you start ⚓
 
-Read the [README](https://github.com/scottgigawatt/privateerr#readme), [documentation standards](documentation-style.md), [security policy](SECURITY.md), and [Code of Conduct](CODE_OF_CONDUCT.md). Search existing issues before opening one.
+Read the [README](https://github.com/scottgigawatt/privateerr/blob/main/README.md), [documentation standards](documentation-style.md), [security policy](SECURITY.md), and [Code of Conduct](CODE_OF_CONDUCT.md). Search existing issues before opening one.
 
 Keep upstream PIA scripts unmodified. Never contribute credentials, live VPN files, private logs, or operator-specific values. Production code uses the Python standard library; test dependencies belong in Buccaneerr.
 
@@ -26,7 +26,7 @@ Offline checks and documentation builds need no real PIA credentials. Configure 
 
 Select checks from the [canonical testing guide](development/privateerr/testing.md). It explains offline, real-API, live-VPN, build, and documentation boundaries. Report commands actually run and any skipped coverage. Pre-commit can modify files and download hooks; inspect its diff.
 
-Live tests deliberately interrupt VPN traffic. Use a disposable checkout and preserve needed state first. After complete-example testing, [stop the stack and restore examples](advanced-usage.md#restore-vpn-examples). Never restore test files into an active deployment.
+Live tests deliberately interrupt VPN traffic. Use a disposable checkout and save any VPN configuration files you need before testing. After complete-example testing, [stop the stack and restore examples](advanced-usage.md#restore-vpn-examples). Never restore test files into an active deployment.
 
 ## Follow project conventions
 

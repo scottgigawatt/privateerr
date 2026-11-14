@@ -58,7 +58,7 @@ Never print or commit real credentials, private keys, API tokens, generated VPN 
 After authorized live tests in a disposable checkout, restore the checked-in example files from `test/examples/example-wg0.conf` and `test/examples/example-privateerr.env`:
 
 ```sh
-make restore-test-config
+make restore-vpn-examples
 ```
 
 This overwrites both destination files; never run it against an operator's active VPN configuration. Use the term "example files" rather than "dummy files". Verify restoration and working-tree status before handoff.
@@ -112,7 +112,7 @@ Run `make spellcheck` across project-owned files. Correct misspellings; genuine 
 
 Primary deployment target: Synology DSM Container Manager. Secondary development target: macOS with Docker Desktop. Preserve one main `docker-compose.yml`; avoid runtime designs requiring multiple Compose files or application profiles. Reserve the `test` profile for optional Buccaneerr validation; application startup must not enable it.
 
-Keep Privateerr deployments unprivileged with all Linux capabilities dropped and `no-new-privileges`. UID 0 remains necessary for the unmodified upstream scripts; do not equate UID 0 with permission to add privileged mode or capabilities. Docker owns initial namespace IPv6 settings; the Python generator skips redundant writes while preserving legacy image-only behavior.
+Keep Privateerr deployments unprivileged with all Linux capabilities dropped and `no-new-privileges`. UID 0 remains necessary for the unmodified upstream scripts; do not equate UID 0 with permission to add privileged mode or capabilities. Docker owns initial namespace IPv6 settings; the Python generator skips redundant writes.
 
 Dockerfiles use architecture-neutral base images, OCI labels, and minimal required packages. Explain required packages with concise plain-English comments. Prefer Alpine unless a specific need justifies changing it. Do not hardcode architecture-specific image names. Preserve Buildx support for `linux/amd64`, `linux/arm64`, and `linux/arm/v7`. Multi-architecture registry descriptions need index-level OCI annotations as well as Dockerfile labels. Attestation manifests may appear as `unknown/unknown`; they are metadata, not runnable images.
 
@@ -150,24 +150,24 @@ User-facing Make output may be lightly pirate-themed while clearly describing th
 | --- | --- |
 | `make help` | Prints the command chart without starting the stack |
 | `make config`, `make env`, `make print-config`, `make print-env` | Print configuration or environment content that can expose secrets; keep output private |
-| `make build`, `make build-buccaneerr`, `make build-platforms` | Build images or check architectures; can fetch dependencies and create Buildx resources |
+| `make build`, `make build-test-image`, `make build-platforms` | Build images or check architectures; can fetch dependencies and create Buildx resources |
 | `make up`, `make up-pull`, `make all` | Pull published images and start only Privateerr, Gluetun, and qBittorrent; require PIA credentials and operational authorization |
 | `make up-build` | Pull Gluetun/qBittorrent, build Privateerr, and start the three services without pulling over the local image |
-| `make run-privateerr` | Generate real VPN state; requires PIA credentials and operational authorization |
+| `make wireguard-config` | Generate real VPN state; requires PIA credentials and operational authorization |
 | `make down` | Stops the selected Compose project; preserves volumes and images |
 | `make backup` | Archives the full config directory, potentially including secrets; protect and verify the archive |
-| `make restore-test-config` | Overwrites generated VPN files with checked-in examples |
-| `make clean-test` | Stops the selected stack and restores examples; use after authorized disposable e2e runs |
-| `make clean` | Removes disposable developer artifacts only; must preserve deployment state, examples, containers, volumes, images, and `.env` |
-| `make nuke` | Removes selected project Docker resources, repository-owned Buildx cache, and transient runtime state; restores examples and preserves `.env`, `backups/`, and persistent bind-mounted config |
+| `make restore-vpn-examples` | Overwrites generated VPN files with checked-in examples |
+| `make reset-test-stack` | Stops the selected stack and restores examples; use after authorized disposable e2e runs |
+| `make clean-artifacts` | Removes disposable developer artifacts only; must preserve deployment state, examples, containers, volumes, images, and `.env` |
+| `make remove-stack` | Removes selected project Docker resources, repository-owned Buildx cache, and transient runtime state; restores examples and preserves `.env`, `backups/`, and persistent bind-mounted config |
 
-Destructive targets require an explicitly disposable project, verified ownership boundaries, and authorization. Back up needed data first and understand the recovery path. Never use global Docker prune or delete unrelated resources. The `clean-test` recipe must complete profile-aware teardown before restoring examples, including under parallel Make execution. Never restore files while another writer is active.
+Destructive targets require an explicitly disposable project, verified ownership boundaries, and authorization. Back up needed data first and understand the recovery path. Never use global Docker prune or delete unrelated resources. The `reset-test-stack` recipe must complete profile-aware teardown before restoring examples, including under parallel Make execution. Never restore files while another writer is active.
 
 ## Documentation standards
 
 All project-owned Markdown, user-facing documentation, templates, and generated prose must follow [GitHub Docs writing guidance](https://docs.github.com/en/contributing/writing-for-github-docs/best-practices-for-github-docs), its [style guide](https://docs.github.com/en/contributing/style-guide-and-content-model/style-guide), and [ISO 24495-1:2023](https://www.iso.org/standard/78907.html). Apply the four reader outcomes: relevant, findable, understandable, and usable. Identify each page's audience/task, put required actions and prerequisites first, use familiar words and exact labels, and include expected results and necessary failure/recovery guidance.
 
-Keep each topic in one canonical location. Remove obsolete, repeated, or unnecessary content; prefer a short contextual link to a second explanation. Do not create pages, tables, diagrams, or checklists without a reader need. Shortening must preserve safety, compatibility, persistent-state/backup limits, licensing, upstream attribution, and security evidence. Preserve existing badge/community blocks and links; put the H1 and purpose before them.
+Describe current behavior directly without historical comparisons, migration guides, or old-version caveats. Keep each topic in one canonical location. Remove obsolete, repeated, or unnecessary content; prefer a short contextual link to a second explanation. Do not create pages, tables, diagrams, or checklists without a reader need. Shortening must preserve safety, compatibility, persistent-state/backup limits, licensing, upstream attribution, and security evidence. Preserve existing badge/community blocks and links; put the H1 and purpose before them.
 
 Public prose may be lightly pirate-themed. Commands, paths, UI labels, security/reporting instructions, warnings, destructive actions, and troubleshooting stay literal. Use one descriptive H1, sentence-case headings without skipped levels, numbered procedures, descriptive relative links, labelled fences, meaningful alt text, and one physical line per prose paragraph. Copyable commands use `sh` without prompts/prose comments. Keep prerequisites, secret-handling requirements, backup requirements, and risks visible before commands; never hide them in details.
 
@@ -208,9 +208,9 @@ Select checks from the actual changed behavior and recipes. Report exact command
 | Live PIA recovery | `make test-recovery-live` | Credentials and live VPN; explicit authorization required |
 | Full application e2e | `make test-e2e` | Starts all four services, generates secrets, and injects a recovery fault by default |
 
-For Docker or workflow changes, run `make help`, `make config`, `make build`, `make build-buccaneerr`, `make build-platforms`, `make test`, `make test-workflows`, and `make test-precommit` as applicable. Validate Compose with a secret-free test environment and check architectures when image dependencies or build stages change. `make config` prints the rendered model and requires an environment file; do not capture real secrets in validation output.
+For Docker or workflow changes, run `make help`, `make config`, `make build`, `make build-test-image`, `make build-platforms`, `make test`, `make test-workflows`, and `make test-precommit` as applicable. Validate Compose with a secret-free test environment and check architectures when image dependencies or build stages change. `make config` prints the rendered model and requires an environment file; do not capture real secrets in validation output.
 
-Behavior changes affecting generation, Gluetun handoff, or forwarding warrant authorized live e2e coverage plus safe cleanup with `make clean-test` and verification of restored examples. If live testing is outside scope or credentials are unavailable, report the gap; never obtain or use production credentials merely to satisfy a checklist. Do not leave generated VPN config or metadata in the working tree.
+Behavior changes affecting generation, Gluetun handoff, or forwarding warrant authorized live e2e coverage plus safe cleanup with `make reset-test-stack` and verification of restored examples. If live testing is outside scope or credentials are unavailable, report the gap; never obtain or use production credentials merely to satisfy a checklist. Do not leave generated VPN config or metadata in the working tree.
 
 ## Handoff and review
 

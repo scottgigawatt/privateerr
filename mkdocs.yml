@@ -15,8 +15,8 @@
 #
 # Public site identity and search metadata.
 #
-site_name: Privateerr Developer Documentation
-site_description: Architecture, contributor guides, and Python API reference for Privateerr and its recovery supervisor.
+site_name: Privateerr Documentation
+site_description: Run Privateerr with Gluetun and qBittorrent, maintain your VPN stack, and explore developer guides.
 site_url: https://scottgigawatt.github.io/privateerr/
 copyright: Copyright &copy; 2025-2026 Scott Gigawatt
 
@@ -32,11 +32,12 @@ edit_uri: edit/main/docs/
 # explicit navigation hierarchy.
 #
 nav:
-  - Start: index.md
+  - Start here:
+      - Overview: index.md
+      - Quickstart: https://github.com/scottgigawatt/privateerr/blob/main/README.md#quickstart
   - Operate:
       - Automatic recovery: automatic-recovery.md
       - Maintenance and images: advanced-usage.md
-      - Guide map: project-guides/index.md
   - Develop:
       - Source overview: development/privateerr/index.md
       - Architecture: development/privateerr/architecture.md
@@ -64,10 +65,11 @@ nav:
 
 #
 # Configure Material's visual identity and navigation behavior. Project-owned
-# CSS supplies the custom palette without replacing upstream templates.
+# CSS supplies the palette; the tab override supplies explicit section icons.
 #
 theme:
   name: material
+  custom_dir: overrides
   language: en
 
   #
@@ -221,3 +223,17 @@ markdown_extensions:
 #
 extra_css:
   - assets/stylesheets/extra.css
+
+#
+# Define section icons for the top-level navigation tabs.
+#
+extra:
+  #
+  # Keep tab icons independent of the first page in each section.
+  #
+  nav_icons:
+    Start here: material/ship-wheel
+    Operate: material/cog-outline
+    Develop: material/compass-outline
+    Python reference: material/language-python
+    Project information: material/information-outline

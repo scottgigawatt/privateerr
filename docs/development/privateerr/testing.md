@@ -71,7 +71,7 @@ make test-e2e
 
 It enables the `test` profile and starts Privateerr, Gluetun, qBittorrent, and Buccaneerr. The validator removes its temporary firewall rule on completion or failure. `BUCCANEERR_TEST_RECOVERY=false` selects connectivity-only validation; the default recovery deadline is 600 seconds.
 
-Afterward, [stop the test stack and restore examples](../../advanced-usage.md#restore-vpn-examples). `make clean-test` waits for successful shutdown before replacing files. Never restore examples against an active deployment.
+Afterward, [stop the test stack and restore examples](../../advanced-usage.md#restore-vpn-examples). `make reset-test-stack` waits for successful shutdown before replacing files. Never restore examples against an active deployment.
 
 ## Check lifecycle ownership
 
@@ -81,7 +81,7 @@ After changing cleanup behavior, run `test/runtime/test-compose-cleanup-live.sh`
 
 ```sh
 make build
-make build-buccaneerr
+make build-test-image
 make build-platforms
 ```
 

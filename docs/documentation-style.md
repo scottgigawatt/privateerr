@@ -17,7 +17,7 @@ Syntax checks cannot prove these outcomes. Do not claim certification or full IS
 
 ## Keep one owner for each topic
 
-Before adding a page, check whether an existing page can answer the task. Replace duplicate explanations with short context and a specific link. Delete obsolete or unnecessary prose instead of moving it elsewhere solely to shorten a page. Do not target a word count at the expense of a necessary instruction.
+Describe current behavior directly. Remove historical comparisons, migration sections, and obsolete feature caveats. Before adding a page, check whether an existing page can answer the task. Replace duplicate explanations with short context and a specific link. Delete obsolete or unnecessary prose instead of moving it elsewhere solely to shorten a page. Do not target a word count at the expense of a necessary instruction.
 
 Privateerr owns its image, configuration, recovery contract, and developer reference. Plundarr owns generated stack integration; Plundarrpedia owns broader deployment/platform guidance. Keep local guides self-contained for essential steps and safety.
 
@@ -48,6 +48,6 @@ Shared pages use native GitHub alerts; configured `pymdownx.quotes` renders them
 
 ## Verify the result
 
-Follow the [documentation validation procedure](development/privateerr/testing.md#validate-documentation). Check current-source claims and label unreleased behavior. Inspect GitHub and Material rendering as applicable, changed links/anchors, commands, diagrams, alerts, and narrow layouts. Check that a reader can locate the task, understand required values, and recognize success/failure without following unrelated guides.
+Follow the [documentation validation procedure](development/privateerr/testing.md#validate-documentation). Check claims against the code and image used by the documented workflow. Inspect GitHub and Material rendering as applicable, changed links/anchors, commands, diagrams, alerts, and narrow layouts. Check that a reader can locate the task, understand required values, and recognize success/failure without following unrelated guides.
 
 Preserve the local Material layout, accessibility, system fonts, and midnight navy/sapphire palette. Keep generated API reference in source docstrings and generated HTML ignored. Exact hash-verified documentation dependencies remain isolated in Buccaneerr's docs target; PR builds remain read-only and deployment stays separate.

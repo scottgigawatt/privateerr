@@ -490,7 +490,7 @@ startup_assert_log "${startup_compose} --profile acceptance down --timeout 47 --
 # Even under parallel Make, both restoration copies wait for successful teardown.
 #
 startup_reset
-STARTUP_STUB_DOWN_DELAY=1 startup_make -j4 clean-test
+STARTUP_STUB_DOWN_DELAY=1 startup_make -j4 reset-test-stack
 startup_assert_log "${startup_compose} --profile test down --timeout 30 --remove-orphans
 copy ${startup_root}/example-wg.conf ${startup_root}/wg.conf
 copy ${startup_root}/example-metadata.env ${startup_root}/metadata.env"
@@ -498,7 +498,7 @@ cmp "${startup_root}/example-wg.conf" "${startup_root}/wg.conf"
 cmp "${startup_root}/example-metadata.env" "${startup_root}/metadata.env"
 startup_reset
 
-if STARTUP_STUB_DOWN_DELAY=1 STARTUP_STUB_FAIL=down startup_make -j4 clean-test; then
+if STARTUP_STUB_DOWN_DELAY=1 STARTUP_STUB_FAIL=down startup_make -j4 reset-test-stack; then
     echo "Test cleanup ignored a failed Compose teardown." >&2
     exit 1
 fi
@@ -513,7 +513,7 @@ test ! -e "${startup_root}/down.done"
 #
 # Keep clean non-destructive and keep destructive operations on explicit targets.
 #
-NO_COLOR=1 make --dry-run clean >"${test_output}/clean.out"
+NO_COLOR=1 make --dry-run clean-artifacts >"${test_output}/clean.out"
 grep -F 'rm -rf .pytest_cache .ruff_cache test/logs' \
     "${test_output}/clean.out" >/dev/null
 grep -F -- "-path './docker/pia-manual-connections'" \
@@ -542,7 +542,7 @@ fi
 #
 # Delegate destructive Docker cleanup while invoking clean and restore once.
 #
-NO_COLOR=1 make --dry-run nuke \
+NO_COLOR=1 make --dry-run remove-stack \
     DOCKER_COMPOSE=true \
     ENV_FILE=example.env \
     COMPOSE_ENV_FILE=example.env \
@@ -550,8 +550,8 @@ NO_COLOR=1 make --dry-run nuke \
 grep -F 'scripts/compose/nuke.sh' "${test_output}/nuke.out" >/dev/null
 grep -F -- '--project-name "privateerr"' "${test_output}/nuke.out" >/dev/null
 grep -F -- '--builder-name "privateerr-local"' "${test_output}/nuke.out" >/dev/null
-test "$(grep -c 'make --no-print-directory clean' "${test_output}/nuke.out")" -eq 1
-test "$(grep -c 'make --no-print-directory restore-test-config' "${test_output}/nuke.out")" -eq 1
+test "$(grep -c 'make --no-print-directory clean-artifacts' "${test_output}/nuke.out")" -eq 1
+test "$(grep -c 'make --no-print-directory restore-vpn-examples' "${test_output}/nuke.out")" -eq 1
 if grep -E 'docker (system|image|volume|builder) prune|--all-inactive|rm --force.*(service|base)' \
     "${test_output}/nuke.out" >/dev/null; then
     echo "The nuke target contains global or forceful image cleanup." >&2
@@ -606,7 +606,7 @@ common_targets=$(awk '
         exit
     }
 ' Makefile)
-test "${common_targets}" = "BUILD_DEPENDS CHECK_ENV CHECK_PIA ENSURE_BUILDX_BUILDER ALL UP UP_PULL UP_BUILD DOWN PS LOGS CONFIG ENV PRINT_CONFIG PRINT_ENV BUILD BUILD_PLATFORMS TEST TEST_MAKE_HELPERS TEST_WORKFLOWS TEST_RECOVERY TEST_E2E BACKUP RESTORE_TEST_CONFIG CLEAN_TEST CLEAN NUKE HELP"
+test "${common_targets}" = "BUILD_DEPENDS CHECK_ENV CHECK_PIA ENSURE_BUILDX_BUILDER ALL UP UP_PULL UP_BUILD DOWN PS LOGS CONFIG ENV PRINT_CONFIG PRINT_ENV BUILD BUILD_PLATFORMS TEST TEST_MAKE_HELPERS TEST_WORKFLOWS TEST_RECOVERY TEST_E2E BACKUP RESTORE_VPN_EXAMPLES RESET_TEST_STACK CLEAN_ARTIFACTS REMOVE_STACK HELP"
 common_target_count=$(printf '%s\n' "${common_targets}" | awk '{ print NF }')
 common_recipe_order=$(awk -v target_count="${common_target_count}" '
     /^\$\([A-Z0-9_]+\)(:| )/ {

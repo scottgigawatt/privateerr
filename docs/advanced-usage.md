@@ -1,12 +1,22 @@
 # Maintenance and image reference 🧭
 
-Use these commands from the repository root after completing the [setup](https://github.com/scottgigawatt/privateerr#readme). For test selection and image builds, use the [developer testing guide](development/privateerr/testing.md).
+Use this guide after the [quickstart](https://github.com/scottgigawatt/privateerr/blob/main/README.md#quickstart). Run checkout commands from the repository root. [Create a PIA WireGuard configuration file](#generate-without-make) if you want to use another VPN client.
 
-## Manage installed Gluetun scripts
+<a id="maintenance-reference"></a>
 
-Long-running Privateerr installs its startup wrapper and qBittorrent forwarding hook into the shared `/gluetun/scripts/` directory before reporting ready. Both containers must mount the complete `/gluetun` directory. Installation failure prevents readiness even with recovery disabled.
+## Stop or update the stack
 
-The two installed filenames belong to Privateerr and are replaced at startup. Keep custom scripts under different names and select their paths explicitly. Recreate Privateerr, Gluetun, and qBittorrent together after updating images. API-based tunnel recovery preserves their running containers.
+`docker compose down` stops the selected stack and removes its containers and network while keeping volumes, images, and bind-mounted configuration.
+
+Before updating, back up `.env` and configuration as described below and check the image's [release notes](https://github.com/scottgigawatt/privateerr/releases), then repeat the quickstart's pull and startup commands for all three services together. This can interrupt traffic. Pulling an image alone does not update a running container.
+
+The Privateerr container installs its Gluetun startup wrapper and qBittorrent forwarding hook into the shared `config/gluetun/scripts/` directory at startup. The two managed filenames are replaced; keep custom scripts under other names. The Privateerr container and Gluetun VPN container must mount the complete shared directory. UID 0 needs write and traverse access to it.
+
+## Back up configuration
+
+Archive `config/` with your host backup tools, or use `make backup` if Make is installed. The Make command does not stop writers or replace earlier archives. Stop relevant services first when you need a consistent archive. Protect it as secret-bearing data and verify the files you need are included.
+
+The archive excludes `.env` and Docker-managed volumes. Preserve those separately when your recovery plan requires them. A config archive is not an application-aware database backup. There is no application-aware restore command: check ownership, destination paths, and application compatibility before restoring files.
 
 ## Read container logs
 
@@ -16,66 +26,120 @@ Use your container manager's log view, or run:
 docker compose logs --tail 100 privateerr
 ```
 
-Records include a UTC timestamp, severity, and source. `[privateerr]` identifies the supervisor; `[PIA/run_setup.sh]` includes output from that upstream invocation and its children. Privateerr redacts recognized credentials before forwarding upstream output, but paths, region preferences, and unrecognized secret formats can remain. Inspect and redact excerpts before sharing them.
-
-The [recovery diagnostics](automatic-recovery.md#read-diagnostics-and-check-storage) explain failure categories and storage checks. Source-level logging behavior belongs in the [architecture guide](development/privateerr/architecture.md#read-consistent-generation-logs).
-
-<a id="maintenance-reference"></a>
-
-## Maintain the project
-
-Use `make help` for the full command menu. Routine inspection uses `make ps` and `make logs`. `make down` stops the selected application and test-profile services while retaining volumes and images.
+Each record includes a UTC timestamp, severity, and source. `[privateerr]` identifies the Python supervisor; `[PIA/run_setup.sh]` includes that upstream script and its children. Redaction is best effort: inspect and sanitize excerpts before sharing. See [recovery diagnostics](automatic-recovery.md#read-diagnostics-and-check-storage) for failure categories.
 
 > [!CAUTION]
-> Resolved configuration and environment output can contain credentials. Keep `make config`, `make env`, `make print-config`, and `make print-env` output private. Report whether a check passed instead of pasting its full output.
+> `make config`, `make env`, `make print-config`, and `make print-env` can expose credentials. For a syntax check without displaying them, use `docker compose --env-file .env config --quiet`.
 
-### Back up configuration
+## Use Make
 
-`make backup` archives `config/` without stopping writers or replacing earlier archives. Stop the relevant services first when you need a consistent backup. Protect the archive as secret-bearing data and verify that it contains the files you need.
+Make is an optional shortcut for the same checkout. Run `make help` for the complete menu.
 
-The archive excludes `.env` and Docker-managed volumes. Preserve those separately when required by your recovery plan. This repository does not provide an application-aware restore command; restore only after checking ownership, destination paths, and the saved files' compatibility.
+| Task | Command | Effect |
+| --- | --- | --- |
+| Start or update | `make up` | Pull published images and start Privateerr, Gluetun, and qBittorrent |
+| Check status | `make ps` | Show container status |
+| Read logs | `make logs` | Follow stack logs |
+| Stop | `make down` | Preserve volumes and images |
+| Build and start | `make up-build` | Build Privateerr locally; pull Gluetun and qBittorrent |
+| Create VPN files from source | `make wireguard-config` | Build Privateerr, create the files once, and exit |
+
+Local builds need Docker Buildx and the pinned PIA source submodule. From the checkout, initialize it before using a build command:
+
+```sh
+git submodule update --init --recursive
+```
+
+Use the [developer testing guide](development/privateerr/testing.md) for build validation and tests.
 
 ### Clean developer artifacts
 
-`make clean` removes disposable developer artifacts. It preserves deployments, `.env`, configuration, backups, containers, volumes, and images.
+`make clean-artifacts` removes disposable developer artifacts. It preserves deployments, `.env`, configuration, backups, containers, volumes, and images.
 
-`make nuke` is a destructive reset for an explicitly disposable project. It removes that project's Docker containers, networks, volumes, eligible images, and scoped Buildx cache, then resets transient state and restores the checked-in VPN examples. It preserves `.env`, `backups/`, and persistent bind-mounted config, but example restoration replaces the VPN pair. Back up needed state first. Shared or in-use base images are retained. Never use it to repair an active deployment.
+`make remove-stack` is a destructive reset for an explicitly disposable project. It removes that project's Docker containers, networks, volumes, eligible images, and scoped Buildx cache, then resets transient state and restores the checked-in VPN examples. It preserves `.env`, `backups/`, and persistent bind-mounted config, but example restoration replaces the VPN files. Back up needed state first. Shared or in-use base images are retained. Never use it to repair an active deployment.
 
 <a id="restore-vpn-examples"></a>
 
-## Restore test examples
+### Restore test examples
 
-Example restoration replaces `config/gluetun/wireguard/wg0.conf` and `privateerr.env`. It is not a backup restore. Use it only in a disposable test checkout after preserving any needed state:
+Example restoration replaces `config/gluetun/wireguard/wg0.conf` and `privateerr.env`. It is not a backup restore. Use it only in a disposable test checkout after saving any VPN configuration files you need:
 
 ```sh
-make clean-test
+make reset-test-stack
 ```
 
-The target stops the selected stack, including the `test` profile, and restores examples only after shutdown succeeds. For separate control, run `make down`, wait for success, then run `make restore-test-config`. Never restore examples while a supervisor is writing those files or against an active deployment. Confirm that only checked-in example data remains before committing.
+This stops the selected stack, including the `test` profile, and restores examples only after shutdown succeeds. For separate control, run `make down`, wait for success, then `make restore-vpn-examples`. Never restore examples while a supervisor is writing those files or against an active deployment. Confirm that only example data remains before committing.
 
 <a id="registry-publishing"></a>
 
 ## Choose an image channel
 
-Privateerr is available from `ghcr.io/scottgigawatt/privateerr` and `docker.io/scottgigawatt/privateerr`. Buccaneerr is published to GHCR for testing.
+Privateerr is available from `ghcr.io/scottgigawatt/privateerr` and `docker.io/scottgigawatt/privateerr`. Use `latest` for the current stable release. Privateerr supports amd64, arm64, and arm/v7; the supplied qBittorrent stack supports amd64 and arm64.
 
 | Channel | Use |
 | --- | --- |
-| `latest` | Newest stable release |
-| `edge` | Successful `main` build for previewing changes |
-| Exact version, such as `1.2.3` | A selected release |
-| `sha-<commit>` | A selected commit build |
-| Image digest | Exact image contents |
+| `latest` | Current stable release |
+| `edge` | Preview changes from a successful `main` build |
+| Exact version | Select a release |
+| `sha-<commit>` | Select a commit build |
+| Image digest | Pin exact image contents |
 
-Stable releases also advance minor and major aliases; major zero has no `0` alias. Prereleases publish exact and SHA tags only. Tags can move where policy allows; use a digest when reproducibility requires immutable contents.
-
-Privateerr and Buccaneerr support `linux/amd64`, `linux/arm64`, and `linux/arm/v7`. The qBittorrent example supports amd64 and arm64.
-
-The workflow builds GHCR images, mirrors Privateerr to Docker Hub with digest verification, and updates the [Docker Hub description](docker-hub-description.md). It publishes SBOMs and provenance and applies vulnerability gates. A passing gate does not mean zero findings; see the [security policy](SECURITY.md). Maintainers should follow [release requirements](CONTRIBUTING.md#release-tags) before publishing.
+Tags can move where policy allows; a digest fixes the exact contents. [Release requirements](CONTRIBUTING.md#release-tags) describe publishing aliases, mirrors, and attestations. The test-only Buccaneerr image publishes to GHCR. A passing vulnerability gate does not mean zero findings; see the [security policy](SECURITY.md).
 
 ## Generate without Make
 
-After the [checkout and environment setup](https://github.com/scottgigawatt/privateerr#prepare-a-checkout), use the published image; check [one-shot behavior and release status](https://github.com/scottgigawatt/privateerr#generate-a-wireguard-configuration-) before choosing an image. This replaces saved VPN files; stop other writers and preserve needed state first:
+This standalone route needs only Docker and an active PIA subscription. The published Privateerr image creates a PIA WireGuard configuration file for Gluetun or another compatible VPN client, then exits. The Privateerr container saves the files in a mounted directory so they remain on your host after the container exits. It does not start a tunnel or monitor it afterward.
+
+1. Start in a new directory outside an existing deployment:
+
+    ```sh
+    mkdir privateerr-generation
+    cd privateerr-generation
+    umask 077
+    touch .env
+    ```
+
+2. Open `.env` and replace these placeholders with your PIA VPN credentials. Docker's `--env-file` reads values literally: do not add shell quotes or copy the Compose-oriented `example.env`.
+
+    ```dotenv
+    PIA_USER=YOUR-PIA-VPN-USERNAME
+    PIA_PASS=YOUR-PIA-PASSWORD
+    ```
+
+    The username is `p` or `P` followed by seven digits, not your email address. Keep this file private.
+
+3. Run the published Privateerr image to generate the PIA WireGuard configuration file in the mounted directory. This replaces saved VPN files. Save any existing WireGuard configuration files before reusing the directory, and ensure no other Privateerr container is writing to it. The volume mount below maps the host's `config/gluetun` directory to `/gluetun` inside the Privateerr container.
+
+    ```sh
+    docker run --rm --pull always \
+      --cap-drop ALL \
+      --security-opt no-new-privileges:true \
+      --env-file .env \
+      --env VPN_PROTOCOL=wireguard \
+      --env PIA_CONNECT=false \
+      --env DISABLE_IPV6=no \
+      --env DIP_TOKEN=no \
+      --env AUTOCONNECT=true \
+      --env PIA_PF=true \
+      --env PIA_DNS=true \
+      --env PRIVATEERR_AUTO_RECOVER=false \
+      --env PRIVATEERR_KEEPALIVE=false \
+      --volume "$(pwd)/config/gluetun:/gluetun" \
+      ghcr.io/scottgigawatt/privateerr:latest
+    ```
+
+4. Confirm `Generation complete.` and that these files exist:
+
+    | File | Purpose |
+    | --- | --- |
+    | `config/gluetun/wireguard/wg0.conf` | PIA WireGuard configuration file for the VPN client |
+    | `config/gluetun/wireguard/privateerr.env` | Matching PIA server metadata for the Gluetun VPN container |
+
+The Privateerr container exits without installing or changing Gluetun scripts. Docker creates missing shared directories; existing directories must permit UID 0 to write and traverse them with all capabilities dropped. Keep the output private, and follow your VPN client's instructions to use it.
+
+### Generate from a checkout
+
+After the quickstart's environment setup, use the same published Privateerr image through Compose. This also replaces saved VPN files: save any existing configuration files, stop the stack, and confirm no other Privateerr container is writing to the shared directory first:
 
 ```sh
 docker compose --env-file .env run --rm --no-deps --pull always \
@@ -86,15 +150,8 @@ docker compose --env-file .env run --rm --no-deps --pull always \
   privateerr
 ```
 
-For a source build, initialize the pinned PIA submodule and replace `--pull always` with `--build --pull never`.
+<a id="start-without-make"></a>
 
 ## Start without Make
 
-Complete the [recovery key and application settings](https://github.com/scottgigawatt/privateerr#start-privateerr-with-gluetun-) first. Startup/recreation can interrupt application traffic:
-
-```sh
-docker compose --env-file .env pull privateerr gluetun qbittorrent
-docker compose --env-file .env up --detach --no-build --pull never privateerr gluetun qbittorrent
-```
-
-For a source build, pull only Gluetun/qBittorrent, run `docker compose --env-file .env build privateerr`, then use the same `up` command. Keep the pinned PIA submodule initialized.
+The [quickstart](https://github.com/scottgigawatt/privateerr/blob/main/README.md#quickstart) contains the complete published-image startup procedure. No Make installation or local build is needed.

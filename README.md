@@ -1,6 +1,6 @@
 # Privateerr 🏴‍☠️
 
-Privateerr packages and ships the unmodified [Private Internet Access (PIA) manual connection scripts](https://github.com/pia-foss/manual-connections) in a lightweight Alpine Docker image. It generates WireGuard configuration and server metadata for Gluetun or another compatible VPN client. Its [optional supervisor](https://scottgigawatt.github.io/privateerr/automatic-recovery/) refreshes stale settings after sustained tunnel outages.
+Privateerr packages the unmodified [Private Internet Access (PIA) manual connection scripts](https://github.com/pia-foss/manual-connections) in a lightweight Docker image. Use it with Gluetun and qBittorrent to create a VPN-protected download stack. The Privateerr container creates a PIA WireGuard configuration file for the Gluetun VPN container. Gluetun runs the VPN connection, and Privateerr's built-in Python supervisor can refresh the configuration after a sustained outage.
 
 <!-- markdownlint-disable-next-line MD033 MD041 -->
 <hr />
@@ -46,141 +46,162 @@ Privateerr packages and ships the unmodified [Private Internet Access (PIA) manu
 <!-- markdownlint-disable-next-line MD033 -->
 <hr />
 
-## Choose a task 🧭
+## Start with the three-container stack
 
-- [Generate configuration only](#generate-a-wireguard-configuration-): use the repository, or [run Docker directly](#using-docker-directly) without Git or Make.
-- [Run the supplied stack](#start-privateerr-with-gluetun-): start Privateerr, Gluetun, and qBittorrent with automatic recovery.
-- [Develop or test Privateerr](docs/development/privateerr/testing.md): work on source without using a production deployment.
+<!-- Keep emoji and short container names together in GitHub's table renderer. -->
+<!-- markdownlint-disable MD033 -->
+<table>
+  <thead>
+    <tr>
+      <th scope="col" align="center" width="25%" nowrap>🐳 Container</th>
+      <th scope="col" align="center" width="75%" nowrap>🧭 What it does</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td nowrap valign="middle">🏴‍☠️ <strong>Privateerr</strong></td>
+      <td valign="middle">Creates the PIA WireGuard configuration file. Its built-in Python supervisor can refresh the configuration after a sustained VPN outage.</td>
+    </tr>
+    <tr>
+      <td nowrap valign="middle">🛡️ <strong>Gluetun</strong></td>
+      <td valign="middle">Runs the VPN tunnel, firewall, DNS, and PIA port forwarding.</td>
+    </tr>
+    <tr>
+      <td nowrap valign="middle">⚓ <strong>qBittorrent</strong></td>
+      <td valign="middle">Uses the Gluetun VPN container's connection for its network traffic.</td>
+    </tr>
+  </tbody>
+</table>
+<!-- markdownlint-enable MD033 -->
 
-Gluetun owns the tunnel, firewall, DNS, and port lease. Privateerr generates settings and can refresh them after a sustained outage; it does not manage containers.
+The quickstart below uses published images; you do not need to build an image. For a larger media stack, [Plundarr](https://scottgigawatt.github.io/plundarr/) generates the Compose project for you; [Plundarrpedia](https://scottgigawatt.github.io/plundarrpedia/) guides the wider setup.
 
-## Prepare a checkout
+<!-- markdownlint-disable-next-line MD033 -->
+<a id="prepare-a-checkout"></a>
+<!-- markdownlint-disable-next-line MD033 -->
+<a id="start-privateerr-with-gluetun-"></a>
 
-You need an active PIA subscription, Git, Make, and Docker with Compose. Source builds also need Buildx and the [pinned PIA submodule](https://github.com/pia-foss/manual-connections/tree/645377e87238a52596c004f760d238e3faea68d1). Run these commands from the directory where you want the checkout:
+## Quickstart
 
-```sh
-git clone --recurse-submodules https://github.com/scottgigawatt/privateerr.git
-cd privateerr
-cp example.env .env
-```
-
-Set `PIA_USER` and `PIA_PASS` in the private `.env`. Use your PIA VPN username (`p` or `P` followed by seven digits), not your email address. Keep `PIA_VPN_PROTOCOL=wireguard` and `PIA_CONNECT=false`. Review host paths, user/group IDs, time zone, and ports. The example enables port forwarding and selects an eligible region automatically.
+You need an active PIA subscription, Git, Docker with Compose, and `openssl` to generate a private API key. The supplied stack supports amd64 and arm64 hosts. Assume Docker is installed and running before starting.
 
 > [!WARNING]
-> Keep `.env`, generated VPN files, backups, and private logs out of Git and public reports. Generation replaces saved files; preserve needed state and stop any supervisor writing the destination first.
+> Keep `.env`, generated VPN files, backups, and container logs private. Use a new checkout for this setup; generation can replace saved VPN files in an existing deployment.
 
-If a build reports a missing `pia-manual-connections/LICENSE`, [initialize the pinned submodule](docs/SUPPORT.md#recover-a-missing-pia-submodule).
+1. Clone the project and create your settings file:
 
-## Generate a WireGuard configuration ⚡
+    ```sh
+    git clone --recurse-submodules https://github.com/scottgigawatt/privateerr.git
+    cd privateerr
+    cp example.env .env
+    ```
 
-In this source revision, setting both `PRIVATEERR_KEEPALIVE=false` and `PRIVATEERR_AUTO_RECOVER=false` selects one-shot generation without installing or changing Gluetun scripts. After preparing the checkout, run:
-
-```sh
-make run-privateerr
-```
-
-This builds the checked-out source and exits after writing:
-
-| File | Purpose |
-| --- | --- |
-| `config/gluetun/wireguard/wg0.conf` | WireGuard configuration |
-| `config/gluetun/wireguard/privateerr.env` | Matching PIA server metadata |
-
-Confirm that the command exits successfully with `Generation complete.` and both files exist. File generation alone does not establish a working tunnel. Without Make, use the [published-image Compose command](docs/advanced-usage.md#generate-without-make).
-
-### Using Docker directly
-
-This route needs only Docker and an active PIA subscription. Start in a new directory outside an existing checkout or deployment:
-
-```sh
-mkdir privateerr-generation &&
-  cd privateerr-generation &&
-  umask 077 &&
-  touch .env
-```
-
-Open `.env` and replace these placeholders with your PIA VPN username (`p` or `P` followed by seven digits) and password. Docker's `--env-file` reads values literally: do not add shell quotes or copy the Compose-oriented `example.env`:
-
-```dotenv
-PIA_USER=YOUR-PIA-VPN-USERNAME
-PIA_PASS=YOUR-PIA-PASSWORD
-```
-
-> [!IMPORTANT]
-> Privateerr 2.3.1 installs Gluetun scripts under `config/gluetun/scripts/` even in one-shot mode. Before using a published image, check its [release notes](https://github.com/scottgigawatt/privateerr/releases) for one-shot script isolation; otherwise, build this source with the Make command above.
-
-Run generation from that directory. It replaces saved VPN files, so preserve any needed state and stop other writers first:
-
-```sh
-docker run --rm --pull always \
-  --cap-drop ALL \
-  --security-opt no-new-privileges:true \
-  --env-file .env \
-  --env VPN_PROTOCOL=wireguard \
-  --env PIA_CONNECT=false \
-  --env DISABLE_IPV6=no \
-  --env DIP_TOKEN=no \
-  --env AUTOCONNECT=true \
-  --env PIA_PF=true \
-  --env PIA_DNS=true \
-  --env PRIVATEERR_AUTO_RECOVER=false \
-  --env PRIVATEERR_KEEPALIVE=false \
-  --volume "$(pwd)/config/gluetun:/gluetun" \
-  ghcr.io/scottgigawatt/privateerr:latest
-```
-
-Docker creates missing shared directories. Existing directories must allow container UID 0 to write and traverse them with all capabilities dropped. Confirm `Generation complete.` and the two files listed above under `config/gluetun/wireguard/`. Keep the credential file and generated state private.
-
-## Start Privateerr with Gluetun 🐳
-
-The supplied stack requires amd64 or arm64 because of its qBittorrent image. Privateerr itself also supports arm/v7.
-
-1. Complete the checkout and `.env` setup above.
-2. Generate a shared recovery API key:
+2. Generate a key for the Privateerr container to communicate with the Gluetun VPN container:
 
     ```sh
     openssl rand -hex 24
     ```
 
-3. Set `PRIVATEERR_GLUETUN_API_KEY` in `.env` to that value. Review qBittorrent's storage paths, user/group IDs, and Web UI port.
-4. Pull the published images and start the three services:
+3. Open `.env` in a text editor. Replace the example values for the settings below; keep other defaults for the first launch.
+
+    <!-- Keep each variable name and its emoji together in GitHub's table renderer. -->
+    <!-- markdownlint-disable MD033 -->
+    <table>
+      <thead>
+        <tr>
+          <th scope="col" align="center" width="25%" nowrap>⚙️ Setting</th>
+          <th scope="col" align="center" width="75%" nowrap>✏️ What to enter</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td nowrap valign="middle">🔐 <samp>PIA_USER</samp></td>
+          <td valign="middle">Your PIA VPN username: <code>p</code> or <code>P</code> followed by seven digits, not your email address.</td>
+        </tr>
+        <tr>
+          <td nowrap valign="middle">🔒 <samp>PIA_PASS</samp></td>
+          <td valign="middle">Your PIA VPN password.</td>
+        </tr>
+        <tr>
+          <td nowrap valign="middle">🔑 <samp>PRIVATEERR_GLUETUN_API_KEY</samp></td>
+          <td valign="middle">The shared API key generated in step 2.</td>
+        </tr>
+        <tr>
+          <td nowrap valign="middle">👤 <samp>QBITTORRENT_PUID</samp></td>
+          <td valign="middle">The user ID that should own qBittorrent's files; find it with <code>id -u</code> on the Docker host.</td>
+        </tr>
+        <tr>
+          <td nowrap valign="middle">👥 <samp>QBITTORRENT_PGID</samp></td>
+          <td valign="middle">The group ID that should own qBittorrent's files; find it with <code>id -g</code> on the Docker host.</td>
+        </tr>
+        <tr>
+          <td nowrap valign="middle">🕒 <samp>QBITTORRENT_TZ</samp></td>
+          <td valign="middle">Your time zone, such as <code>America/New_York</code>.</td>
+        </tr>
+        <tr>
+          <td nowrap valign="middle">📂 <samp>HOST_TORRENTS_DOWNLOADS_PATH</samp></td>
+          <td valign="middle">Your host's downloads directory; the default is <code>./downloads/torrents</code>.</td>
+        </tr>
+        <tr>
+          <td nowrap valign="middle">🔌 <samp>QBITTORRENT_WEBUI_PORT</samp></td>
+          <td valign="middle">Keep <code>8080</code> unless that host port is already used.</td>
+        </tr>
+      </tbody>
+    </table>
+    <!-- markdownlint-enable MD033 -->
+
+    Keep `PIA_VPN_PROTOCOL=wireguard`, `PIA_CONNECT=false`, `PRIVATEERR_KEEPALIVE=true`, and `PRIVATEERR_AUTO_RECOVER=true`. The example selects a region that supports port forwarding. The Privateerr container and the Gluetun VPN container must mount the same host configuration directory, `config/gluetun/`. Keep their default directory settings for this first launch.
+
+4. Check the Compose settings without printing credentials. Success produces no output:
 
     ```sh
-    make up
+    docker compose --env-file .env config --quiet
     ```
 
-5. Check status and Privateerr's logs:
+5. Pull the published images, then start the three containers. Run the second command only after the pull succeeds:
 
     ```sh
-    make ps
+    docker compose --env-file .env pull privateerr gluetun qbittorrent
+    docker compose --env-file .env up --detach --no-build --pull never privateerr gluetun qbittorrent
+    ```
+
+6. Check startup:
+
+    ```sh
+    docker compose ps
     docker compose logs --tail 100 privateerr
     ```
 
-Confirm `Automatic recovery enabled` and then `Gluetun tunnel is healthy`. Privateerr's container healthcheck proves startup readiness, not current tunnel health. Open qBittorrent on the configured host port (`8080` by default), obtain its initial password from local container logs, and change it in the Web UI. Keep those logs private.
+    Wait for Gluetun and qBittorrent to become healthy. Privateerr's logs should show `Automatic recovery enabled` and then `Gluetun tunnel is healthy`; monitoring begins after a startup grace period. The Privateerr container's healthy status means its configuration is ready for the Gluetun VPN container, so check Gluetun too. If startup fails, use the [diagnostics](https://scottgigawatt.github.io/privateerr/automatic-recovery/#read-diagnostics-and-check-storage).
 
-Long-running Privateerr installs both integration scripts into the shared `config/gluetun/scripts/` directory before reporting ready, even with recovery disabled. No script copying is needed. UID 0 needs write and traverse access to the shared paths. The two installed filenames are replaced at startup; keep custom scripts under other names. Recreate all three services together when updating images.
+7. Open [qBittorrent at localhost:8080](http://localhost:8080). If Docker runs on another computer or NAS, replace `localhost` with that host's address; use your chosen port if you changed it. Find the initial password locally:
 
-Use `make up-build` for a source build. [Direct Compose startup](docs/advanced-usage.md#start-without-make) is available without Make. Buccaneerr stays out of normal startup; its live tests deliberately interrupt a disposable VPN.
+    ```sh
+    docker compose logs --tail 100 qbittorrent
+    ```
 
-## Select a PIA region 🧭
+    Sign in as `admin` with the temporary password from the logs, then change it in **Tools → Options → Web UI**. Keep the logs private. You have reached the first working setup when the VPN is healthy and you can sign in to qBittorrent.
 
-Automatic selection is the default. To pin a region, set `PIA_AUTOCONNECT=false` and `PIA_PREFERRED_REGION=YOUR-CHOSEN-PIA-REGION-ID` in `.env`, replacing the placeholder with a PIA region `id`.
+Buccaneerr is an optional test container and stays out of this startup. To stop the stack while keeping its settings and downloads, run `docker compose down`.
 
-With `curl` and `jq` installed on the host, run `make list-pia-regions` to see all region IDs and port-forwarding support.
+<!-- markdownlint-disable-next-line MD033 -->
+<a id="generate-a-wireguard-configuration-"></a>
+<!-- markdownlint-disable-next-line MD033 -->
+<a id="using-docker-directly"></a>
 
-Recovery-enabled startup reuses valid saved files; changing these values alone does not replace a healthy connection. Follow the [safe regeneration procedure](docs/automatic-recovery.md#choose-a-region).
+<!-- markdownlint-disable-next-line MD033 -->
+<a id="create-a-vpn-configuration-file-only"></a>
 
-## Find commands and image channels ⚙️
+## Create a PIA WireGuard configuration file
 
-Use `make help` for commands and the [maintenance reference](docs/advanced-usage.md#maintenance-reference) for backup and cleanup boundaries. Use `latest` for stable releases or `edge` for successful `main` builds; see [image channels](docs/advanced-usage.md#registry-publishing) for exact tags and digests.
+To use your own VPN client, [run the published Privateerr image once](https://scottgigawatt.github.io/privateerr/advanced-usage/#generate-without-make). The Privateerr container writes `wg0.conf`, the PIA WireGuard configuration file, and matching PIA metadata to the mounted host directory, then exits. Save any existing configuration files before reusing that directory, and do not run multiple Privateerr containers against it at the same time. Creating these files does not start a VPN tunnel.
 
-## Read more and get help 📚
+## Choose your next step
 
-- [Automatic recovery](docs/automatic-recovery.md): setup, diagnostics, timing, region changes, and limits.
-- [Developer documentation](https://scottgigawatt.github.io/privateerr/): architecture, testing, and generated Python reference.
-- [Plundarrpedia](https://scottgigawatt.github.io/plundarrpedia/): broader deployment and platform guides.
-- [Support](docs/SUPPORT.md), [contributing](docs/CONTRIBUTING.md), [security policy](docs/SECURITY.md), and [Code of Conduct](docs/CODE_OF_CONDUCT.md).
+- [Automatic recovery and region selection](https://scottgigawatt.github.io/privateerr/automatic-recovery/): understand the built-in supervisor or change a region.
+- [Maintenance and images](https://scottgigawatt.github.io/privateerr/advanced-usage/): update, back up, stop, or choose an image channel.
+- [Use Make or build locally](https://scottgigawatt.github.io/privateerr/advanced-usage/#use-make): optional shortcuts after the stack works.
+- [Developer guides and Python reference](https://scottgigawatt.github.io/privateerr/development/privateerr/): architecture, tests, and source contracts.
+- [Support](https://scottgigawatt.github.io/privateerr/SUPPORT/), [contributing](https://scottgigawatt.github.io/privateerr/CONTRIBUTING/), [security policy](https://scottgigawatt.github.io/privateerr/SECURITY/), and [Code of Conduct](https://scottgigawatt.github.io/privateerr/CODE_OF_CONDUCT/).
 
 Privateerr is [Apache-2.0 licensed](LICENSE). PIA's unmodified scripts retain their [MIT license](https://github.com/pia-foss/manual-connections/blob/master/LICENSE).
-
-Fair winds, private keys below deck, and no VPN-client identity crises. 🏴‍☠️
