@@ -145,7 +145,7 @@ jq -e '[.embeds[0].fields[] | select(.name == "\u200b")][0].value | startswith("
 render --type image-verdict --profile image-primary --job-status success --publication-status success \
     --published-digest sha256:0123456789abcdef > "${TEST_ROOT}/payload.json"
 jq -e '([.embeds[0].fields[].value] | join("\n") | contains("**Tags:") | not)
-    and ([.embeds[0].fields[].name] | index("🧾 Digest") != null)' "${TEST_ROOT}/payload.json" >/dev/null
+    and ([.embeds[0].fields[].name] | index("\u200b\n🧾 Digest") != null)' "${TEST_ROOT}/payload.json" >/dev/null
 
 #
 # Simultaneously large inputs exercise the aggregate budget and literal escaping.
@@ -187,8 +187,8 @@ jq -e --arg digest "${full_digest}" '
     and ($f[1].value | contains("**GHCR:** ✅ success") and contains("**Docker Hub:** ❌ failure"))
     and $f[2].name == "\u200b" and $f[2].inline == false
     and ($f[2].value == "**Tags: 🏷️** `edge`\n**Platforms:** **🧱** `amd64` · `arm64` · `arm/v7`\n**Workflow: ⚙️** A funny workflow title")
-    and ([ $f[] | select(.name == "🧾 Digest") ][0].value == $digest)
-    and ([ $f[] | select(.name == "🔗 Quick links") ][0].value
+    and ([ $f[] | select(.name == "\u200b\n🧾 Digest") ][0].value == $digest)
+    and ([ $f[] | select(.name == "\u200b\n🔗 Quick links") ][0].value
       | contains("[View run](https://example.invalid/run)") and contains("[GHCR image](") and contains("[Docker Hub image]("))
 ' "${TEST_ROOT}/payload.json" >/dev/null
 
@@ -212,7 +212,7 @@ jq -e '[.embeds[0].fields[] | select(.name != "⚠️ Stage needing attention")]
     and ($f[1].value | contains("**Project: 📖**") and contains("**Target: 🗺️** GitHub Pages")
       and contains("**Build:** ✅ success") and contains("**Pages:** ❌ failure"))
     and ([ $f[].value ] | join("\n") | contains("**Platforms:") == false and contains("**GHCR:") == false)
-    and ([ $f[] | select(.name == "🔗 Quick links") ][0].value | contains("[Open documentation](https://example.invalid/docs)"))
+    and ([ $f[] | select(.name == "\u200b\n🔗 Quick links") ][0].value | contains("[Open documentation](https://example.invalid/docs)"))
 ' "${TEST_ROOT}/payload.json" >/dev/null
 
 #
