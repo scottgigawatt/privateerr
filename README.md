@@ -53,8 +53,8 @@ Privateerr packages the unmodified [Private Internet Access (PIA) manual connect
 <table>
   <thead>
     <tr>
-      <th scope="col" align="center" width="40%" nowrap>🐳 Container</th>
-      <th scope="col" align="center" width="60%" nowrap>🧭 What it does</th>
+      <th scope="col" align="center" width="25%" nowrap>🐳 Container</th>
+      <th scope="col" align="center" width="75%" nowrap>🧭 What it does</th>
     </tr>
   </thead>
   <tbody>
