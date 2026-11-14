@@ -12,6 +12,8 @@
     // Accept project names, dependencies, and intentional pirate vocabulary.
     //
     "cSpell.words": [
+        "Donath",
+        "endmacro",
         "rootfs",
         "startswith",
         "absmiddle",

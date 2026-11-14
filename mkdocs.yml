@@ -65,10 +65,11 @@ nav:
 
 #
 # Configure Material's visual identity and navigation behavior. Project-owned
-# CSS supplies the custom palette without replacing upstream templates.
+# CSS supplies the palette; the tab override supplies explicit section icons.
 #
 theme:
   name: material
+  custom_dir: overrides
   language: en
 
   #
@@ -222,3 +223,17 @@ markdown_extensions:
 #
 extra_css:
   - assets/stylesheets/extra.css
+
+#
+# Define section icons for the top-level navigation tabs.
+#
+extra:
+  #
+  # Keep tab icons independent of the first page in each section.
+  #
+  nav_icons:
+    Start: material/ship-wheel
+    Operate: material/cog-outline
+    Develop: material/compass-outline
+    Python reference: material/language-python
+    Project information: material/information-outline
