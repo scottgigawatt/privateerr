@@ -21,7 +21,7 @@ FROM koalaman/shellcheck:v0.11.0@sha256:61862eba1fcf09a484ebcc6feea46f1782532571
 # Stage 2 of 6: Obtain the current Docker client without a daemon or extra plugins.
 # Alpine's packaged client lags behind upstream security releases.
 #
-FROM docker:29.9.3-cli@sha256:5a7af0dcb0e46c803efe9b45371dd21cb500e5b4453250394ac6f06d49b6e6f1 AS docker-cli
+FROM docker:29.10.0-cli@sha256:34507eb5069d8be82c95dd3b6987d4250fd5fee49b82e2509b7d7a7030740d6d AS docker-cli
 
 #
 # Stage 3 of 6: Obtain the reviewed official Compose binary for every supported CPU.
@@ -141,7 +141,7 @@ RUN apk add --no-cache --virtual .node-build-deps npm && \
 ENV PATH="/opt/tools/node_modules/.bin:${PATH}"
 
 #
-# Select Alpine's signed actionlint rebuild with its patched Go runtime.
+# Use Alpine's signed actionlint package for every supported architecture.
 # Fetch only from this command's repository; installation resolves dependencies from stable.
 # Keep the edge repository and temporary package out of the final image.
 #
