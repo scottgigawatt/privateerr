@@ -271,6 +271,54 @@ class RecoveryTests(unittest.TestCase):
         self.assertEqual(self.store.saved_settings(), self.candidate)
         self.assertFalse(self.store.journal.exists())
 
+    def test_invalid_ready_journal_stops_startup_and_preserves_all_recovery_files(self):
+        """Identify invalid retained state without discarding it or regenerating saved files."""
+
+        self.store.retain(self.root / "candidate", self.store.journal)
+        self.store.retain(self.root / "candidate", self.store.pending)
+        (self.store.journal / "wg0.conf").write_text("PrivateKey=private-journal-detail\n")
+        saved = self.config.config_path.read_bytes(), self.config.metadata_path.read_bytes()
+        retained = {
+            path: path.read_bytes()
+            for directory in (self.store.journal, self.store.pending)
+            for path in directory.iterdir()
+        }
+
+        with self.assertRaises(InvalidSettings) as caught:
+            self.supervisor.run()
+
+        message = str(caught.exception)
+        self.assertIn("Cannot resume an interrupted configuration save", message)
+        self.assertIn("retained recovery files are invalid", message)
+        self.assertIn("Recovery files were preserved", message)
+        self.assertNotIn("private-journal-detail", message)
+        self.assertNotIn(self.candidate["wireguard"]["private_key"], message)
+        self.assertEqual(
+            saved, (self.config.config_path.read_bytes(), self.config.metadata_path.read_bytes())
+        )
+        self.assertEqual(retained, {path: path.read_bytes() for path in retained})
+        self.assertFalse(self.config.marker.exists())
+        self.generator.generate.assert_not_called()
+        self.client.get.assert_not_called()
+        self.client.apply.assert_not_called()
+
+    def test_missing_journal_file_keeps_specific_filesystem_diagnostic(self):
+        """A missing retained file must keep its path and error category instead of a validation label."""
+
+        self.store.retain(self.root / "candidate", self.store.journal)
+        missing = self.store.journal / "wg0.conf"
+        missing.unlink()
+
+        with self.assertRaises(FileOperationError) as caught:
+            self.store.resume()
+
+        diagnostic = caught.exception.diagnostic()
+        self.assertIn("Cannot read configuration", diagnostic)
+        self.assertIn(str(missing), diagnostic)
+        self.assertIn("ENOENT", diagnostic)
+        self.assertTrue((self.store.journal / "ready").exists())
+        self.assertEqual(self.store.saved_settings(), self.original)
+
     def test_incomplete_copies_are_discarded(self):
         """Discard unfinished staging copies without changing the valid published pair."""
 
@@ -625,6 +673,69 @@ class RecoveryTests(unittest.TestCase):
             self.supervisor.resolve_pending()
 
         self.assertIn("VPN region: ca_toronto", "\n".join(logged.output))
+
+    def test_api_warning_guidance_preserves_retries_readiness_and_pending_files(self):
+        """Classify actionable warnings without changing unavailable-API recovery decisions."""
+
+        self.store.retain(self.root / "candidate", self.store.pending)
+        pending = {path: path.read_bytes() for path in self.store.pending.iterdir()}
+        saved = self.config.config_path.read_bytes(), self.config.metadata_path.read_bytes()
+        self.config.marker.touch()
+
+        for error, expected in (
+            (
+                APIUnavailable("HTTP response rejected", 401),
+                "shared Gluetun API key and allowed routes",
+            ),
+            (
+                APIUnavailable("HTTP response rejected", 403),
+                "shared Gluetun API key and allowed routes",
+            ),
+            (
+                APIUnavailable("request timed out"),
+                "Gluetun control listener and shared Docker network",
+            ),
+            (
+                APIUnavailable("connection failed"),
+                "Gluetun control listener and shared Docker network",
+            ),
+            (APIUnavailable("invalid response"), "check connectivity and route authorization"),
+            (APIUnavailable("private-api-detail"), "check connectivity and route authorization"),
+        ):
+            with self.subTest(reason=error.reason, status=error.status):
+                self.client.reset_mock()
+                self.client.get.side_effect = error
+                self.supervisor = Supervisor(
+                    self.config, self.store, self.client, self.generator, clock=lambda: self.now
+                )
+
+                # Two failed observations still retry the API while suppressing identical warnings.
+                with self.assertLogs("privateerr", level="WARNING") as captured:
+                    self.supervisor.step()
+                    self.supervisor.step()
+
+                self.assertEqual(len(captured.output), 1)
+                output = captured.output[0]
+                self.assertIn("Cannot access Gluetun control API", output)
+                self.assertIn(expected, output)
+                self.assertIn(error.diagnostic(), output)
+                self.assertNotIn("private-api-detail", output)
+                self.assertNotIn(self.config.api_key, output)
+                self.assertNotIn(self.original["wireguard"]["private_key"], output)
+                self.assertEqual(self.client.get.call_count, 2)
+                self.client.get.assert_called_with("/v1/vpn/status")
+                self.client.healthy.assert_not_called()
+                self.client.apply.assert_not_called()
+                self.generator.generate.assert_not_called()
+                self.assertTrue(self.config.marker.exists())
+                self.assertEqual(self.supervisor.next_attempt, 0)
+                self.assertEqual(self.supervisor.delay, self.config.cooldown)
+                self.assertIsNone(self.supervisor.failed_since)
+                self.assertEqual(
+                    saved,
+                    (self.config.config_path.read_bytes(), self.config.metadata_path.read_bytes()),
+                )
+                self.assertEqual(pending, {path: path.read_bytes() for path in pending})
 
     def test_recovery_input_error_does_not_expose_exception_values(self):
         """Give an actionable generation diagnostic without serializing a credential-bearing error."""

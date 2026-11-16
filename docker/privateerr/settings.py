@@ -279,13 +279,26 @@ class Store:
             shutil.rmtree(self.journal)
 
     def resume(self) -> None:
-        """Finish an interrupted save when both source files were copied and validated."""
+        """Finish an interrupted save when both source files were copied and validated.
+
+        Raises:
+            InvalidSettings: If retained recovery files fail validation. The journal
+                and published files are preserved for diagnosis.
+            OSError: If reading or publishing the retained files fails.
+        """
 
         with filesystem_operation(
             "resume configuration publication", self.config.config_path.parent
         ):
             # A ready marker identifies a complete pair; discard incomplete copies when it is absent.
             if (self.journal / "ready").is_file():
-                self.publish(self.journal)
+                try:
+                    self.publish(self.journal)
+                except InvalidSettings:
+                    # Identify retained-state validation without exposing file contents.
+                    raise InvalidSettings(
+                        "Cannot resume an interrupted configuration save: retained recovery files "
+                        "are invalid. Startup stopped. Recovery files were preserved."
+                    ) from None
             else:
                 shutil.rmtree(self.journal, ignore_errors=True)

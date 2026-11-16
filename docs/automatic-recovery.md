@@ -81,10 +81,11 @@ The persistent file rotates at 10 MiB and keeps three backups (`.1` through `.3`
 | --- | --- |
 | Permission denied | Give UID 0 write/traverse access to the mapped host path, accounting for UID remapping. A read/write mount does not override host permissions. Do not broadly apply `chmod 777` or remove ACLs. |
 | Read-only filesystem, disk exhaustion, quota limit, or missing path | Correct the reported condition at the corresponding host mount. Permission denial alone does not establish an ACL fault. |
-| API `401` or `403` | Check the shared key and allowed routes. Keep the key and full settings response private. |
-| API timeout or connection failure | Check the shared network and listener. Connectivity failures do not trigger blind regeneration. |
+| API `401` or `403` | Check the shared Gluetun API key and allowed routes. Privateerr keeps retrying; keep the key and full settings response private. |
+| API timeout or connection failure | Check the Gluetun control listener and shared Docker network. Privateerr keeps retrying without blind regeneration. |
 | Saving failed after API acceptance | Repair storage and preserve `.privateerr-pending` and `.privateerr-commit`. Gluetun may already use the replacement while saved files are incomplete. Do not delete state or regenerate concurrently. |
 | Privateerr ready, with recovery-storage warning | Saved VPN files allowed startup, but recovery cannot yet save replacements. Repair the reported storage condition. |
+| Cannot resume an interrupted configuration save | Retained files in `.privateerr-commit` failed validation. Startup stopped and recovery files were preserved. Preserve `.privateerr-commit` and `.privateerr-pending` while diagnosing the saved configuration; do not delete state or regenerate concurrently. |
 | Privateerr cannot start | Check script installation, paths, persistent-log access, interrupted saves, and readiness-marker errors. Valid VPN files do not bypass these checks. |
 
 Diagnostics name the container path, operation, error category, numeric UID/GID, and available ownership/mode. Match that container path to its host mount before changing permissions. Retain `cap_drop: ALL` and `no-new-privileges`.

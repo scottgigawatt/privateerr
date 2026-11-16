@@ -188,7 +188,14 @@ class Supervisor:
         if isinstance(error, FileOperationError):
             detail = error.diagnostic()
         elif isinstance(error, APIUnavailable):
-            detail = f"API {error.diagnostic()}; check connectivity and route authorization."
+            guidance = "check connectivity and route authorization."
+
+            if error.status in (401, 403):
+                guidance = "check the shared Gluetun API key and allowed routes."
+            elif error.reason in ("request timed out", "connection failed"):
+                guidance = "check the Gluetun control listener and shared Docker network."
+
+            detail = f"API {error.diagnostic()}; {guidance}"
         elif isinstance(error, ConfigurationError):
             # Recovery must never serialize an unexpected exception value containing credentials.
             detail = "Invalid generation inputs; check PIA_USER and PIA_PASS in your private environment file."
