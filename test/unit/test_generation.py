@@ -113,40 +113,42 @@ printf 'WG_HOSTNAME=example-one\\nPIA_TOKEN=test-token-redact\\n'  # pragma: all
         self.assertEqual(list((self.root / "wireguard").glob(".privateerr-stage.*")), [])
         self.assertEqual(Path(self.env["PIA_CONF_PATH"]).stat().st_mode & 0o777, 0o600)
 
-    def test_invalid_recovery_journal_logs_context_and_stops_before_generation(self):
-        """Report invalid retained files through the real startup logger while preserving state."""
+    def test_invalid_journal_regenerates_from_preferences_and_logs_without_secrets(self):
+        """Reset generated state and use configured preferences through the real startup process."""
 
-        self.assertEqual(self.run_supervisor().returncode, 0)
-        saved = self.saved()
-        journal = self.root / "wireguard/.privateerr-commit"
-        journal.mkdir(mode=0o700)
-        (journal / "wg0.conf").write_text("PrivateKey=private-journal-detail\n")
-        (journal / "privateerr.env").write_text("PIA_TOKEN=private-retained-token\n")
-        (journal / "ready").touch()
-        retained = {path: path.read_bytes() for path in journal.iterdir()}
+        for fail in (True, False):
+            with self.subTest(generation_fails=fail):
+                journal = self.root / "wireguard/.privateerr-commit"
+                journal.mkdir(mode=0o700, parents=True)
+                (journal / "wg0.conf").write_text("PrivateKey=private-journal-detail\n")
+                (journal / "privateerr.env").write_text("PIA_TOKEN=private-retained-token\n")
+                (journal / "ready").touch()
+                Path(self.env["PIA_CONF_PATH"]).write_text("invalid saved configuration")
+                Path(self.env["PRIVATEERR_METADATA_PATH"]).write_text("invalid saved metadata")
+                saved = self.saved()
 
-        # Leave a marker if startup unexpectedly invokes the upstream substitute.
-        (self.pia / "run_setup.sh").write_text(
-            '#!/bin/sh\nprintf unexpected > "$TEST_CHILD_PID"\nexit 1\n'
-        )
-        result = self.run_supervisor()
-        output = (result.stdout + result.stderr).decode()
-        persistent = (self.root / "privateerr.log").read_text()
+                # The upstream fixture requires the configured preferred region on every invocation.
+                result = self.run_supervisor(TEST_FAIL="true" if fail else "false")
+                output = (result.stdout + result.stderr).decode()
+                persistent = (self.root / "privateerr.log").read_text()
 
-        self.assertEqual(result.returncode, 1)
+                for text in (output, persistent):
+                    self.assertIn("Discarded invalid interrupted-save files", text)
+                    self.assertNotIn("private-journal-detail", text)
+                    self.assertNotIn("private-retained-token", text)
+                    self.assertNotIn(self.env["PIA_PASS"], text)
 
-        for text in (output, persistent):
-            self.assertIn("Cannot resume an interrupted configuration save", text)
-            self.assertIn("retained recovery files are invalid", text)
-            self.assertIn("Recovery files were preserved", text)
-            self.assertNotIn("private-journal-detail", text)
-            self.assertNotIn("private-retained-token", text)
-            self.assertNotIn(self.env["PIA_PASS"], text)
+                self.assertFalse(journal.exists())
 
-        self.assertFalse((self.root / "ready").exists())
-        self.assertFalse(Path(self.env["TEST_CHILD_PID"]).exists())
-        self.assertEqual(self.saved(), saved)
-        self.assertEqual(retained, {path: path.read_bytes() for path in retained})
+                if fail:
+                    self.assertNotEqual(result.returncode, 0)
+                    self.assertEqual(self.saved(), saved)
+                    self.assertFalse((self.root / "ready").exists())
+                else:
+                    self.assertEqual(result.returncode, 0, output)
+                    self.assertIn("Saved WireGuard configuration", output)
+                    self.assertNotEqual(self.saved(), saved)
+                    self.assertTrue((self.root / "ready").exists())
 
     def test_one_shot_leaves_integration_scripts_untouched(self):
         """Fresh generation needs no scripts directory and preserves an existing linked directory."""

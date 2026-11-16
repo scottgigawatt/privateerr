@@ -14,8 +14,10 @@ both source files so startup can finish a save interrupted between replacements.
 """
 
 import base64
+import errno
 import ipaddress
 import json
+import logging
 import re
 import shutil
 from pathlib import Path
@@ -23,7 +25,9 @@ from typing import TypedDict
 
 from .config import Config, ConfigurationError
 from .data import is_object, object_fields
-from .diagnostics import filesystem_operation
+from .diagnostics import FileOperationError, filesystem_operation
+
+LOG = logging.getLogger("privateerr")
 
 
 class WireGuardSettings(TypedDict):
@@ -279,12 +283,15 @@ class Store:
             shutil.rmtree(self.journal)
 
     def resume(self) -> None:
-        """Finish an interrupted save when both source files were copied and validated.
+        """Finish a valid interrupted save or discard unusable source copies.
+
+        Invalid or missing journal files are generated state. Discarding them
+        allows startup to validate the saved pair and regenerate it if needed.
+        Pending API updates remain available for normal reconciliation.
 
         Raises:
-            InvalidSettings: If retained recovery files fail validation. The journal
-                and published files are preserved for diagnosis.
-            OSError: If reading or publishing the retained files fails.
+            OSError: If storage cannot be read, cleaned up, or published. These
+                failures are reported rather than mistaken for invalid contents.
         """
 
         with filesystem_operation(
@@ -293,12 +300,26 @@ class Store:
             # A ready marker identifies a complete pair; discard incomplete copies when it is absent.
             if (self.journal / "ready").is_file():
                 try:
+                    self.candidate_settings(self.journal)
+                except (InvalidSettings, FileOperationError) as error:
+                    # Missing files and wrong file types are unusable generated copies.
+                    # Permission and storage faults still require their specific diagnostic.
+                    if isinstance(error, FileOperationError) and error.errno not in (
+                        errno.ENOENT,
+                        errno.EISDIR,
+                        errno.ENOTDIR,
+                    ):
+                        raise
+
+                    # Remove only the journal, leaving saved files and uncertain API updates intact.
+                    with filesystem_operation("discard invalid recovery journal", self.journal):
+                        shutil.rmtree(self.journal)
+
+                    LOG.warning(
+                        "Discarded invalid interrupted-save files; startup will reuse a valid saved "
+                        "configuration or generate fresh files from configured preferences."
+                    )
+                else:
                     self.publish(self.journal)
-                except InvalidSettings:
-                    # Identify retained-state validation without exposing file contents.
-                    raise InvalidSettings(
-                        "Cannot resume an interrupted configuration save: retained recovery files "
-                        "are invalid. Startup stopped. Recovery files were preserved."
-                    ) from None
             else:
                 shutil.rmtree(self.journal, ignore_errors=True)

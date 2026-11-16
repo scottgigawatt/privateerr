@@ -85,7 +85,7 @@ The persistent file rotates at 10 MiB and keeps three backups (`.1` through `.3`
 | API timeout or connection failure | Check the Gluetun control listener and shared Docker network. Privateerr keeps retrying without blind regeneration. |
 | Saving failed after API acceptance | Repair storage and preserve `.privateerr-pending` and `.privateerr-commit`. Gluetun may already use the replacement while saved files are incomplete. Do not delete state or regenerate concurrently. |
 | Privateerr ready, with recovery-storage warning | Saved VPN files allowed startup, but recovery cannot yet save replacements. Repair the reported storage condition. |
-| Cannot resume an interrupted configuration save | Retained files in `.privateerr-commit` failed validation. Startup stopped and recovery files were preserved. Preserve `.privateerr-commit` and `.privateerr-pending` while diagnosing the saved configuration; do not delete state or regenerate concurrently. |
+| Discarded invalid interrupted-save files | No action is needed for the discarded journal. Startup reuses a valid saved configuration with recovery enabled, or generates fresh files from the configured preferences. Storage or generation failures report a separate error. |
 | Privateerr cannot start | Check script installation, paths, persistent-log access, interrupted saves, and readiness-marker errors. Valid VPN files do not bypass these checks. |
 
 Diagnostics name the container path, operation, error category, numeric UID/GID, and available ownership/mode. Match that container path to its host mount before changing permissions. Retain `cap_drop: ALL` and `no-new-privileges`.

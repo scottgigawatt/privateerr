@@ -271,53 +271,134 @@ class RecoveryTests(unittest.TestCase):
         self.assertEqual(self.store.saved_settings(), self.candidate)
         self.assertFalse(self.store.journal.exists())
 
-    def test_invalid_ready_journal_stops_startup_and_preserves_all_recovery_files(self):
-        """Identify invalid retained state without discarding it or regenerating saved files."""
+    def test_invalid_journal_reuses_valid_saved_pair_and_preserves_pending_update(self):
+        """An unusable journal must not block startup or discard an uncertain API update."""
 
         self.store.retain(self.root / "candidate", self.store.journal)
         self.store.retain(self.root / "candidate", self.store.pending)
         (self.store.journal / "wg0.conf").write_text("PrivateKey=private-journal-detail\n")
         saved = self.config.config_path.read_bytes(), self.config.metadata_path.read_bytes()
-        retained = {
-            path: path.read_bytes()
-            for directory in (self.store.journal, self.store.pending)
-            for path in directory.iterdir()
-        }
+        pending = {path: path.read_bytes() for path in self.store.pending.iterdir()}
+        self.supervisor.wait = Mock(side_effect=Shutdown)
 
-        with self.assertRaises(InvalidSettings) as caught:
+        with self.assertLogs("privateerr", level="WARNING") as logged, self.assertRaises(Shutdown):
             self.supervisor.run()
 
-        message = str(caught.exception)
-        self.assertIn("Cannot resume an interrupted configuration save", message)
-        self.assertIn("retained recovery files are invalid", message)
-        self.assertIn("Recovery files were preserved", message)
-        self.assertNotIn("private-journal-detail", message)
-        self.assertNotIn(self.candidate["wireguard"]["private_key"], message)
+        output = "\n".join(logged.output)
+        self.assertIn("Discarded invalid interrupted-save files", output)
+        self.assertNotIn("private-journal-detail", output)
+        self.assertNotIn(self.candidate["wireguard"]["private_key"], output)
+        self.assertFalse(self.store.journal.exists())
         self.assertEqual(
             saved, (self.config.config_path.read_bytes(), self.config.metadata_path.read_bytes())
         )
-        self.assertEqual(retained, {path: path.read_bytes() for path in retained})
-        self.assertFalse(self.config.marker.exists())
+        self.assertEqual(pending, {path: path.read_bytes() for path in pending})
+        self.assertTrue(self.config.marker.exists())
         self.generator.generate.assert_not_called()
         self.client.get.assert_not_called()
         self.client.apply.assert_not_called()
 
-    def test_missing_journal_file_keeps_specific_filesystem_diagnostic(self):
-        """A missing retained file must keep its path and error category instead of a validation label."""
+        # The retained API candidate can still be confirmed and published after startup.
+        self.client.get.side_effect = None
+        self.client.get.return_value = self.candidate
+        self.client.healthy.return_value = True
+        self.assertEqual(self.supervisor.resolve_pending(), Pending.RESOLVED)
+        self.assertEqual(self.store.saved_settings(), self.candidate)
+
+    def test_missing_or_wrong_type_journal_files_are_discarded(self):
+        """Treat a missing source or a directory in place of either source as unusable copies."""
+
+        for name in ("wg0.conf", "privateerr.env"):
+            for directory in (False, True):
+                with self.subTest(name=name, directory=directory):
+                    self.store.retain(self.root / "candidate", self.store.journal)
+                    invalid = self.store.journal / name
+                    invalid.unlink()
+
+                    if directory:
+                        invalid.mkdir()
+
+                    with self.assertLogs("privateerr", level="WARNING"):
+                        self.store.resume()
+
+                    self.assertFalse(self.store.journal.exists())
+                    self.assertEqual(self.store.saved_settings(), self.original)
+
+    def test_journal_storage_faults_preserve_recovery_files(self):
+        """An unreadable journal is not proof of invalid contents and must not be deleted."""
 
         self.store.retain(self.root / "candidate", self.store.journal)
-        missing = self.store.journal / "wg0.conf"
-        missing.unlink()
 
-        with self.assertRaises(FileOperationError) as caught:
+        for code in (errno.EACCES, errno.EROFS, errno.EIO):
+            error = FileOperationError(
+                "read configuration", self.store.journal / "wg0.conf", OSError(code, "private")
+            )
+
+            with (
+                self.subTest(code=code),
+                patch.object(self.store, "candidate_settings", side_effect=error),
+                self.assertRaises(FileOperationError) as caught,
+            ):
+                self.store.resume()
+
+            self.assertIs(caught.exception, error)
+            self.assertTrue((self.store.journal / "ready").is_file())
+            self.assertEqual(self.store.saved_settings(), self.original)
+
+    def test_invalid_journal_cleanup_failure_keeps_readiness_false(self):
+        """Report a cleanup fault instead of claiming the journal was reset or generating over it."""
+
+        self.store.retain(self.root / "candidate", self.store.journal)
+        (self.store.journal / "wg0.conf").write_text("invalid")
+
+        with (
+            patch(
+                "privateerr.settings.shutil.rmtree",
+                side_effect=PermissionError(errno.EACCES, "private-cleanup-detail"),
+            ),
+            self.assertRaises(FileOperationError) as caught,
+        ):
             self.store.resume()
 
-        diagnostic = caught.exception.diagnostic()
-        self.assertIn("Cannot read configuration", diagnostic)
-        self.assertIn(str(missing), diagnostic)
-        self.assertIn("ENOENT", diagnostic)
-        self.assertTrue((self.store.journal / "ready").exists())
+        self.assertIn("discard invalid recovery journal", caught.exception.diagnostic())
+        self.assertNotIn("private-cleanup-detail", caught.exception.diagnostic())
+        self.assertTrue(self.store.journal.exists())
+        self.assertFalse(self.config.marker.exists())
         self.assertEqual(self.store.saved_settings(), self.original)
+
+    def test_valid_journal_publication_fault_preserves_source_files(self):
+        """A destination failure must not be classified as an invalid source journal."""
+
+        self.store.retain(self.root / "candidate", self.store.journal)
+        retained = {path: path.read_bytes() for path in self.store.journal.iterdir()}
+
+        with (
+            patch.object(Path, "replace", side_effect=FileNotFoundError(errno.ENOENT, "private")),
+            self.assertRaises(FileOperationError) as caught,
+        ):
+            self.store.resume()
+
+        self.assertIn("publish configuration", caught.exception.diagnostic())
+        self.assertEqual(retained, {path: path.read_bytes() for path in retained})
+        self.assertEqual(self.store.saved_settings(), self.original)
+
+    def test_invalid_journal_and_saved_pair_generate_before_readiness(self):
+        """Regenerate unusable saved files through the existing startup generation path."""
+
+        self.store.retain(self.root / "candidate", self.store.journal)
+        (self.store.journal / "wg0.conf").write_text("invalid")
+        self.config.config_path.write_text("invalid saved configuration")
+        self.supervisor.wait = Mock(side_effect=Shutdown)
+
+        with self.assertLogs("privateerr", level="WARNING"), self.assertRaises(Shutdown):
+            self.supervisor.run()
+
+        self.assertFalse(self.store.journal.exists())
+        self.generator.generate.assert_called_once_with()
+        self.assertEqual(self.store.saved_settings(), self.candidate)
+        self.assertTrue(self.config.marker.exists())
+        self.client.get.assert_not_called()
+        self.client.apply.assert_not_called()
 
     def test_incomplete_copies_are_discarded(self):
         """Discard unfinished staging copies without changing the valid published pair."""
