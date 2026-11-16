@@ -142,7 +142,7 @@ To create a PIA WireGuard configuration file for another VPN client and then exi
 
 ## Configure a custom deployment
 
-The integration uses Gluetun v3.41.3's authenticated API routes and settings schema. Share the complete `/gluetun` directory between Privateerr and Gluetun, keep Privateerr on a shared Docker network outside Gluetun's VPN network, and make Gluetun wait for Privateerr's startup healthcheck.
+The integration uses the authenticated API routes and settings schema exercised by [the pinned Gluetun API test](https://github.com/scottgigawatt/privateerr/blob/main/test/runtime/test-recovery-api.py). Share the complete `/gluetun` directory between Privateerr and Gluetun, keep Privateerr on a shared Docker network outside Gluetun's VPN network, and make Gluetun wait for Privateerr's startup healthcheck.
 
 Privateerr installs its two managed scripts before reporting ready. Keep custom scripts under different filenames and give UID 0 write/traverse access. Use this Gluetun entrypoint:
 
