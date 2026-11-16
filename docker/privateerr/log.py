@@ -14,11 +14,18 @@ handlers; application-authored diagnostics must avoid including secrets themselv
 """
 
 import logging
+import os
 import re
 import sys
 import time
 from collections.abc import Mapping
+from io import TextIOWrapper
+from logging.handlers import RotatingFileHandler
 from pathlib import Path
+
+# Bound persistent history independently of Docker stdout retention.
+_LOG_MAX_BYTES = 10 * 1024 * 1024
+_LOG_BACKUP_COUNT = 3
 
 # Recognize ANSI CSI sequences; redact also removes remaining C0 controls except tabs.
 ANSI = re.compile(r"\x1b\[[0-?]*[ -/]*[@-~]")
@@ -55,8 +62,29 @@ def configure_logging() -> None:
     logging.basicConfig(level=logging.INFO, handlers=[handler])
 
 
+def _private_log_opener(path: str, flags: int) -> int:
+    """Limit inherited default ACLs when creating a new log without changing existing files."""
+
+    return os.open(path, flags, 0o600)
+
+
+class _PrivateRotatingFileHandler(RotatingFileHandler):
+    """Use owner-only creation permissions for both initial files and rollover replacements."""
+
+    def _open(self) -> TextIOWrapper:
+        """Request mode 0600 because inherited Linux ACLs can take precedence over umask."""
+
+        return open(
+            self.baseFilename,
+            "a",
+            encoding=self.encoding,
+            errors=self.errors,
+            opener=_private_log_opener,
+        )
+
+
 def add_file_log(path: Path) -> None:
-    """Attach a persistent append handler to the root logger.
+    """Attach a size-rotating persistent handler with three retained backups.
 
     Args:
         path: Log file whose parent directory the caller has already prepared.
@@ -66,10 +94,15 @@ def add_file_log(path: Path) -> None:
 
     Note:
         Call once after console setup. This adds a handler without deduplicating
-        existing file handlers, changing the root level, or rotating old logs.
+        existing file handlers or changing the root level. Files rotate at 10 MiB;
+        complete records and existing oversized files can exceed that threshold.
+        New files request owner-only permissions, including on directories with
+        inherited default ACLs. Existing ownership and permissions are preserved.
     """
 
-    handler = logging.FileHandler(path)
+    handler = _PrivateRotatingFileHandler(
+        path, maxBytes=_LOG_MAX_BYTES, backupCount=_LOG_BACKUP_COUNT, encoding="utf-8"
+    )
     handler.setFormatter(formatter())
     logging.getLogger().addHandler(handler)
 

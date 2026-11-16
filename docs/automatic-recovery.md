@@ -73,6 +73,8 @@ Automatic selection is the default. To choose a region yourself:
 
 Use your container manager's log view or the log command above. Messages also go to `PRIVATEERR_LOG_PATH` when available. Inspect and redact excerpts before sharing; keys, paths, region preferences, and application logs can be sensitive.
 
+The persistent file rotates at 10 MiB and keeps three backups (`.1` through `.3`, newest first), providing roughly 40 MiB of ongoing history. Complete records and a pre-existing oversized file can temporarily exceed that budget. Docker manages console logs separately; its retention settings do not bound this file. The log directory must allow file creation, renaming, and removal for rotation.
+
 | Message or symptom | Action |
 | --- | --- |
 | Permission denied | Give UID 0 write/traverse access to the mapped host path, accounting for UID remapping. A read/write mount does not override host permissions. Do not broadly apply `chmod 777` or remove ACLs. |
