@@ -59,7 +59,9 @@ All paths below except the startup marker are relative to the shared configurati
 | `wg0.conf` and `privateerr.env` | Matching published connection and PIA metadata | Retained for Gluetun startup until a verified replacement or explicit regeneration |
 | `/healthcheck/privateerr.ready` | A usable saved pair exists; long-running startup also confirms script installation | Cleared at Privateerr startup and recreated after validation; unrelated to current tunnel health |
 
-Each file replacement is atomic, but replacing the pair is not one filesystem transaction. The commit directory retains both source files so startup can finish an interrupted save. Its `ready` file, and the equivalent file in the pending directory, identify complete validated copies. They are separate from the startup healthcheck marker. A directory without its `ready` file is an incomplete copy and is discarded instead of applied. At startup, invalid or missing commit source files are also discarded; Privateerr then reuses a valid saved pair with recovery enabled, or generates a new pair from the configured preferences. Pending API updates remain available for reconciliation. Permission, storage, and publication failures keep their specific errors rather than triggering this reset.
+Each file replacement is atomic, but replacing the pair is not one filesystem transaction. The commit directory retains both source files so startup can finish an interrupted save. Its `ready` file, and the equivalent file in the pending directory, identify complete validated copies. They are separate from the startup healthcheck marker. A directory without its `ready` file is an incomplete copy and is discarded instead of applied.
+
+At startup, invalid or missing commit source files are also discarded; Privateerr then reuses a valid saved pair with recovery enabled, or generates a new pair from the configured preferences. Pending API updates remain available for reconciliation. Permission, storage, and publication failures keep their specific errors rather than triggering this reset.
 
 ## Bound work and protect credentials
 

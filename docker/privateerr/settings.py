@@ -20,6 +20,7 @@ import json
 import logging
 import re
 import shutil
+import stat
 from pathlib import Path
 from typing import TypedDict
 
@@ -297,8 +298,15 @@ class Store:
         with filesystem_operation(
             "resume configuration publication", self.config.config_path.parent
         ):
+            # Inspect explicitly: is_file() can hide permission and I/O failures as a missing marker.
+            with filesystem_operation("inspect recovery journal marker", self.journal / "ready"):
+                try:
+                    ready = stat.S_ISREG((self.journal / "ready").stat().st_mode)
+                except FileNotFoundError:
+                    ready = False
+
             # A ready marker identifies a complete pair; discard incomplete copies when it is absent.
-            if (self.journal / "ready").is_file():
+            if ready:
                 try:
                     self.candidate_settings(self.journal)
                 except (InvalidSettings, FileOperationError) as error:
@@ -322,4 +330,8 @@ class Store:
                 else:
                     self.publish(self.journal)
             else:
-                shutil.rmtree(self.journal, ignore_errors=True)
+                with filesystem_operation("discard incomplete recovery journal", self.journal):
+                    try:
+                        shutil.rmtree(self.journal)
+                    except FileNotFoundError:
+                        pass

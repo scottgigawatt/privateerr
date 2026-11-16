@@ -81,8 +81,9 @@ The persistent file rotates at 10 MiB and keeps three backups (`.1` through `.3`
 | --- | --- |
 | Permission denied | Give UID 0 write/traverse access to the mapped host path, accounting for UID remapping. A read/write mount does not override host permissions. Do not broadly apply `chmod 777` or remove ACLs. |
 | Read-only filesystem, disk exhaustion, quota limit, or missing path | Correct the reported condition at the corresponding host mount. Permission denial alone does not establish an ACL fault. |
-| API `401` or `403` | Check the shared Gluetun API key and allowed routes. Privateerr keeps retrying; keep the key and full settings response private. |
-| API timeout or connection failure | Check the Gluetun control listener and shared Docker network. Privateerr keeps retrying without blind regeneration. |
+| Gluetun control API `401` or `403` | Check the shared Gluetun API key and allowed routes. Privateerr keeps retrying; keep the key and full settings response private. |
+| Gluetun control API timeout or connection failure | Check the Gluetun control listener and shared Docker network. Privateerr retries the API request without generating a new VPN configuration. |
+| `PIA server list` warning | Check Privateerr's internet access and the source set by `PRIVATEERR_SERVERLIST_URL`. Privateerr keeps the saved configuration and retries after the recovery delay. |
 | Saving failed after API acceptance | Repair storage and preserve `.privateerr-pending` and `.privateerr-commit`. Gluetun may already use the replacement while saved files are incomplete. Do not delete state or regenerate concurrently. |
 | Privateerr ready, with recovery-storage warning | Saved VPN files allowed startup, but recovery cannot yet save replacements. Repair the reported storage condition. |
 | Discarded invalid interrupted-save files | No action is needed for the discarded journal. Startup reuses a valid saved configuration with recovery enabled, or generates fresh files from the configured preferences. Storage or generation failures report a separate error. |

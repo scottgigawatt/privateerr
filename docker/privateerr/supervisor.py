@@ -31,7 +31,7 @@ from collections.abc import Callable
 from enum import Enum, auto
 from types import FrameType
 
-from .client import APIUnavailable, Client
+from .client import APIUnavailable, CatalogUnavailable, Client
 from .config import Config, ConfigurationError
 from .data import is_list, is_object, object_fields
 from .diagnostics import FileOperationError, check_recovery_directory, filesystem_operation
@@ -187,6 +187,11 @@ class Supervisor:
 
         if isinstance(error, FileOperationError):
             detail = error.diagnostic()
+        elif isinstance(error, CatalogUnavailable):
+            detail = (
+                f"PIA server list {error.diagnostic()}; check Privateerr's internet access "
+                "and the configured source for the server list."
+            )
         elif isinstance(error, APIUnavailable):
             guidance = "check connectivity and route authorization."
 

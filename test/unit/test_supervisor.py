@@ -19,7 +19,7 @@ from dataclasses import replace
 from pathlib import Path
 from unittest.mock import Mock, patch
 
-from privateerr.client import APIUnavailable, Client
+from privateerr.client import APIUnavailable, CatalogUnavailable, Client
 from privateerr.config import Config, ConfigurationError
 from privateerr.diagnostics import FileOperationError
 from privateerr.settings import ConnectionSettings, InvalidSettings, Store, connection_settings
@@ -343,6 +343,58 @@ class RecoveryTests(unittest.TestCase):
 
             self.assertIs(caught.exception, error)
             self.assertTrue((self.store.journal / "ready").is_file())
+            self.assertEqual(self.store.saved_settings(), self.original)
+
+    def test_journal_marker_inspection_faults_preserve_all_source_files(self):
+        """A failed marker inspection must not turn a complete journal into an incomplete copy."""
+
+        self.store.retain(self.root / "candidate", self.store.journal)
+        retained = {path: path.read_bytes() for path in self.store.journal.iterdir()}
+        original_stat = Path.stat
+
+        for code in (errno.EACCES, errno.EIO):
+
+            def inspect(path: Path, *, follow_symlinks: bool = True, error_code: int = code):
+                """Fail only the journal marker inspection, leaving source-file access available."""
+
+                if path == self.store.journal / "ready":
+                    raise OSError(error_code, "private-marker-detail")
+
+                return original_stat(path, follow_symlinks=follow_symlinks)
+
+            with (
+                self.subTest(code=code),
+                patch.object(Path, "stat", inspect),
+                self.assertRaises(FileOperationError) as caught,
+            ):
+                self.store.resume()
+
+            diagnostic = caught.exception.diagnostic()
+            self.assertIn("inspect recovery journal marker", diagnostic)
+            self.assertEqual(caught.exception.errno, code)
+            self.assertNotIn("private-marker-detail", diagnostic)
+            self.assertEqual(retained, {path: path.read_bytes() for path in retained})
+            self.assertEqual(self.store.saved_settings(), self.original)
+
+    def test_incomplete_journal_cleanup_fault_is_reported(self):
+        """Startup must report a failed reset instead of leaving an unusable journal silently."""
+
+        self.store.journal.mkdir()
+        (self.store.journal / "wg0.conf").write_text("incomplete")
+
+        for code in (errno.EACCES, errno.EROFS):
+            with (
+                self.subTest(code=code),
+                patch(
+                    "privateerr.settings.shutil.os.scandir", side_effect=OSError(code, "private")
+                ),
+                self.assertRaises(FileOperationError) as caught,
+            ):
+                self.store.resume()
+
+            self.assertIn("discard incomplete recovery journal", caught.exception.diagnostic())
+            self.assertEqual(caught.exception.errno, code)
+            self.assertTrue((self.store.journal / "wg0.conf").exists())
             self.assertEqual(self.store.saved_settings(), self.original)
 
     def test_invalid_journal_cleanup_failure_keeps_readiness_false(self):
@@ -754,6 +806,55 @@ class RecoveryTests(unittest.TestCase):
             self.supervisor.resolve_pending()
 
         self.assertIn("VPN region: ca_toronto", "\n".join(logged.output))
+
+    def test_catalog_failure_during_recovery_identifies_pia_and_preserves_retry_policy(self):
+        """Working control requests must not produce Gluetun advice when the PIA catalog fails."""
+
+        saved = self.config.config_path.read_bytes(), self.config.metadata_path.read_bytes()
+        self.config.marker.touch()
+
+        for error in (
+            CatalogUnavailable("request timed out"),
+            CatalogUnavailable("connection failed"),
+            CatalogUnavailable("HTTP response rejected", 401),
+            CatalogUnavailable("HTTP response rejected", 403),
+            CatalogUnavailable("invalid response"),
+            CatalogUnavailable("private-catalog-detail"),
+        ):
+            with self.subTest(reason=error.reason, status=error.status):
+                self.client.reset_mock()
+                self.client.catalog.side_effect = error
+                self.supervisor = Supervisor(
+                    self.config, self.store, self.client, self.generator, clock=lambda: self.now
+                )
+                self.now = 0
+                self.supervisor.step()
+                self.now = self.config.failure_seconds
+
+                with self.assertLogs("privateerr", level="WARNING") as captured:
+                    self.supervisor.step()
+
+                output = "\n".join(captured.output)
+                self.assertIn("Recovery preparation failed: PIA server list", output)
+                self.assertIn(error.diagnostic(), output)
+                self.assertIn("check Privateerr's internet access", output)
+                self.assertNotIn("Gluetun control listener", output)
+                self.assertNotIn("shared Gluetun API key", output)
+                self.assertNotIn("private-catalog-detail", output)
+                self.assertNotIn(self.config.api_key, output)
+                self.assertIn("next recovery attempt in 5 seconds", output)
+                self.client.get.assert_any_call("/v1/vpn/status")
+                self.client.get.assert_any_call("/v1/vpn/settings")
+                self.client.catalog.assert_called_once_with()
+                self.client.apply.assert_not_called()
+                self.generator.generate.assert_not_called()
+                self.assertTrue(self.config.marker.exists())
+                self.assertEqual(self.supervisor.next_attempt, self.now + self.config.cooldown)
+                self.assertEqual(self.supervisor.delay, self.config.cooldown * 2)
+                self.assertEqual(
+                    saved,
+                    (self.config.config_path.read_bytes(), self.config.metadata_path.read_bytes()),
+                )
 
     def test_api_warning_guidance_preserves_retries_readiness_and_pending_files(self):
         """Classify actionable warnings without changing unavailable-API recovery decisions."""
