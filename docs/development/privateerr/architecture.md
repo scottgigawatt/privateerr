@@ -73,6 +73,8 @@ Console and persistent logs use UTC timestamps, severity, and a source label. `[
 
 Python replaces known credential values and recognized credential fields, removes ANSI CSI sequences and C0 controls except tabs, and then forwards upstream output to the logging handlers. This best-effort filter follows upstream output conventions; it cannot guarantee removal of unrecognized secret formats. Empty lines are omitted; oversized lines are discarded as a whole rather than exposing partially redacted fragments. Ordinary upstream output uses `INFO`; a nonzero process exit produces a separate application error with the script name and exit status. Both output destinations use the same formatter.
 
+The persistent handler rotates by size and retains three backups; [diagnostic guidance](../../automatic-recovery.md#read-diagnostics-and-check-storage) describes the limits. The supervisor is the single file writer, including forwarded subprocess output. Separate Privateerr processes must use separate log paths or run sequentially. Rotation preserves the existing restrictive umask for newly created files and does not change existing ownership or permissions.
+
 The `.privateerr-stage.*` directory isolates each candidate from the saved pair. Its random suffix prevents attempt collisions. Published-path success messages are emitted only after a verified save; one-shot generation ends with `Generation complete.` rather than waiting for a Gluetun container that it did not start.
 
 The date compatibility shim translates PIA's GNU-style date arguments and delegates execution to BusyBox date. It remains necessary for PIA's `--date='1 day'` call; it does not install GNU coreutils. The healthcheck remains the existing readiness-marker shell check.
