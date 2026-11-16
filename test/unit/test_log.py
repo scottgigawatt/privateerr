@@ -8,10 +8,13 @@
 
 """Exercise real file rotation with isolated handlers and synthetic upstream credentials."""
 
+import errno
 import io
 import logging
 import os
 import stat
+import struct
+import sys
 import tempfile
 import unittest
 from logging.handlers import RotatingFileHandler
@@ -115,6 +118,63 @@ class FileLogTests(unittest.TestCase):
 
         for path in self.path.parent.iterdir():
             self.assertEqual(stat.S_IMODE(path.stat().st_mode), 0o600)
+
+    @unittest.skipUnless(sys.platform == "linux", "Default ACL fixtures require Linux.")
+    def test_default_acl_cannot_broaden_private_logs_after_rotation(self) -> None:
+        """An inherited readable ACL must not broaden a protected file during rollover."""
+
+        # Linux's POSIX ACL extended attribute stores a version and user/group/other entries.
+        default_acl = struct.pack("<I", 2) + b"".join(
+            struct.pack("<HHI", tag, permissions, 0xFFFFFFFF)
+            for tag, permissions in ((0x01, 0o7), (0x04, 0o5), (0x20, 0o5))
+        )
+
+        try:
+            os.setxattr(self.path.parent, "system.posix_acl_default", default_acl)
+        except OSError as error:
+            if error.errno in (errno.ENOTSUP, errno.EOPNOTSUPP):
+                self.skipTest("The fixture filesystem does not support POSIX default ACLs.")
+
+            raise
+
+        previous = os.umask(0o077)
+
+        try:
+            # Prove this filesystem inherits read access despite the restrictive umask.
+            control = self.path.parent / "ordinary.log"
+            control.write_text("ordinary creation")
+            self.assertEqual(stat.S_IMODE(control.stat().st_mode), 0o644)
+            control.unlink()
+            self.path.write_text("existing private history")
+            self.path.chmod(0o600)
+            self.handler()
+
+            for number in range(10):
+                self.root.info("acl-private-%02d %s", number, "x" * 80)
+        finally:
+            os.umask(previous)
+
+        self.assertEqual(len(list(self.path.parent.iterdir())), 4)
+
+        for path in self.path.parent.iterdir():
+            self.assertEqual(stat.S_IMODE(path.stat().st_mode), 0o600)
+
+    def test_existing_permissions_are_preserved_and_new_files_are_private(self) -> None:
+        """Keep operator metadata on existing files while restricting each new active file."""
+
+        self.path.write_text("operator-managed history")
+        self.path.chmod(0o640)
+        previous = os.umask(0)
+
+        try:
+            self.handler()
+            self.assertEqual(stat.S_IMODE(self.path.stat().st_mode), 0o640)
+            self.root.info("force rollover %s", "x" * 220)
+        finally:
+            os.umask(previous)
+
+        self.assertEqual(stat.S_IMODE(self.path.with_suffix(".log.1").stat().st_mode), 0o640)
+        self.assertEqual(stat.S_IMODE(self.path.stat().st_mode), 0o600)
 
     def test_redacted_records_stay_redacted_across_rotation(self) -> None:
         """Handler rotation must not bypass sanitization at the upstream boundary."""
