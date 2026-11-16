@@ -141,7 +141,7 @@ RUN apk add --no-cache --virtual .node-build-deps npm && \
 ENV PATH="/opt/tools/node_modules/.bin:${PATH}"
 
 #
-# Select Alpine's signed actionlint rebuild with its patched Go runtime.
+# Use Alpine's signed actionlint package for every supported architecture.
 # Fetch only from this command's repository; installation resolves dependencies from stable.
 # Keep the edge repository and temporary package out of the final image.
 #
