@@ -289,6 +289,26 @@ class ComposeTests(unittest.TestCase):
                     '/bin/sh -c "/gluetun/scripts/qbittorrent-port-forwarding.sh down"',
                 )
 
+    def test_gluetun_image_overrides_keep_a_valid_stable_name(self) -> None:
+        """Accept release, digest, and experimental selectors in every deployment layer."""
+
+        for selector in (
+            "latest",
+            "v3.41.3",
+            "v3.41.3@sha256:" + "a" * 64,
+        ):
+            for build_overlay, test_overlay in LAYERS:
+                with self.subTest(selector=selector, build=build_overlay, test=test_overlay):
+                    services = self.services(
+                        self.model(
+                            overrides=f"COMPOSE_PROJECT_NAME=example\nGLUETUN_TAG={selector}",
+                            build_overlay=build_overlay,
+                            test_overlay=test_overlay,
+                        )
+                    )
+                    self.assertEqual(services["gluetun"]["image"], f"qmcgaw/gluetun:{selector}")
+                    self.assertEqual(services["gluetun"]["container_name"], "example-gluetun")
+
     def test_selected_application_uses_shared_network_and_persistent_storage(self) -> None:
         """Keep application traffic in Gluetun with persistent state and a healthy dependency."""
 

@@ -48,6 +48,7 @@ case "${1:-all}" in
     workflows)
         test/helpers/test-workflow-helpers.sh
         test/policy/check-build-pin-policy.sh
+        python3 test/policy/check_gluetun_pin.py
         test/policy/check-image-tag-policy.sh
         test/helpers/test-policy-checks.sh
         actionlint

@@ -33,6 +33,8 @@ Gluetun retains responsibility for the forwarded port and qBittorrent update hoo
 
 With recovery enabled, Privateerr reuses a valid saved `wg0.conf` and `privateerr.env` pair. Restarting does not select a new region or replace a healthy connection. Use the procedure below to change the current registration.
 
+The example selects a tested Gluetun release and multi-platform digest through `GLUETUN_TAG`. Set an explicit release or `latest` in `.env` only when you intend to test another image; the repository's compatibility checks cover its pinned default. Existing `.env` values remain authoritative. Gluetun uses the stable container name `${COMPOSE_PROJECT_NAME}-gluetun`, independent of the selected image.
+
 The example's `restart: unless-stopped` policy restarts exited services and brings them back after a host reboot unless explicitly stopped. Docker health failures alone do not restart containers. Recreate Privateerr, Gluetun, and qBittorrent together after image updates; recreating Gluetun alone can leave qBittorrent attached to its previous network.
 
 ## Choose a region
@@ -142,7 +144,7 @@ To create a PIA WireGuard configuration file for another VPN client and then exi
 
 ## Configure a custom deployment
 
-The integration uses Gluetun v3.41.3's authenticated API routes and settings schema. Share the complete `/gluetun` directory between Privateerr and Gluetun, keep Privateerr on a shared Docker network outside Gluetun's VPN network, and make Gluetun wait for Privateerr's startup healthcheck.
+The integration uses the authenticated API routes and settings schema exercised by [the pinned Gluetun API test](https://github.com/scottgigawatt/privateerr/blob/main/test/runtime/test-recovery-api.py). Share the complete `/gluetun` directory between Privateerr and Gluetun, keep Privateerr on a shared Docker network outside Gluetun's VPN network, and make Gluetun wait for Privateerr's startup healthcheck.
 
 Privateerr installs its two managed scripts before reporting ready. Keep custom scripts under different filenames and give UID 0 write/traverse access. Use this Gluetun entrypoint:
 

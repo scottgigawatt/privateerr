@@ -110,6 +110,13 @@ repos:
         language: script
         pass_filenames: false
 
+      - id: check-gluetun-pin
+        name: check deployment and API test Gluetun pins
+        entry: python3 test/policy/check_gluetun_pin.py
+        language: system
+        pass_filenames: false
+        files: ^(example\.env|test/runtime/test-recovery-api\.py|test/policy/check_gluetun_pin\.py|\.github/renovate\.json5)$
+
       - id: check-image-tag-policy
         name: check image tag policy
         entry: test/policy/check-image-tag-policy.sh

@@ -110,10 +110,10 @@ services:
   #
   gluetun:
     # Docker image and container information
-    image: qmcgaw/gluetun:${GLUETUN_TAG}                            # Set the image tag for the VPN container
-    container_name: ${COMPOSE_PROJECT_NAME}-gluetun-${GLUETUN_TAG}  # Container name including the tag
-    restart: unless-stopped                                         # Restart Gluetun unless explicitly stopped
-    hostname: gluetun                                               # Set hostname inside the container
+    image: qmcgaw/gluetun:${GLUETUN_TAG}             # Tested release and digest; override explicitly for another image
+    container_name: ${COMPOSE_PROJECT_NAME}-gluetun  # Keep the name independent of the image tag and digest
+    restart: unless-stopped                          # Restart Gluetun unless explicitly stopped
+    hostname: gluetun                                # Set hostname inside the container
 
     # Load Privateerr metadata before Gluetun starts
     entrypoint: ["/bin/sh", "${GLUETUN_ENTRYPOINT_WRAPPER}"]  # Load Privateerr metadata before starting Gluetun
