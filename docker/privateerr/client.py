@@ -58,7 +58,15 @@ class APIUnavailable(Exception):
 
 
 class CatalogUnavailable(APIUnavailable):
-    """Identify a PIA server-list failure while preserving API retry handling."""
+    """Identify a failure retrieving PIA's server list.
+
+    Handlers for `APIUnavailable` also catch this exception, preserving retry
+    behavior while diagnostics identify the failed service.
+
+    Args:
+        reason: Internal failure category; unrecognized values are hidden in diagnostics.
+        status: HTTP status returned by the server list source when it rejects a request.
+    """
 
 
 class NoRedirects(HTTPRedirectHandler):

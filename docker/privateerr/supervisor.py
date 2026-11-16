@@ -188,6 +188,7 @@ class Supervisor:
         if isinstance(error, FileOperationError):
             detail = error.diagnostic()
         elif isinstance(error, CatalogUnavailable):
+            # Classify this APIUnavailable subtype first to identify the failed service.
             detail = (
                 f"PIA server list {error.diagnostic()}; check Privateerr's internet access "
                 "and the configured source for the server list."

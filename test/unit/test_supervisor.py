@@ -16,6 +16,7 @@ import unittest
 from collections.abc import Generator, Mapping
 from contextlib import contextmanager
 from dataclasses import replace
+from os import stat_result
 from pathlib import Path
 from unittest.mock import Mock, patch
 
@@ -293,6 +294,7 @@ class RecoveryTests(unittest.TestCase):
             saved, (self.config.config_path.read_bytes(), self.config.metadata_path.read_bytes())
         )
         self.assertEqual(pending, {path: path.read_bytes() for path in pending})
+
         self.assertTrue(self.config.marker.exists())
         self.generator.generate.assert_not_called()
         self.client.get.assert_not_called()
@@ -354,7 +356,9 @@ class RecoveryTests(unittest.TestCase):
 
         for code in (errno.EACCES, errno.EIO):
 
-            def inspect(path: Path, *, follow_symlinks: bool = True, error_code: int = code):
+            def inspect(
+                path: Path, *, follow_symlinks: bool = True, error_code: int = code
+            ) -> stat_result:
                 """Fail only the journal marker inspection, leaving source-file access available."""
 
                 if path == self.store.journal / "ready":
@@ -382,6 +386,7 @@ class RecoveryTests(unittest.TestCase):
         self.store.journal.mkdir()
         (self.store.journal / "wg0.conf").write_text("incomplete")
 
+        # Fail inside real removal so the test detects accidental suppression of cleanup errors.
         for code in (errno.EACCES, errno.EROFS):
             with (
                 self.subTest(code=code),
@@ -397,8 +402,8 @@ class RecoveryTests(unittest.TestCase):
             self.assertTrue((self.store.journal / "wg0.conf").exists())
             self.assertEqual(self.store.saved_settings(), self.original)
 
-    def test_invalid_journal_cleanup_failure_keeps_readiness_false(self):
-        """Report a cleanup fault instead of claiming the journal was reset or generating over it."""
+    def test_invalid_journal_cleanup_failure_preserves_saved_files(self):
+        """Report a failed journal reset without replacing the saved configuration."""
 
         self.store.retain(self.root / "candidate", self.store.journal)
         (self.store.journal / "wg0.conf").write_text("invalid")

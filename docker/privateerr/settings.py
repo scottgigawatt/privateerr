@@ -284,15 +284,17 @@ class Store:
             shutil.rmtree(self.journal)
 
     def resume(self) -> None:
-        """Finish a valid interrupted save or discard unusable source copies.
+        """Finish an interrupted save or discard unusable journal copies.
 
-        Invalid or missing journal files are generated state. Discarding them
-        allows startup to validate the saved pair and regenerate it if needed.
-        Pending API updates remain available for normal reconciliation.
+        Validate ready journals before publishing. Discard incomplete journals
+        and journals with invalid or missing source files so startup can validate
+        the saved pair and regenerate it if needed. Discarding a journal leaves
+        saved files and pending API updates unchanged.
 
         Raises:
-            OSError: If storage cannot be read, cleaned up, or published. These
-                failures are reported rather than mistaken for invalid contents.
+            FileOperationError: If marker inspection, file access,
+                journal cleanup, or publication fails. Invalid contents and missing
+                source files are handled by discarding the journal.
         """
 
         with filesystem_operation(
