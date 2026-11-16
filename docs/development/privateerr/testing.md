@@ -2,6 +2,8 @@
 
 Choose the smallest check that proves the changed behavior. The host needs Docker and Make; Buccaneerr provides the pinned tools. Image and hook preparation can download dependencies. No live VPN is needed for prose or Markdown changes. Normal deployment uses only the base Compose file; build and live-test tasks use the [explicit development overlays](../../advanced-usage.md#choose-compose-files-for-development).
 
+The deployment Gluetun default and the real API test default must use the same release and digest. `make test` and pre-commit reject mismatched pins. Renovate updates both references together; `make test-recovery-api` exercises the selected default against a real Gluetun container without PIA credentials. `GLUETUN_TEST_IMAGE` explicitly selects a different test image without changing the deployment default.
+
 ## Run offline checks
 
 ```sh

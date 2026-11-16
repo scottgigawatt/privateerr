@@ -38,7 +38,9 @@
     "automergeSchedule": ["* 0-7 1 * *"],
     "updateNotScheduled": false,
     "prConcurrentLimit": 2,
-    "dependencyDashboard": true,
+    "dependencyDashboard": {
+        "enabled": true
+    },
 
     //
     // Merge dependency PRs within their maintenance window after checks pass.
@@ -85,7 +87,7 @@
     // Track image and npm pins that need explicit extraction patterns.
     //
     "customManagers": [
-        // Keep the real integration suite on a reviewed Gluetun release.
+        // Keep deployment and real API tests on the same reviewed Gluetun release.
         {
             "customType": "regex",
             "managerFilePatterns": [
@@ -97,6 +99,19 @@
             "datasourceTemplate": "docker",
             "versioningTemplate": "docker",
             "autoReplaceStringTemplate": "\"{{{depName}}}:{{{newValue}}}{{#if newDigest}}@{{{newDigest}}}{{/if}}\""
+        },
+
+        {
+            "customType": "regex",
+            "managerFilePatterns": [
+                "/^example\\.env$/"
+            ],
+            "matchStrings": [
+                "GLUETUN_TAG=\"\\$\\{GLUETUN_TAG:-(?<currentValue>[^@\\s}]+)@(?<currentDigest>sha256:[a-f0-9]+)\\}\""
+            ],
+            "depNameTemplate": "qmcgaw/gluetun",
+            "datasourceTemplate": "docker",
+            "versioningTemplate": "docker"
         },
 
         {
