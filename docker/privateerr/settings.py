@@ -14,16 +14,21 @@ both source files so startup can finish a save interrupted between replacements.
 """
 
 import base64
+import errno
 import ipaddress
 import json
+import logging
 import re
 import shutil
+import stat
 from pathlib import Path
 from typing import TypedDict
 
 from .config import Config, ConfigurationError
 from .data import is_object, object_fields
-from .diagnostics import filesystem_operation
+from .diagnostics import FileOperationError, filesystem_operation
+
+LOG = logging.getLogger("privateerr")
 
 
 class WireGuardSettings(TypedDict):
@@ -279,13 +284,56 @@ class Store:
             shutil.rmtree(self.journal)
 
     def resume(self) -> None:
-        """Finish an interrupted save when both source files were copied and validated."""
+        """Finish an interrupted save or discard unusable journal copies.
+
+        Validate ready journals before publishing. Discard incomplete journals
+        and journals with invalid or missing source files so startup can validate
+        the saved pair and regenerate it if needed. Discarding a journal leaves
+        saved files and pending API updates unchanged.
+
+        Raises:
+            FileOperationError: If marker inspection, file access,
+                journal cleanup, or publication fails. Invalid contents and missing
+                source files are handled by discarding the journal.
+        """
 
         with filesystem_operation(
             "resume configuration publication", self.config.config_path.parent
         ):
+            # Inspect explicitly: is_file() can hide permission and I/O failures as a missing marker.
+            with filesystem_operation("inspect recovery journal marker", self.journal / "ready"):
+                try:
+                    ready = stat.S_ISREG((self.journal / "ready").stat().st_mode)
+                except FileNotFoundError:
+                    ready = False
+
             # A ready marker identifies a complete pair; discard incomplete copies when it is absent.
-            if (self.journal / "ready").is_file():
-                self.publish(self.journal)
+            if ready:
+                try:
+                    self.candidate_settings(self.journal)
+                except (InvalidSettings, FileOperationError) as error:
+                    # Missing files and wrong file types are unusable generated copies.
+                    # Permission and storage faults still require their specific diagnostic.
+                    if isinstance(error, FileOperationError) and error.errno not in (
+                        errno.ENOENT,
+                        errno.EISDIR,
+                        errno.ENOTDIR,
+                    ):
+                        raise
+
+                    # Remove only the journal, leaving saved files and uncertain API updates intact.
+                    with filesystem_operation("discard invalid recovery journal", self.journal):
+                        shutil.rmtree(self.journal)
+
+                    LOG.warning(
+                        "Discarded invalid interrupted-save files; startup will reuse a valid saved "
+                        "configuration or generate fresh files from configured preferences."
+                    )
+                else:
+                    self.publish(self.journal)
             else:
-                shutil.rmtree(self.journal, ignore_errors=True)
+                with filesystem_operation("discard incomplete recovery journal", self.journal):
+                    try:
+                        shutil.rmtree(self.journal)
+                    except FileNotFoundError:
+                        pass

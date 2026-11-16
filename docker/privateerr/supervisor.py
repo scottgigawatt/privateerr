@@ -31,7 +31,7 @@ from collections.abc import Callable
 from enum import Enum, auto
 from types import FrameType
 
-from .client import APIUnavailable, Client
+from .client import APIUnavailable, CatalogUnavailable, Client
 from .config import Config, ConfigurationError
 from .data import is_list, is_object, object_fields
 from .diagnostics import FileOperationError, check_recovery_directory, filesystem_operation
@@ -187,8 +187,21 @@ class Supervisor:
 
         if isinstance(error, FileOperationError):
             detail = error.diagnostic()
+        elif isinstance(error, CatalogUnavailable):
+            # Classify this APIUnavailable subtype first to identify the failed service.
+            detail = (
+                f"PIA server list {error.diagnostic()}; check Privateerr's internet access "
+                "and the configured source for the server list."
+            )
         elif isinstance(error, APIUnavailable):
-            detail = f"API {error.diagnostic()}; check connectivity and route authorization."
+            guidance = "check connectivity and route authorization."
+
+            if error.status in (401, 403):
+                guidance = "check the shared Gluetun API key and allowed routes."
+            elif error.reason in ("request timed out", "connection failed"):
+                guidance = "check the Gluetun control listener and shared Docker network."
+
+            detail = f"API {error.diagnostic()}; {guidance}"
         elif isinstance(error, ConfigurationError):
             # Recovery must never serialize an unexpected exception value containing credentials.
             detail = "Invalid generation inputs; check PIA_USER and PIA_PASS in your private environment file."

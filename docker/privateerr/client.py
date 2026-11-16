@@ -57,6 +57,18 @@ class APIUnavailable(Exception):
         return reason + suffix
 
 
+class CatalogUnavailable(APIUnavailable):
+    """Identify a failure retrieving PIA's server list.
+
+    Handlers for `APIUnavailable` also catch this exception, preserving retry
+    behavior while diagnostics identify the failed service.
+
+    Args:
+        reason: Internal failure category; unrecognized values are hidden in diagnostics.
+        status: HTTP status returned by the server list source when it rejects a request.
+    """
+
+
 class NoRedirects(HTTPRedirectHandler):
     """Keep authentication headers on the configured server."""
 
@@ -216,7 +228,7 @@ class Client:
                 and must be validated by the endpoint selector or metadata generator.
 
         Raises:
-            APIUnavailable: If retrieval fails or the first response line is not
+            CatalogUnavailable: If retrieval fails or the first response line is not
                 a JSON object containing a regions list.
 
         Note:
@@ -236,5 +248,8 @@ class Client:
                 raise ValueError
 
             return result
-        except (ValueError, IndexError, UnicodeError) as error:
-            raise APIUnavailable("invalid response") from error
+        except APIUnavailable as error:
+            # Preserve safe failure categories while identifying the unauthenticated catalog source.
+            raise CatalogUnavailable(error.reason, error.status) from None
+        except ValueError, IndexError, UnicodeError:
+            raise CatalogUnavailable("invalid response") from None

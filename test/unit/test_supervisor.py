@@ -16,10 +16,11 @@ import unittest
 from collections.abc import Generator, Mapping
 from contextlib import contextmanager
 from dataclasses import replace
+from os import stat_result
 from pathlib import Path
 from unittest.mock import Mock, patch
 
-from privateerr.client import APIUnavailable, Client
+from privateerr.client import APIUnavailable, CatalogUnavailable, Client
 from privateerr.config import Config, ConfigurationError
 from privateerr.diagnostics import FileOperationError
 from privateerr.settings import ConnectionSettings, InvalidSettings, Store, connection_settings
@@ -270,6 +271,191 @@ class RecoveryTests(unittest.TestCase):
         Store(self.config).resume()
         self.assertEqual(self.store.saved_settings(), self.candidate)
         self.assertFalse(self.store.journal.exists())
+
+    def test_invalid_journal_reuses_valid_saved_pair_and_preserves_pending_update(self):
+        """An unusable journal must not block startup or discard an uncertain API update."""
+
+        self.store.retain(self.root / "candidate", self.store.journal)
+        self.store.retain(self.root / "candidate", self.store.pending)
+        (self.store.journal / "wg0.conf").write_text("PrivateKey=private-journal-detail\n")
+        saved = self.config.config_path.read_bytes(), self.config.metadata_path.read_bytes()
+        pending = {path: path.read_bytes() for path in self.store.pending.iterdir()}
+        self.supervisor.wait = Mock(side_effect=Shutdown)
+
+        with self.assertLogs("privateerr", level="WARNING") as logged, self.assertRaises(Shutdown):
+            self.supervisor.run()
+
+        output = "\n".join(logged.output)
+        self.assertIn("Discarded invalid interrupted-save files", output)
+        self.assertNotIn("private-journal-detail", output)
+        self.assertNotIn(self.candidate["wireguard"]["private_key"], output)
+        self.assertFalse(self.store.journal.exists())
+        self.assertEqual(
+            saved, (self.config.config_path.read_bytes(), self.config.metadata_path.read_bytes())
+        )
+        self.assertEqual(pending, {path: path.read_bytes() for path in pending})
+
+        self.assertTrue(self.config.marker.exists())
+        self.generator.generate.assert_not_called()
+        self.client.get.assert_not_called()
+        self.client.apply.assert_not_called()
+
+        # The retained API candidate can still be confirmed and published after startup.
+        self.client.get.side_effect = None
+        self.client.get.return_value = self.candidate
+        self.client.healthy.return_value = True
+        self.assertEqual(self.supervisor.resolve_pending(), Pending.RESOLVED)
+        self.assertEqual(self.store.saved_settings(), self.candidate)
+
+    def test_missing_or_wrong_type_journal_files_are_discarded(self):
+        """Treat a missing source or a directory in place of either source as unusable copies."""
+
+        for name in ("wg0.conf", "privateerr.env"):
+            for directory in (False, True):
+                with self.subTest(name=name, directory=directory):
+                    self.store.retain(self.root / "candidate", self.store.journal)
+                    invalid = self.store.journal / name
+                    invalid.unlink()
+
+                    if directory:
+                        invalid.mkdir()
+
+                    with self.assertLogs("privateerr", level="WARNING"):
+                        self.store.resume()
+
+                    self.assertFalse(self.store.journal.exists())
+                    self.assertEqual(self.store.saved_settings(), self.original)
+
+    def test_journal_storage_faults_preserve_recovery_files(self):
+        """An unreadable journal is not proof of invalid contents and must not be deleted."""
+
+        self.store.retain(self.root / "candidate", self.store.journal)
+
+        for code in (errno.EACCES, errno.EROFS, errno.EIO):
+            error = FileOperationError(
+                "read configuration", self.store.journal / "wg0.conf", OSError(code, "private")
+            )
+
+            with (
+                self.subTest(code=code),
+                patch.object(self.store, "candidate_settings", side_effect=error),
+                self.assertRaises(FileOperationError) as caught,
+            ):
+                self.store.resume()
+
+            self.assertIs(caught.exception, error)
+            self.assertTrue((self.store.journal / "ready").is_file())
+            self.assertEqual(self.store.saved_settings(), self.original)
+
+    def test_journal_marker_inspection_faults_preserve_all_source_files(self):
+        """A failed marker inspection must not turn a complete journal into an incomplete copy."""
+
+        self.store.retain(self.root / "candidate", self.store.journal)
+        retained = {path: path.read_bytes() for path in self.store.journal.iterdir()}
+        original_stat = Path.stat
+
+        for code in (errno.EACCES, errno.EIO):
+
+            def inspect(
+                path: Path, *, follow_symlinks: bool = True, error_code: int = code
+            ) -> stat_result:
+                """Fail only the journal marker inspection, leaving source-file access available."""
+
+                if path == self.store.journal / "ready":
+                    raise OSError(error_code, "private-marker-detail")
+
+                return original_stat(path, follow_symlinks=follow_symlinks)
+
+            with (
+                self.subTest(code=code),
+                patch.object(Path, "stat", inspect),
+                self.assertRaises(FileOperationError) as caught,
+            ):
+                self.store.resume()
+
+            diagnostic = caught.exception.diagnostic()
+            self.assertIn("inspect recovery journal marker", diagnostic)
+            self.assertEqual(caught.exception.errno, code)
+            self.assertNotIn("private-marker-detail", diagnostic)
+            self.assertEqual(retained, {path: path.read_bytes() for path in retained})
+            self.assertEqual(self.store.saved_settings(), self.original)
+
+    def test_incomplete_journal_cleanup_fault_is_reported(self):
+        """Startup must report a failed reset instead of leaving an unusable journal silently."""
+
+        self.store.journal.mkdir()
+        (self.store.journal / "wg0.conf").write_text("incomplete")
+
+        # Fail inside real removal so the test detects accidental suppression of cleanup errors.
+        for code in (errno.EACCES, errno.EROFS):
+            with (
+                self.subTest(code=code),
+                patch(
+                    "privateerr.settings.shutil.os.scandir", side_effect=OSError(code, "private")
+                ),
+                self.assertRaises(FileOperationError) as caught,
+            ):
+                self.store.resume()
+
+            self.assertIn("discard incomplete recovery journal", caught.exception.diagnostic())
+            self.assertEqual(caught.exception.errno, code)
+            self.assertTrue((self.store.journal / "wg0.conf").exists())
+            self.assertEqual(self.store.saved_settings(), self.original)
+
+    def test_invalid_journal_cleanup_failure_preserves_saved_files(self):
+        """Report a failed journal reset without replacing the saved configuration."""
+
+        self.store.retain(self.root / "candidate", self.store.journal)
+        (self.store.journal / "wg0.conf").write_text("invalid")
+
+        with (
+            patch(
+                "privateerr.settings.shutil.rmtree",
+                side_effect=PermissionError(errno.EACCES, "private-cleanup-detail"),
+            ),
+            self.assertRaises(FileOperationError) as caught,
+        ):
+            self.store.resume()
+
+        self.assertIn("discard invalid recovery journal", caught.exception.diagnostic())
+        self.assertNotIn("private-cleanup-detail", caught.exception.diagnostic())
+        self.assertTrue(self.store.journal.exists())
+        self.assertFalse(self.config.marker.exists())
+        self.assertEqual(self.store.saved_settings(), self.original)
+
+    def test_valid_journal_publication_fault_preserves_source_files(self):
+        """A destination failure must not be classified as an invalid source journal."""
+
+        self.store.retain(self.root / "candidate", self.store.journal)
+        retained = {path: path.read_bytes() for path in self.store.journal.iterdir()}
+
+        with (
+            patch.object(Path, "replace", side_effect=FileNotFoundError(errno.ENOENT, "private")),
+            self.assertRaises(FileOperationError) as caught,
+        ):
+            self.store.resume()
+
+        self.assertIn("publish configuration", caught.exception.diagnostic())
+        self.assertEqual(retained, {path: path.read_bytes() for path in retained})
+        self.assertEqual(self.store.saved_settings(), self.original)
+
+    def test_invalid_journal_and_saved_pair_generate_before_readiness(self):
+        """Regenerate unusable saved files through the existing startup generation path."""
+
+        self.store.retain(self.root / "candidate", self.store.journal)
+        (self.store.journal / "wg0.conf").write_text("invalid")
+        self.config.config_path.write_text("invalid saved configuration")
+        self.supervisor.wait = Mock(side_effect=Shutdown)
+
+        with self.assertLogs("privateerr", level="WARNING"), self.assertRaises(Shutdown):
+            self.supervisor.run()
+
+        self.assertFalse(self.store.journal.exists())
+        self.generator.generate.assert_called_once_with()
+        self.assertEqual(self.store.saved_settings(), self.candidate)
+        self.assertTrue(self.config.marker.exists())
+        self.client.get.assert_not_called()
+        self.client.apply.assert_not_called()
 
     def test_incomplete_copies_are_discarded(self):
         """Discard unfinished staging copies without changing the valid published pair."""
@@ -625,6 +811,118 @@ class RecoveryTests(unittest.TestCase):
             self.supervisor.resolve_pending()
 
         self.assertIn("VPN region: ca_toronto", "\n".join(logged.output))
+
+    def test_catalog_failure_during_recovery_identifies_pia_and_preserves_retry_policy(self):
+        """Working control requests must not produce Gluetun advice when the PIA catalog fails."""
+
+        saved = self.config.config_path.read_bytes(), self.config.metadata_path.read_bytes()
+        self.config.marker.touch()
+
+        for error in (
+            CatalogUnavailable("request timed out"),
+            CatalogUnavailable("connection failed"),
+            CatalogUnavailable("HTTP response rejected", 401),
+            CatalogUnavailable("HTTP response rejected", 403),
+            CatalogUnavailable("invalid response"),
+            CatalogUnavailable("private-catalog-detail"),
+        ):
+            with self.subTest(reason=error.reason, status=error.status):
+                self.client.reset_mock()
+                self.client.catalog.side_effect = error
+                self.supervisor = Supervisor(
+                    self.config, self.store, self.client, self.generator, clock=lambda: self.now
+                )
+                self.now = 0
+                self.supervisor.step()
+                self.now = self.config.failure_seconds
+
+                with self.assertLogs("privateerr", level="WARNING") as captured:
+                    self.supervisor.step()
+
+                output = "\n".join(captured.output)
+                self.assertIn("Recovery preparation failed: PIA server list", output)
+                self.assertIn(error.diagnostic(), output)
+                self.assertIn("check Privateerr's internet access", output)
+                self.assertNotIn("Gluetun control listener", output)
+                self.assertNotIn("shared Gluetun API key", output)
+                self.assertNotIn("private-catalog-detail", output)
+                self.assertNotIn(self.config.api_key, output)
+                self.assertIn("next recovery attempt in 5 seconds", output)
+                self.client.get.assert_any_call("/v1/vpn/status")
+                self.client.get.assert_any_call("/v1/vpn/settings")
+                self.client.catalog.assert_called_once_with()
+                self.client.apply.assert_not_called()
+                self.generator.generate.assert_not_called()
+                self.assertTrue(self.config.marker.exists())
+                self.assertEqual(self.supervisor.next_attempt, self.now + self.config.cooldown)
+                self.assertEqual(self.supervisor.delay, self.config.cooldown * 2)
+                self.assertEqual(
+                    saved,
+                    (self.config.config_path.read_bytes(), self.config.metadata_path.read_bytes()),
+                )
+
+    def test_api_warning_guidance_preserves_retries_readiness_and_pending_files(self):
+        """Classify actionable warnings without changing unavailable-API recovery decisions."""
+
+        self.store.retain(self.root / "candidate", self.store.pending)
+        pending = {path: path.read_bytes() for path in self.store.pending.iterdir()}
+        saved = self.config.config_path.read_bytes(), self.config.metadata_path.read_bytes()
+        self.config.marker.touch()
+
+        for error, expected in (
+            (
+                APIUnavailable("HTTP response rejected", 401),
+                "shared Gluetun API key and allowed routes",
+            ),
+            (
+                APIUnavailable("HTTP response rejected", 403),
+                "shared Gluetun API key and allowed routes",
+            ),
+            (
+                APIUnavailable("request timed out"),
+                "Gluetun control listener and shared Docker network",
+            ),
+            (
+                APIUnavailable("connection failed"),
+                "Gluetun control listener and shared Docker network",
+            ),
+            (APIUnavailable("invalid response"), "check connectivity and route authorization"),
+            (APIUnavailable("private-api-detail"), "check connectivity and route authorization"),
+        ):
+            with self.subTest(reason=error.reason, status=error.status):
+                self.client.reset_mock()
+                self.client.get.side_effect = error
+                self.supervisor = Supervisor(
+                    self.config, self.store, self.client, self.generator, clock=lambda: self.now
+                )
+
+                # Two failed observations still retry the API while suppressing identical warnings.
+                with self.assertLogs("privateerr", level="WARNING") as captured:
+                    self.supervisor.step()
+                    self.supervisor.step()
+
+                self.assertEqual(len(captured.output), 1)
+                output = captured.output[0]
+                self.assertIn("Cannot access Gluetun control API", output)
+                self.assertIn(expected, output)
+                self.assertIn(error.diagnostic(), output)
+                self.assertNotIn("private-api-detail", output)
+                self.assertNotIn(self.config.api_key, output)
+                self.assertNotIn(self.original["wireguard"]["private_key"], output)
+                self.assertEqual(self.client.get.call_count, 2)
+                self.client.get.assert_called_with("/v1/vpn/status")
+                self.client.healthy.assert_not_called()
+                self.client.apply.assert_not_called()
+                self.generator.generate.assert_not_called()
+                self.assertTrue(self.config.marker.exists())
+                self.assertEqual(self.supervisor.next_attempt, 0)
+                self.assertEqual(self.supervisor.delay, self.config.cooldown)
+                self.assertIsNone(self.supervisor.failed_since)
+                self.assertEqual(
+                    saved,
+                    (self.config.config_path.read_bytes(), self.config.metadata_path.read_bytes()),
+                )
+                self.assertEqual(pending, {path: path.read_bytes() for path in pending})
 
     def test_recovery_input_error_does_not_expose_exception_values(self):
         """Give an actionable generation diagnostic without serializing a credential-bearing error."""

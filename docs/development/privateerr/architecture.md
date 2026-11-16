@@ -52,7 +52,7 @@ All paths below except the startup marker are relative to the shared configurati
 | `.privateerr-check.*` | Disposable startup filesystem probe | Normally removed on completion or failure; cleanup failure or abrupt termination can leave a probe behind |
 | `.privateerr-stage.*` | Temporary output from one PIA generation | Removed when generation completes, fails, or is interrupted |
 | `.privateerr-pending/` | Candidate awaiting API and health confirmation | Retained across uncertain updates and process restarts; removed after acceptance or rejection |
-| `.privateerr-commit/` | Complete source copies for interrupted publication | Removed after both saved files have been replaced |
+| `.privateerr-commit/` | Complete source copies for interrupted publication | Removed after publication, or discarded at startup if source files are invalid or missing |
 | `ready` inside `.privateerr-pending/` or `.privateerr-commit/` | Both copied files have passed validation | Written last; removed with its containing directory |
 | `settings.json` inside those same directories | Validated connection fields recorded alongside the copied files | Retained and removed with its containing directory; contains private key material |
 | `wg0.conf.new` or `privateerr.env.new` | Temporary replacement of one published file | Renamed over its destination during publication; an interrupted replacement is rewritten on resume |
@@ -60,6 +60,8 @@ All paths below except the startup marker are relative to the shared configurati
 | `/healthcheck/privateerr.ready` | A usable saved pair exists; long-running startup also confirms script installation | Cleared at Privateerr startup and recreated after validation; unrelated to current tunnel health |
 
 Each file replacement is atomic, but replacing the pair is not one filesystem transaction. The commit directory retains both source files so startup can finish an interrupted save. Its `ready` file, and the equivalent file in the pending directory, identify complete validated copies. They are separate from the startup healthcheck marker. A directory without its `ready` file is an incomplete copy and is discarded instead of applied.
+
+At startup, invalid or missing commit source files are also discarded; Privateerr then reuses a valid saved pair with recovery enabled, or generates a new pair from the configured preferences. Pending API updates remain available for reconciliation. Permission, storage, and publication failures keep their specific errors rather than triggering this reset.
 
 ## Bound work and protect credentials
 

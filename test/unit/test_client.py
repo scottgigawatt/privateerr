@@ -17,7 +17,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from unittest.mock import patch
 from urllib.error import URLError
 
-from privateerr.client import APIUnavailable, Client
+from privateerr.client import APIUnavailable, CatalogUnavailable, Client
 from privateerr.config import Config
 
 
@@ -177,3 +177,35 @@ class ClientTests(unittest.TestCase):
 
             self.assertEqual(caught.exception.diagnostic(), expected)
             self.assertNotIn("private-", caught.exception.diagnostic())
+
+    def test_catalog_failures_keep_source_and_safe_diagnostics(self):
+        """Distinguish external catalog failures from control requests without exposing contents."""
+
+        for error in (
+            APIUnavailable("request timed out"),
+            APIUnavailable("connection failed"),
+            APIUnavailable("HTTP response rejected", 401),
+            APIUnavailable("HTTP response rejected", 403),
+            APIUnavailable("private-catalog-detail"),
+        ):
+            with (
+                self.subTest(reason=error.reason, status=error.status),
+                patch.object(self.client, "request", side_effect=error) as request,
+                self.assertRaises(CatalogUnavailable) as caught,
+            ):
+                self.client.catalog()
+
+            self.assertEqual(caught.exception.diagnostic(), error.diagnostic())
+            self.assertNotIn("private-catalog-detail", caught.exception.diagnostic())
+            request.assert_called_once_with(self.client.config.catalog_url, timeout=20)
+
+        # Response parsing must retain the same source context as transport failures.
+        for payload in (b"private-response-detail", b"", b"[]", b'{"regions":{}}'):
+            with (
+                self.subTest(payload=payload),
+                patch.object(self.client, "request", return_value=payload),
+                self.assertRaises(CatalogUnavailable) as caught,
+            ):
+                self.client.catalog()
+
+            self.assertEqual(caught.exception.diagnostic(), "invalid response")
