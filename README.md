@@ -17,22 +17,22 @@ Privateerr packages the unmodified [Private Internet Access (PIA) manual connect
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Dockerized-Brig-2496ED?logo=docker&amp;logoColor=white&amp;style=flat&amp;color=2496ED&amp;labelColor=2496ED" alt="Dockerized brig" />
-  <img src="https://img.shields.io/badge/Cloaked-by%20PIA%20%26%20WireGuard-2EA44F?logo=wireguard&amp;logoColor=white&amp;style=flat&amp;color=2EA44F&amp;labelColor=2EA44F" alt="Cloaked by PIA and WireGuard" />
-  <a href="./LICENSE"><img src="https://img.shields.io/github/license/scottgigawatt/privateerr?label=Legal%20Scroll&amp;style=flat&amp;color=8250DF&amp;labelColor=8250DF" alt="Legal Scroll: Apache 2.0 license" /></a>
+  <img src="https://img.shields.io/badge/Dockerized-Brig-527C00?logo=docker&amp;logoColor=white&amp;style=flat&amp;color=527C00&amp;labelColor=527C00" alt="Dockerized brig" />
+  <img src="https://img.shields.io/badge/Cloaked-by%20PIA%20%26%20WireGuard-16823B?logo=wireguard&amp;logoColor=white&amp;style=flat&amp;color=16823B&amp;labelColor=16823B" alt="Cloaked by PIA and WireGuard" />
+  <a href="./LICENSE"><img src="https://img.shields.io/github/license/scottgigawatt/privateerr?label=Legal%20Scroll&amp;style=flat&amp;color=008271&amp;labelColor=008271" alt="Legal Scroll: Apache 2.0 license" /></a>
 </p>
 
 <p align="center">
-  <a href="https://github.com/scottgigawatt/privateerr/releases/latest"><img src="https://img.shields.io/github/v/release/scottgigawatt/privateerr?label=Latest%20Treasure%20Map&amp;logo=github&amp;style=flat&amp;color=BE123C&amp;labelColor=BE123C" alt="Latest Privateerr release" /></a>
-  <img src="https://img.shields.io/badge/Battle--Tested-Synology%20%7C%20macOS-0891B2?style=flat&amp;color=0891B2&amp;labelColor=0891B2" alt="Battle-tested on Synology and macOS" />
-  <a href="https://www.bestpractices.dev/projects/13442"><img src="https://img.shields.io/cii/summary/13442?label=OpenSSF%20Best%20Practices&amp;style=flat&amp;color=16823B&amp;labelColor=16823B" alt="OpenSSF Best Practices badge" /></a>
+  <a href="https://github.com/scottgigawatt/privateerr/releases/latest"><img src="https://img.shields.io/github/v/release/scottgigawatt/privateerr?label=Latest%20Treasure%20Map&amp;logo=github&amp;style=flat&amp;color=007D9C&amp;labelColor=007D9C&amp;logoColor=white" alt="Latest Privateerr release" /></a>
+  <img src="https://img.shields.io/badge/Battle--Tested-Synology%20%7C%20macOS-3152C7?style=flat&amp;color=3152C7&amp;labelColor=3152C7" alt="Battle-tested on Synology and macOS" />
+  <a href="https://www.bestpractices.dev/projects/13442"><img src="https://img.shields.io/cii/summary/13442?label=OpenSSF%20Best%20Practices&amp;style=flat&amp;color=5138B6&amp;labelColor=5138B6" alt="OpenSSF Best Practices badge" /></a>
 </p>
 
 <p align="center">
-  <a href="https://github.com/scottgigawatt/privateerr/actions/workflows/build-and-push.yml"><img src="https://img.shields.io/github/actions/workflow/status/scottgigawatt/privateerr/build-and-push.yml?branch=main&amp;label=Privateerr%20build&amp;logo=githubactions&amp;logoColor=white&amp;style=flat&amp;color=0284C7&amp;labelColor=0284C7" alt="Privateerr build status on main" /></a>
-  <a href="https://hub.docker.com/r/scottgigawatt/privateerr"><img src="https://img.shields.io/docker/pulls/scottgigawatt/privateerr?label=Privateerr%20pulls&amp;logo=docker&amp;logoColor=white&amp;style=flat&amp;color=FF69B4&amp;labelColor=FF69B4" alt="Privateerr image pulls on Docker Hub" /></a>
-  <a href="https://github.com/scottgigawatt/privateerr/pkgs/container/privateerr"><img src="https://img.shields.io/badge/Fleet-amd64%20%7C%20arm64%20%7C%20arm%2Fv7-6D28D9?logo=docker&amp;logoColor=white&amp;style=flat&amp;color=6D28D9&amp;labelColor=6D28D9" alt="Privateerr images for amd64, arm64, and arm/v7" /></a>
-  <a href="https://github.com/scottgigawatt/privateerr/actions/workflows/build-and-push.yml"><img src="https://img.shields.io/badge/Bilge%20Check-Trivy-BE185D?logo=aqua&amp;logoColor=white&amp;style=flat&amp;color=BE185D&amp;labelColor=BE185D" alt="Container images scanned with Trivy" /></a>
+  <a href="https://github.com/scottgigawatt/privateerr/actions/workflows/build-and-push.yml"><img src="https://img.shields.io/github/actions/workflow/status/scottgigawatt/privateerr/build-and-push.yml?branch=main&amp;label=Privateerr%20build&amp;logo=githubactions&amp;logoColor=white&amp;style=flat&amp;color=7C3BB3&amp;labelColor=7C3BB3" alt="Privateerr build status on main" /></a>
+  <a href="https://hub.docker.com/r/scottgigawatt/privateerr"><img src="https://img.shields.io/docker/pulls/scottgigawatt/privateerr?label=Privateerr%20pulls&amp;logo=docker&amp;logoColor=white&amp;style=flat&amp;color=A32BA3&amp;labelColor=A32BA3" alt="Privateerr image pulls on Docker Hub" /></a>
+  <a href="https://github.com/scottgigawatt/privateerr/pkgs/container/privateerr"><img src="https://img.shields.io/badge/Fleet-amd64%20%7C%20arm64%20%7C%20arm%2Fv7-C42878?logo=docker&amp;logoColor=white&amp;style=flat&amp;color=C42878&amp;labelColor=C42878" alt="Privateerr images for amd64, arm64, and arm/v7" /></a>
+  <a href="https://github.com/scottgigawatt/privateerr/actions/workflows/build-and-push.yml"><img src="https://img.shields.io/badge/Bilge%20Check-Trivy-D62F65?logo=aqua&amp;logoColor=white&amp;style=flat&amp;color=D62F65&amp;labelColor=D62F65" alt="Container images scanned with Trivy" /></a>
 </p>
 
 <p align="center">─── ⛧ ───</p>
