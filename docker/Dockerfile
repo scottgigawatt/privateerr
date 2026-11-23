@@ -80,12 +80,15 @@ COPY privateerr-date.sh             /usr/local/bin/date
 #
 # Refresh the pinned base from its stable repositories, then install the runtime.
 # Stable Alpine supplies the patched Python interpreter, runtime libraries, and PIA tools.
+# Require the reviewed OpenSSL security rebuild even when the base image is unchanged.
 #
 RUN apk upgrade --no-cache && \
     apk add --no-cache \
         bash \
         ca-certificates \
         curl \
+        'libcrypto3>=3.5.9-r1' \
+        'libssl3>=3.5.9-r1' \
         jq \
         openresolv \
         python3 \

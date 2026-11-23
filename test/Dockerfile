@@ -83,12 +83,15 @@ COPY --from=compose /docker-compose /usr/local/lib/docker/cli-plugins/docker-com
 # Refresh the patched Python interpreter and validation tools from stable Alpine.
 # BusyBox supplies portable AWK and core utilities; Python checker versions are
 # locked separately so linting and documentation use the same current Ruff release.
+# Require the reviewed OpenSSL security rebuild in cached and fresh image builds.
 #
 RUN apk upgrade --no-cache && \
     apk add --no-cache \
         bash \
         ca-certificates \
         curl \
+        'libcrypto3>=3.5.9-r1' \
+        'libssl3>=3.5.9-r1' \
         git \
         make \
         grep \
