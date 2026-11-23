@@ -32,6 +32,10 @@ Buccaneerr copies the official [Docker CLI 29.10.0](https://docs.docker.com/engi
 
 The proposed [official Compose 5.8.0 update](https://github.com/docker/compose/releases/tag/v5.8.0) is the latest published release assessed on November 23. It leaves existing service-only projects unaffected; scheduled jobs require Docker Engine 29.10 or later with the jobs extension enabled. Privateerr declares no scheduled jobs.
 
+Fresh local builds requiring OpenSSL 3.5.9-r1 were scanned with the same November 23 database. Each OCI layout selected one runtime manifest and the scan's reported architecture and ARM variant matched it. The production candidate has zero whole-image findings on all three supported platforms. Buccaneerr has one HIGH, four MEDIUM, and two UNKNOWN findings on each platform; none are OS-package findings. All six candidate runtime manifests pass the normal filtered gate. The raw Buccaneerr totals include the newly reviewed Compose exception.
+
+These source changes resolve all ten published OpenSSL package/advisory rows during an image build. The source does not change the existing published artifacts; an authorized main build and stable release deliver the fixes to their respective channels.
+
 ## Remaining Go-tool findings
 
 Official Compose 5.8.0 still embeds `golang.org/x/net v0.60.0` and `golang.org/x/crypto v0.57.0`. Raw scans of every supported donor platform retain HIGH [CVE-2026-78661](https://pkg.go.dev/vuln/GO-2026-6860), MEDIUM [CVE-2026-97045](https://pkg.go.dev/vuln/GO-2026-6866), and UNKNOWN [GO-2026-5932](https://pkg.go.dev/vuln/GO-2026-5932). Module fixes exist upstream, but the current official donor has not adopted them. Preserve the official binary rather than rebuilding its dependency graph locally.
@@ -100,15 +104,15 @@ Both Dockerfiles refresh stable Alpine packages and require OpenSSL 3.5.9-r1 or 
 
 [Pip 26.3](https://github.com/pypa/pip/blob/26.3/NEWS.rst) was released on November 2. The [virtualenv 21.15.6 seed manifest](https://github.com/pypa/virtualenv/blob/21.15.6/src/virtualenv/seed/wheels/embed/__init__.py) selects its complete upstream wheel for Python 3.14; virtualenv 21.15.5 already selected the same wheel.
 
-Direct inspection of published Buccaneerr confirms that the active pip 26.3 wheel vendors msgpack 1.2.4 and urllib3 2.8.0, including their upstream fixes. Its SHA-256 is `f3b60b20ffaadd4415ed7957212a38ac63fa4c5fa375bd0f4a797777940fad13`. It still includes the `pkg_resources` subset recorded as setuptools 70.3.0. A separate metadata-guided scan with the November 16 database reports three version-level entries against that subset: one HIGH, one MEDIUM, and one LOW. These are outside the whole-image totals. A version-level advisory against the complete setuptools distribution does not prove that all affected modules exist in that subset.
+Direct inspection of published Buccaneerr confirms that the active pip 26.3 wheel vendors msgpack 1.2.4 and urllib3 2.8.0, including their upstream fixes. Its SHA-256 is `f3b60b20ffaadd4415ed7957212a38ac63fa4c5fa375bd0f4a797777940fad13`. It still includes the `pkg_resources` subset recorded as setuptools 70.3.0. A separate metadata-guided scan with the November 23 database reports three version-level entries against that subset: one HIGH, one MEDIUM, and one LOW. These are outside the whole-image totals. A version-level advisory against the complete setuptools distribution does not prove that all affected modules exist in that subset.
 
 Keep the upstream SBOM unchanged and distinguish inactive inventory entries from the installed files. Standalone package upgrades do not replace code vendored inside a wheel.
 
 ### Python bootstrap wheel
 
-The reviewed production images retain Alpine Python's separate `/usr/lib/python3.14/ensurepip/_bundled/pip-26.2.2-py3-none-any.whl`. Its SHA-256 is `fd7f4dfa8190e014013b9f08f3e973f4e4c26ffd179a204895533a7254813a70` on every architecture of both Privateerr channels. The archive includes msgpack 1.1.2, urllib3 2.7.0, and `pkg_resources` recorded as setuptools 70.3.0. Privateerr does not invoke `python3 -m ensurepip`, but the upstream archive remains available to that command.
+The reviewed production images retain Alpine Python's separate `/usr/lib/python3.14/ensurepip/_bundled/pip-26.2.2-py3-none-any.whl`. Its SHA-256 is `fd7f4dfa8190e014013b9f08f3e973f4e4c26ffd179a204895533a7254813a70` on every architecture of both Privateerr channels. Fresh Privateerr and Buccaneerr candidates retain the same wheel and hash on all three supported architectures. The archive includes msgpack 1.1.2, urllib3 2.7.0, and `pkg_resources` recorded as setuptools 70.3.0. Privateerr does not invoke `python3 -m ensurepip`, but the upstream archive remains available to that command.
 
-A metadata-guided scan of the wheel's unchanged `pip/_vendor/vendor.txt` with the November 16 database reports eight version-level entries: five HIGH, two MEDIUM, and one LOW. These entries are outside the whole-image counts and require code-path assessment, especially for the partial setuptools inventory.
+A metadata-guided scan of the wheel's unchanged `pip/_vendor/vendor.txt` with the November 23 database reports eight version-level entries: five HIGH, two MEDIUM, and one LOW. These entries are outside the whole-image counts and require code-path assessment, especially for the partial setuptools inventory.
 
 Updating virtualenv does not replace this package-owned bootstrap wheel. Alpine stable still supplies Python 3.14.10-r1 with that archive. Preserve upstream assets and SBOMs, and reassess when a complete maintained Python package updates it; do not partially patch or rename a wheel to manufacture lower counts.
 
