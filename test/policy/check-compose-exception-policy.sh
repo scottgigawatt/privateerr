@@ -17,13 +17,13 @@
 set -eu
 repository_root=${1:-$(CDPATH='' cd -- "$(dirname -- "$0")/../.." && pwd)}
 cd "${repository_root}"
-reviewed_tag='v5.7.1@sha256:6a6704a7ccbc45eb4cc7e5b71dba685e9bc23705c580430f15034b2b5e46ec2b'
+reviewed_tag='v5.8.0@sha256:c9f99a4efa43ca83e5acc056da938c38504010c10a2dd804569032be5d3b0dd5'
 
 #
 # Require a new reachability review when the donor changes. Module versions
 # alone cannot establish that a vulnerable package is absent from a new binary.
 #
-if ! grep -F -x 'FROM docker/compose-bin:v5.7.1@sha256:6a6704a7ccbc45eb4cc7e5b71dba685e9bc23705c580430f15034b2b5e46ec2b AS compose' 'test/Dockerfile' >/dev/null; then
+if ! grep -F -x 'FROM docker/compose-bin:v5.8.0@sha256:c9f99a4efa43ca83e5acc056da938c38504010c10a2dd804569032be5d3b0dd5 AS compose' 'test/Dockerfile' >/dev/null; then
     echo 'Compose donor changed; remove the exception or review its binary evidence again.' >&2
     exit 1
 fi
@@ -38,7 +38,7 @@ awk -v expected_path='usr/local/lib/docker/cli-plugins/docker-compose' -v review
     state == 1 && $0 == "  - id: CVE-2026-78661" { state++; next }
     state == 2 && $0 == "    paths:" { state++; next }
     state == 3 && $0 == "      - " expected_path { state++; next }
-    state == 4 && $0 == "    expired_at: 2026-11-22" { state++; next }
+    state == 4 && $0 == "    expired_at: 2026-11-30" { state++; next }
     state == 5 && $0 == "    statement: >-" { state++; next }
     state == 6 && /^      [^[:space:]]/ { statement = statement substr($0, 7) " "; next }
     { invalid = 1 }

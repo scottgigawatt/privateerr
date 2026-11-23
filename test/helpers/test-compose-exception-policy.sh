@@ -56,7 +56,7 @@ sh "${POLICY}" "${TEST_ROOT}" >/dev/null
 #
 # A new donor needs new package/symbol evidence rather than a stale exception.
 #
-sed 's/v5.7.1@sha256:/v5.7.2@sha256:/' "${TEST_ROOT}/test/Dockerfile" > "${TEST_ROOT}/changed"
+sed 's/v5.8.0@sha256:/v5.8.1@sha256:/' "${TEST_ROOT}/test/Dockerfile" > "${TEST_ROOT}/changed"
 mv "${TEST_ROOT}/changed" "${TEST_ROOT}/test/Dockerfile"
 require_rejection 'a changed donor'
 reset_fixture
@@ -64,7 +64,7 @@ reset_fixture
 #
 # Do not silently expand the reviewed CVE, binary path, expiry, or entry count.
 #
-for replacement in 's/CVE-2026-78661/CVE-2026-97045/' 's#usr/local/lib/docker/cli-plugins/docker-compose#usr/local/bin/other-tool#' 's/expired_at: 2026-11-22/expired_at: 2026-11-23/'; do
+for replacement in 's/CVE-2026-78661/CVE-2026-97045/' 's#usr/local/lib/docker/cli-plugins/docker-compose#usr/local/bin/other-tool#' 's/expired_at: 2026-11-30/expired_at: 2026-12-01/'; do
     sed "${replacement}" "${REPOSITORY_ROOT}/.trivyignore.yaml" > "${TEST_ROOT}/.trivyignore.yaml"
     require_rejection 'an expanded identifier, path, or expiry'
 done
