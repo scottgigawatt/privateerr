@@ -27,7 +27,7 @@ After startup and a grace period, the Python supervisor inside the Privateerr co
 
 A generation failure leaves saved files unchanged. If an API result is uncertain, the supervisor checks Gluetun before generating more settings. Saved recovery state allows it to finish an interrupted update after Privateerr restarts. [Supervisor architecture](development/privateerr/architecture.md) explains that process.
 
-Gluetun retains responsibility for the forwarded port and qBittorrent update hook. A forwarding-only failure does not rotate a healthy tunnel. There is no extra supervisor container or production Docker socket.
+Gluetun manages the forwarded port and qBittorrent update hook. If the tunnel is healthy but Gluetun has no forwarded port, Privateerr keeps the current registration. [Issue #196 tracks recovery from a missing forwarded port](https://github.com/scottgigawatt/privateerr/issues/196). There is no extra supervisor container or production Docker socket.
 
 ## Restart a healthy stack
 
@@ -95,7 +95,9 @@ Startup checks create, write, replace, and remove disposable files beside the VP
 
 ### Understand VPN region messages
 
-Region labels name the provider-advertised VPN destination, not your location, measured latency, or verified physical server location. Missing labels show `unknown` without invalidating usable settings. A generated or reused configuration does not prove a working tunnel; confirmed recovery follows API readback, health verification, and saving.
+The region in Privateerr’s log is the VPN destination advertised by PIA. PIA can reuse a server name across regions. When generating metadata, Privateerr matches the WireGuard endpoint IP and the registered server name. If several regions advertise the same pair, Privateerr uses the known selection when available. If the region is still ambiguous, the log shows `unknown` and the configuration remains usable.
+
+When Privateerr reuses saved files, it reports their saved region. A fresh registration updates the label. To confirm a tunnel recovery, look for `Gluetun tunnel recovered` after Privateerr verifies the active settings and saves them.
 
 ## Configure timing
 

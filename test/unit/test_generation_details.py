@@ -21,7 +21,7 @@ from privateerr.client import APIUnavailable
 from privateerr.config import Config
 from privateerr.generation import Endpoint, GenerationFailed, Generator
 from privateerr.log import formatter, redact
-from privateerr.settings import Store
+from privateerr.settings import Store, assignments
 
 
 class GenerationDetailTests(unittest.TestCase):
@@ -155,12 +155,21 @@ class GenerationDetailTests(unittest.TestCase):
         catalog: dict[str, object] = {
             "regions": [
                 {
+                    "id": "other-region",
+                    "servers": {
+                        "wg": [
+                            {"ip": "192.0.2.11", "cn": "example-one"},
+                            {"ip": "192.0.2.10", "cn": "other-name"},
+                        ]
+                    },
+                },
+                {
                     "id": "example-region",
                     "name": 'Example $(command) `command` "region"',
                     "port_forward": True,
                     "geo": False,
                     "servers": {"wg": [{"ip": "192.0.2.10", "cn": "example-one"}]},
-                }
+                },
             ]
         }
 
@@ -176,6 +185,7 @@ class GenerationDetailTests(unittest.TestCase):
                 "# SPDX-License-Identifier: Apache-2.0\n#\n"
             )
         )
+        self.assertIn("PIA_WG_SERVER_NAME=example-one\n", metadata)
         self.assertIn("PIA_REGION_ID=example-region\n", metadata)
         self.assertIn("PIA_PORT_FORWARDING_SUPPORTED=true\n", metadata)
         self.assertIn("PIA_GEOLOCATED_REGION=false\n", metadata)
@@ -196,6 +206,52 @@ class GenerationDetailTests(unittest.TestCase):
             timeout=3,
         )
         self.assertEqual(sourced.stdout, 'Example $(command) `command` "region"')
+
+    def test_shared_endpoint_region_requires_a_known_selection(self):
+        """A pinned region resolves an exact alias that automatic selection cannot distinguish."""
+        stage = self.root / "wireguard"
+        (stage / "wg0.conf").write_text("Endpoint = 192.0.2.10:1337\n")
+        server = {"ip": "192.0.2.10", "cn": "shared-name"}
+        catalog = {
+            "regions": [{"id": label, "servers": {"wg": [server]}} for label in ("first", "second")]
+        }
+
+        for auto, expected in (("true", "unknown"), ("false", "second")):
+            with (
+                self.subTest(autoconnect=auto),
+                patch.dict(self.config.environment, AUTOCONNECT=auto, PREFERRED_REGION="second"),
+                patch("privateerr.generation.Client.catalog", return_value=catalog),
+            ):
+                # Old upstream output can omit its hostname; both entries identify the same server.
+                self.generator.write_metadata(stage, "", time.monotonic() + 3)
+                metadata = assignments(stage / "privateerr.env")
+                self.assertEqual(metadata["PIA_WG_SERVER_NAME"], "shared-name")
+                self.assertEqual(metadata["PIA_REGION_ID"], expected)
+
+    def test_unmatched_registration_preserves_identity(self):
+        """Neither a recycled name nor an address with a changed name identifies the registration."""
+        stage = self.root / "wireguard"
+        (stage / "wg0.conf").write_text("Endpoint = 192.0.2.10:1337\n")
+        catalog = {
+            "regions": [
+                {
+                    "id": "other",
+                    "servers": {
+                        "wg": [
+                            {"ip": "192.0.2.20", "cn": "registered"},
+                            {"ip": "192.0.2.10", "cn": "other"},
+                        ]
+                    },
+                }
+            ]
+        }
+
+        with patch("privateerr.generation.Client.catalog", return_value=catalog):
+            self.generator.write_metadata(stage, "registered", time.monotonic() + 3)
+
+        metadata = assignments(stage / "privateerr.env")
+        self.assertEqual(metadata["PIA_WG_SERVER_NAME"], "registered")
+        self.assertEqual(metadata["PIA_REGION_ID"], "unknown")
 
     def test_targeted_registration_uses_upstream_scripts_and_removes_token(self):
         """Recovery passes its selected endpoint to upstream without a shell adapter."""
@@ -225,8 +281,10 @@ CONFIG
             patch("privateerr.generation.Client.catalog", side_effect=APIUnavailable),
             self.assertLogs(level="INFO") as captured,
         ):
-            with self.generator.generate(Endpoint("192.0.2.10", "example-one")) as stage:
-                self.assertTrue((stage / "privateerr.env").exists())
+            with self.generator.generate(
+                Endpoint("192.0.2.10", "example-one", "selected")
+            ) as stage:
+                self.assertEqual(assignments(stage / "privateerr.env")["PIA_REGION_ID"], "selected")
                 self.assertFalse(token.exists())
 
         # Both invocation identities must survive while token and candidate state are removed.
