@@ -563,9 +563,14 @@ class RecoveryTests(unittest.TestCase):
         def choose(pinned: bool = True, forwarding: bool = True) -> str:
             """Select from the fixture catalog using the current failed-endpoint set."""
 
-            return select_endpoint(
+            endpoint = select_endpoint(
                 catalog(), "ca", "198.51.100.10", failed, pinned=pinned, forwarding=forwarding
-            ).ip
+            )
+
+            if pinned:
+                self.assertEqual(endpoint.region_id, "ca")
+
+            return endpoint.ip
 
         # Pinned selection stays in the chosen region even after every local endpoint has failed.
         self.assertEqual(choose(), "198.51.100.11")

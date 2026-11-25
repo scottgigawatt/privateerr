@@ -56,10 +56,12 @@ class Endpoint:
     Attributes:
         ip: IPv4 address already selected and validated by the supervisor.
         name: Matching advertised server identity passed to upstream registration.
+        region_id: Catalog region selected for this registration, when known.
     """
 
     ip: str
     name: str
+    region_id: str = ""
 
 
 def reap_children() -> None:
@@ -299,15 +301,17 @@ class Generator:
 
         return hostname
 
-    def write_metadata(self, stage: Path, hostname: str, until: float) -> None:
+    def write_metadata(
+        self, stage: Path, hostname: str, until: float, *, selected_region: str = ""
+    ) -> None:
         """Write shell-safe metadata for the WireGuard file in one staging directory.
 
         Args:
             stage: Existing candidate directory containing wg0.conf; privateerr.env
                 is written here without touching the published metadata file.
-            hostname: Syntax-checked identity reported by this registration, used
-                when no usable catalog identity matches the endpoint or hostname.
+            hostname: Server identity reported by this registration, if available.
             until: Absolute monotonic deadline shared with upstream generation.
+            selected_region: Region of an explicitly selected recovery endpoint.
 
         Raises:
             InvalidSettings: If the endpoint, port, or final server name is invalid.
@@ -345,6 +349,21 @@ class Generator:
             "PIA_GEOLOCATED_REGION": "unknown",
         }
 
+        # A targeted registration already has a catalog region even if the next fetch fails.
+        if re.fullmatch(r"[a-z][a-z0-9_-]{0,63}", selected_region):
+            metadata["PIA_REGION_ID"] = selected_region
+
+        region_hint = selected_region
+        environment = self.config.environment
+        dedicated = environment.get("DIP_TOKEN", "").lower()
+
+        if (
+            not region_hint
+            and environment.get("AUTOCONNECT") == "false"
+            and (not dedicated or dedicated.startswith("n"))
+        ):
+            region_hint = environment.get("PREFERRED_REGION", "")
+
         try:
             catalog = Client(self.config).catalog(timeout=min(20, remaining(until)))
         except APIUnavailable:
@@ -352,7 +371,7 @@ class Generator:
                 "PIA region details are unavailable; using the server name from registration."
             )
         else:
-            enrich_metadata(metadata, catalog)
+            enrich_metadata(metadata, catalog, region_hint=region_hint)
 
         if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9.-]{0,252}", metadata["PIA_WG_SERVER_NAME"]):
             raise InvalidSettings("PIA registration did not identify its WireGuard server.")
@@ -450,34 +469,41 @@ class Generator:
                 self.run_script("connect_to_wireguard_with_token.sh", environment, until)
                 hostname = endpoint.name
 
-            self.write_metadata(stage, hostname, until)
+            self.write_metadata(
+                stage, hostname, until, selected_region=endpoint.region_id if endpoint else ""
+            )
             self.store.candidate_settings(stage)
             yield stage
 
 
-def enrich_metadata(metadata: dict[str, str], catalog: dict[str, object]) -> None:
-    """Enrich metadata in place from the first matching catalog WireGuard server.
+def enrich_metadata(
+    metadata: dict[str, str], catalog: dict[str, object], *, region_hint: str = ""
+) -> None:
+    """Fill metadata from catalog entries consistent with the generated WireGuard identity.
 
     Args:
-        metadata: Initialized metadata fields, including endpoint IP and the
-            registration hostname used to match advertised servers.
-        catalog: Decoded catalog object; nested collections and fields remain
-            untrusted until checked here.
+        metadata: Initialized metadata containing the endpoint IP and any registration hostname.
+        catalog: PIA catalog with potentially malformed or overlapping region entries.
+        region_hint: Known selection used to distinguish regions advertising the same endpoint.
 
     Note:
-        Match either endpoint IP or server name. Malformed structures and field
-        types are ignored; unmatched or unusable fields retain their prior values.
-        Server names and region IDs are syntax-checked here, while display-name
-        bounding and shell quoting belong to `Generator.write_metadata`.
+        An IP match may supply a missing hostname when all matching entries agree.
+        Ambiguous region data retains the caller's defaults.
     """
-
     regions = catalog.get("regions")
 
     if not is_list(regions):
         return
 
+    names: set[str] = set()
+    matches: list[dict[str, object]] = []
+    registered_name = metadata["PIA_WG_SERVER_NAME"]
+
     for region in regions:
         if not is_object(region):
+            continue
+
+        if region_hint and region.get("id") != region_hint:
             continue
 
         server_map = region.get("servers")
@@ -490,40 +516,53 @@ def enrich_metadata(metadata: dict[str, str], catalog: dict[str, object]) -> Non
         if not is_list(servers):
             continue
 
+        region_names: set[str] = set()
+
         for server in servers:
-            if not is_object(server):
+            if not is_object(server) or server.get("ip") != metadata["PIA_WG_ENDPOINT_IP"]:
                 continue
 
-            if (
-                server.get("ip") != metadata["PIA_WG_ENDPOINT_IP"]
-                and server.get("cn") != metadata["PIA_WG_SERVER_NAME"]
+            name = server.get("cn")
+
+            if not isinstance(name, str) or not re.fullmatch(
+                r"[A-Za-z0-9][A-Za-z0-9.-]{0,252}", name
             ):
                 continue
 
-            hostname = server.get("cn")
+            if registered_name and name != registered_name:
+                continue
 
-            if isinstance(hostname, str) and re.fullmatch(
-                r"[A-Za-z0-9][A-Za-z0-9.-]{0,252}", hostname
-            ):
-                metadata["PIA_WG_SERVER_NAME"] = hostname
+            region_names.add(name)
 
-            region_id = region.get("id")
+        if region_names:
+            names.update(region_names)
+            matches.append(region)
 
-            if isinstance(region_id, str) and re.fullmatch(r"[a-z][a-z0-9_-]{0,63}", region_id):
-                metadata["PIA_REGION_ID"] = region_id
+    if len(names) != 1:
+        return
 
-            name = region.get("name")
+    metadata["PIA_WG_SERVER_NAME"] = names.pop()
 
-            if isinstance(name, str):
-                metadata["PIA_REGION_NAME"] = name
+    # Separate server identity from region labels when several regions share an endpoint.
+    if len(matches) != 1:
+        return
 
-            for field, key in (
-                ("port_forward", "PIA_PORT_FORWARDING_SUPPORTED"),
-                ("geo", "PIA_GEOLOCATED_REGION"),
-            ):
-                value = region.get(field)
+    region = matches[0]
+    region_id = region.get("id")
 
-                if isinstance(value, bool):
-                    metadata[key] = str(value).lower()
+    if isinstance(region_id, str) and re.fullmatch(r"[a-z][a-z0-9_-]{0,63}", region_id):
+        metadata["PIA_REGION_ID"] = region_id
 
-            return
+    display_name = region.get("name")
+
+    if isinstance(display_name, str):
+        metadata["PIA_REGION_NAME"] = display_name
+
+    for field, key in (
+        ("port_forward", "PIA_PORT_FORWARDING_SUPPORTED"),
+        ("geo", "PIA_GEOLOCATED_REGION"),
+    ):
+        value = region.get(field)
+
+        if isinstance(value, bool):
+            metadata[key] = str(value).lower()

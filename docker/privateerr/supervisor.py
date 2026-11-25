@@ -130,7 +130,9 @@ def select_endpoint(
             except KeyError, ValueError, TypeError:
                 continue
 
-            eligible.append((item.get("id") != region, Endpoint(ip, name)))
+            catalog_region = item.get("id")
+            endpoint = Endpoint(ip, name, catalog_region if isinstance(catalog_region, str) else "")
+            eligible.append((catalog_region != region, endpoint))
 
     # Stable sorting prefers the saved region without running another latency benchmark.
     eligible.sort(key=lambda item: item[0])
