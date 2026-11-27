@@ -112,10 +112,11 @@ class ClientTests(unittest.TestCase):
 
     def test_forwarded_port_requires_consistent_fields(self):
         """Only the pinned API's explicit empty lease or a valid port list can drive recovery."""
+
         valid: tuple[tuple[dict[str, object], bool], ...] = (
             ({"port": 0, "ports": None}, False),
             ({"port": 0, "ports": []}, False),
-            ({"port": 54321, "ports": [54321]}, True),
+            ({"port": 54321, "ports": [54321, 65535]}, True),
         )
 
         for response, expected in valid:

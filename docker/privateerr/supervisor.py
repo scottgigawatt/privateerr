@@ -12,12 +12,13 @@
 #   - Uses bounded subprocesses, a monotonic clock, and interruptible shutdown.
 #
 
-"""Generate startup configuration, then monitor and repair sustained tunnel failures.
+"""Generate startup configuration and recover a failed tunnel or a missing forwarded port.
 
 Gluetun owns the VPN connection and port lease. This process invokes PIA setup,
 submits replacement connection settings through Gluetun's API, and saves them
-only after readback and health checks confirm recovery. It never recreates
-Gluetun or the applications sharing its network namespace.
+once readback and health checks confirm the new tunnel settings. Gluetun reports
+lease assignment separately. The supervisor preserves the containers sharing the
+VPN network namespace.
 """
 
 import ipaddress
@@ -206,6 +207,7 @@ class Supervisor:
 
         # Forget failed endpoints only after a healthy tunnel is observed.
         self.failed_ips: set[str] = set()
+
         # API gaps reset the observation window, but cannot replenish the switch budget.
         self.missing_since: float | None = None
         self.lease_registration: ConnectionSettings | None = None
@@ -310,7 +312,7 @@ class Supervisor:
 
         self.failed_ips.clear()
         LOG.info(
-            "Gluetun tunnel recovered; saved the matching WireGuard configuration and PIA metadata. "
+            "Gluetun is using the replacement WireGuard settings. Saved the matching files. "
             "VPN region: %s.",
             region_description(self.config.metadata_path),
         )
@@ -388,22 +390,45 @@ class Supervisor:
                 )
                 return
 
-            self.submit(stage)
+            self._submit(stage)
 
-    def submit(self, stage: Path) -> None:
-        """Retain a candidate before submission so an uncertain PUT can be reconciled."""
-        self.store.retain(stage, self.store.pending)
+    def _submit(self, stage: Path, *, expected_active: dict[str, object] | None = None) -> None:
+        """Journal the validated settings before the final forwarding checks and the API update."""
+        candidate = self.store.retain(stage, self.store.pending)
+
+        # A slow journal write may outlast the incident or an operator's settings change.
+        if expected_active is not None and not self._forwarding_still_missing(expected_active):
+            shutil.rmtree(self.store.pending)
+            return
 
         try:
-            self.client.apply(self.store.candidate_settings(stage))
+            self.client.apply(candidate)
         except APIUnavailable as error:
             self.failure("Settings update was not confirmed", error)
             LOG.info("Retained the pending candidate; checking Gluetun before retrying.")
 
-    def forwarded(self) -> bool:
-        """End a forwarding incident only when Gluetun explicitly reports an assigned lease."""
-        if not self.client.has_forwarded_port():
+    def _forwarding_still_missing(self, expected_active: dict[str, object]) -> bool:
+        """Cancel a prepared switch if Gluetun changed state or any read is inconclusive."""
+        try:
+            if (
+                self.client.get("/v1/vpn/status").get("status") != "running"
+                or not self.client.healthy()
+                or self.client.get("/v1/vpn/settings") != expected_active
+            ):
+                self.status("Forwarding conditions changed; keeping the active settings.")
+                return False
+
+            if not self.client.has_forwarded_port():
+                return True
+        except APIUnavailable as error:
+            self.failure("Forwarding recovery deferred", error)
             return False
+
+        self._record_forwarded_port()
+        return False
+
+    def _record_forwarded_port(self) -> None:
+        """Clear the incident and its switch limit after a confirmed lease assignment."""
 
         if self.lease_registration is not None:
             LOG.info("Gluetun reports a forwarded port again.")
@@ -413,10 +438,16 @@ class Supervisor:
         self.forwarding_attempts = 0
         self.forwarding_ips.clear()
         self.status("Gluetun tunnel is healthy and a forwarded port is assigned.")
-        return True
 
-    def observe_forwarding(self) -> None:
-        """On a healthy running VPN, consider only continuous, confirmed absence of a PIA lease."""
+    def _observe_forwarding(self) -> None:
+        """Register and switch endpoints only after Gluetun repeatedly confirms an empty lease."""
+        assigned = self.client.has_forwarded_port()
+
+        # A healthy lease needs no secret-bearing settings read unless it could end an incident.
+        if assigned and self.lease_registration is None:
+            self._record_forwarded_port()
+            return
+
         active = self.client.get("/v1/vpn/settings")
         provider = object_fields(active.get("provider"))
         forwarding = object_fields(provider.get("port_forwarding"))
@@ -433,7 +464,8 @@ class Supervisor:
             )
             return
 
-        if self.forwarded():
+        if assigned:
+            self._record_forwarded_port()
             return
 
         # Compare the live registration with the saved pair before trusting its region.
@@ -464,24 +496,48 @@ class Supervisor:
 
         # Allow another full acquisition window after a failed preparation or an exhausted catalog.
         self.missing_since = None
-        self.try_forwarding_alternative(active, saved)
+        self._try_forwarding_alternative(active, saved)
 
-    def try_forwarding_alternative(
+    def _try_forwarding_alternative(
         self, active: dict[str, object], saved: ConnectionSettings
     ) -> None:
         """Attempt one distinct address after verifying the current region against the catalog."""
         selection = saved["provider"]["server_selection"]
         current = selection["wireguard"]["endpoint_ip"]
-        region = assignments(self.config.metadata_path).get("PIA_REGION_ID", "unknown")
-
-        if self.config.environment.get("AUTOCONNECT") == "false":
-            region = self.config.environment["PREFERRED_REGION"]
+        saved_region = assignments(self.config.metadata_path).get("PIA_REGION_ID", "unknown")
+        pinned = self.config.environment.get("AUTOCONNECT") == "false"
+        region = self.config.environment["PREFERRED_REGION"] if pinned else saved_region
 
         if region == "unknown" or not region:
             self.status("Forwarding recovery paused; the active region is unknown.")
             return
 
-        eligible = _eligible_endpoints(self.client.catalog(), region, pinned=True, forwarding=True)
+        # Changing a deployment pin does not move an already healthy registration into that region.
+        if pinned and saved_region not in (region, "unknown", ""):
+            self.status(
+                "Forwarding recovery paused; the saved region differs from the configured pin."
+            )
+            return
+
+        catalog = self.client.catalog()
+
+        # Older metadata could name the first region sharing an IP and name. Without a matching
+        # explicit pin, even regions without forwarding support count when checking for ambiguity.
+        if not pinned or saved_region != region:
+            all_endpoints = _eligible_endpoints(catalog, region, pinned=False, forwarding=False)
+            possible_regions = {
+                endpoint.region_id
+                for endpoint in all_endpoints
+                if endpoint.ip == current and endpoint.name in selection["names"]
+            }
+
+            if possible_regions != {region}:
+                self.status(
+                    "Forwarding recovery paused; the catalog cannot uniquely confirm the active region."
+                )
+                return
+
+        eligible = _eligible_endpoints(catalog, region, pinned=True, forwarding=True)
 
         if not any(
             endpoint.ip == current and endpoint.name in selection["names"] for endpoint in eligible
@@ -491,9 +547,13 @@ class Supervisor:
             )
             return
 
-        self.forwarding_ips.add(current)
         alternative = next(
-            (endpoint for endpoint in eligible if endpoint.ip not in self.forwarding_ips), None
+            (
+                endpoint
+                for endpoint in eligible
+                if endpoint.ip != current and endpoint.ip not in self.forwarding_ips
+            ),
+            None,
         )
 
         if alternative is None:
@@ -502,7 +562,7 @@ class Supervisor:
             )
             return
 
-        self.forwarding_ips.add(alternative.ip)
+        self.forwarding_ips.update((current, alternative.ip))
         self.forwarding_attempts += 1
         LOG.info(
             "Forwarded port still missing; preparing same-region alternative %s of %s.",
@@ -511,19 +571,7 @@ class Supervisor:
         )
 
         with self.generator.generate(alternative) as stage:
-            # The operator, tunnel or lease can change while registration is in progress.
-            if (
-                self.client.get("/v1/vpn/status").get("status") != "running"
-                or not self.client.healthy()
-                or self.client.get("/v1/vpn/settings") != active
-            ):
-                self.status(
-                    "Forwarding conditions changed during registration; keeping the active settings."
-                )
-                return
-
-            if not self.forwarded():
-                self.submit(stage)
+            self._submit(stage, expected_active=active)
 
     def step(self) -> None:
         """Observe once; API failures never trigger blind regeneration."""
@@ -584,7 +632,7 @@ class Supervisor:
                     return
 
                 try:
-                    self.observe_forwarding()
+                    self._observe_forwarding()
                 except RECOVERY_ERRORS as error:
                     self.missing_since = None
                     self.failure("Forwarding recovery deferred", error)

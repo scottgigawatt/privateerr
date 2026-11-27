@@ -438,7 +438,7 @@ def main(env_file: Path | None = None, smoke: bool = False) -> None:
                 validate_privateerr_isolation(privateerr)
                 return
 
-            # The pinned API distinguishes an empty lease from denied or malformed responses.
+            # The pinned API reports an empty lease to an authorized caller and rejects an unauthenticated read.
             code, payload = request("GET", "/v1/portforward")
             assert code == "200"
             lease = json.loads(payload)

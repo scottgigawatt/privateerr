@@ -91,7 +91,7 @@ services:
       PRIVATEERR_RECOVERY_INTERVAL_SECONDS: ${PRIVATEERR_RECOVERY_INTERVAL_SECONDS}        # Seconds between health probes
       PRIVATEERR_RECOVERY_FAILURE_SECONDS: ${PRIVATEERR_RECOVERY_FAILURE_SECONDS}          # Startup grace and continuous failure threshold in seconds
       PRIVATEERR_RECOVERY_COOLDOWN_SECONDS: ${PRIVATEERR_RECOVERY_COOLDOWN_SECONDS}        # Initial retry delay in seconds; doubles up to one hour
-      PRIVATEERR_RECOVER_ON_PORT_FORWARD: ${PRIVATEERR_RECOVER_ON_PORT_FORWARD}            # true enables same-region switching for a missing PIA lease; requires automatic recovery
+      PRIVATEERR_RECOVER_ON_PORT_FORWARD: ${PRIVATEERR_RECOVER_ON_PORT_FORWARD}            # true switches servers for a missing PIA lease. Requires automatic recovery and the Gluetun WireGuard shutdown fix
       PRIVATEERR_PORT_FORWARD_FAILURE_SECONDS: ${PRIVATEERR_PORT_FORWARD_FAILURE_SECONDS}  # Seconds of confirmed lease absence before each switch attempt (1–9999)
       PRIVATEERR_GENERATION_TIMEOUT_SECONDS: ${PRIVATEERR_GENERATION_TIMEOUT_SECONDS}      # Maximum seconds for one PIA generation
 

@@ -31,23 +31,36 @@ Gluetun manages the forwarded port and qBittorrent update hook. By default Priva
 
 ## Recover a missing forwarded port
 
-Enable this option if restoring incoming connections is worth briefly interrupting all applications sharing Gluetun’s tunnel. It requires automatic recovery, a public PIA endpoint, and PIA forwarding enabled in Gluetun. Gluetun continues to obtain the lease and update qBittorrent.
+Enable this option if you rely on incoming connections. When Gluetun has a healthy tunnel but cannot obtain a forwarded port, Privateerr can try another PIA server in the same region. Switching servers can briefly interrupt every application using the tunnel.
 
-1. Set these values in your deployment’s `.env`. The example waits five minutes for a port on each registration.
+> [!WARNING]
+> Keep `PRIVATEERR_RECOVER_ON_PORT_FORWARD=false` with the example’s default Gluetun v3.41.3 image. During WireGuard shutdown, packets from established connections can leave the VPN. Before enabling server switching, use a Gluetun image that includes the [WireGuard shutdown fix](https://github.com/passteque/gluetun/pull/3510).
+
+1. Start with the running Compose example and [automatic recovery enabled](#configure-recovery). Use a [Privateerr release](https://github.com/scottgigawatt/privateerr/releases) that includes forwarded-port recovery and a shared PIA server. Dedicated IPs stay on their assigned server. Check that your `.env` uses `PIA_PF=true`, `GLUETUN_VPN_PORT_FORWARDING=on`, and `GLUETUN_VPN_PORT_FORWARDING_PROVIDER="private internet access"`.
+2. Set the following in `.env`. By default, Privateerr waits five minutes for Gluetun to obtain a port. To change the wait, set `PRIVATEERR_PORT_FORWARD_FAILURE_SECONDS` to a value from 1 to 9999. In a custom Compose file, pass the opt-in setting to Privateerr, along with the timeout if you change it.
 
     ```dotenv
-    PRIVATEERR_AUTO_RECOVER=true
-    PIA_PF=true
     PRIVATEERR_RECOVER_ON_PORT_FORWARD=true
-    PRIVATEERR_PORT_FORWARD_FAILURE_SECONDS=300
     ```
 
-2. Apply the updated Compose configuration. Custom deployments must pass both new Privateerr settings into its container.
-3. Check Privateerr’s logs. A healthy, running tunnel must repeatedly report an empty lease on the same registration. An unreadable lease, VPN transition, or change of registration restarts the observation window. If the port returns during candidate generation, Privateerr keeps the active tunnel.
+3. From the Compose directory, apply the change to Privateerr. This command uses your local image. If you also changed Gluetun’s settings or updated images, follow the [quickstart](https://github.com/scottgigawatt/privateerr/blob/main/README.md#quickstart) to apply those changes to the stack.
 
-Privateerr tries up to two distinct alternative addresses in the same forwarding-capable region. It counts a registration attempt even if generation fails. If the region cannot be confirmed, the catalog has no alternative, or the budget is exhausted, it keeps the current tunnel. Tunnel outages use the ordinary recovery path. A confirmed lease ends the incident; restarting Privateerr clears its in-memory attempt history.
+    ```sh
+    docker compose --env-file .env up --detach \
+      --no-deps --no-build --pull never privateerr
+    ```
 
-Look for `Gluetun reports a forwarded port again` and check that qBittorrent adopted it. If Gluetun has a port but qBittorrent missed the update, see [qBittorrent and the VPN connection](#qbittorrent-and-the-vpn-connection). [Issue #196](https://github.com/scottgigawatt/privateerr/issues/196) documents the original same-registration comparison.
+4. Check the service logs locally. They can contain private connection details.
+
+    ```sh
+    docker compose --env-file .env logs --tail 100 privateerr gluetun
+    ```
+
+    When Gluetun has a port, Privateerr logs `Gluetun tunnel is healthy and a forwarded port is assigned.` If a missing port returns, it also logs `Gluetun reports a forwarded port again.` In Gluetun’s log, look for `Set qBittorrent listen_port=` followed by the port and VPN interface. If the application missed the update, see [qBittorrent and the VPN connection](#qbittorrent-and-the-vpn-connection).
+
+If Privateerr logs `waiting for Gluetun to obtain a forwarded port`, it gives Gluetun the full wait on the same healthy connection. An unreadable response or a VPN transition restarts the wait. If the port returns while Privateerr prepares a replacement, the tunnel stays on its current server.
+
+Privateerr tries up to two other server addresses, even when region selection is automatic. An unsuccessful registration counts as an attempt. If Privateerr cannot confirm the region, finds no other address, or reaches the limit, it keeps the current tunnel. Check Gluetun’s forwarding errors or [choose another region](#choose-a-region) if you can use a different VPN location. A reported port clears the attempt count. Restarting Privateerr also clears it.
 
 ## Restart a healthy stack
 
@@ -89,7 +102,7 @@ Automatic selection is the default. To choose a region yourself:
 
 4. Check Privateerr's logs for `Gluetun tunnel is healthy` again.
 
-`PIA_AUTOCONNECT=true` ignores the preferred region. Environment changes alone do not replace a healthy saved configuration. During recovery, pinned selection stays within that region; automatic selection tries eligible endpoints in the current region, then other regions, without rerunning the latency benchmark. `PIA_PF=true` restricts selection to forwarding-capable regions. If no unused endpoint remains, Privateerr tries fresh registration with the permitted current endpoint. Dedicated IPs retain PIA's dedicated endpoint.
+`PIA_AUTOCONNECT=true` ignores the preferred region. Environment changes alone do not replace a healthy saved configuration. During recovery from a tunnel outage, pinned selection stays within that region; automatic selection tries eligible endpoints in the current region, then other regions, without rerunning the latency benchmark. `PIA_PF=true` restricts selection to forwarding-capable regions. If no unused endpoint remains, Privateerr tries fresh registration with the permitted current endpoint. Dedicated IPs retain PIA's dedicated endpoint.
 
 ## Read diagnostics and check storage
 
@@ -117,7 +130,7 @@ Startup checks create, write, replace, and remove disposable files beside the VP
 
 The region in Privateerr’s log is the VPN destination advertised by PIA. PIA can reuse a server name across regions. When generating metadata, Privateerr matches the WireGuard endpoint IP and the registered server name. If several regions advertise the same pair, Privateerr uses the known selection when available. If the region is still ambiguous, the log shows `unknown` and the configuration remains usable.
 
-When Privateerr reuses saved files, it reports their saved region. A fresh registration updates the label. To confirm a tunnel recovery, look for `Gluetun tunnel recovered` after Privateerr verifies the active settings and saves them.
+When Privateerr reuses saved files, it reports their saved region. A fresh registration updates the label. Look for `Gluetun is using the replacement WireGuard settings.` after Privateerr verifies the tunnel and saves the matching files. Gluetun reports its forwarded port separately.
 
 ## Configure timing
 
@@ -130,10 +143,11 @@ Set values in `.env` using `example.env`. The supplied Compose example enables r
 | `PRIVATEERR_GLUETUN_HEALTH_URL` | `http://gluetun:9999` | Tunnel health |
 | `PRIVATEERR_RECOVERY_INTERVAL_SECONDS` | `30` | Seconds between checks |
 | `PRIVATEERR_RECOVERY_FAILURE_SECONDS` | `120` | Startup grace and continuous failure threshold, in seconds |
-| `PRIVATEERR_RECOVERY_COOLDOWN_SECONDS` | `300` | Initial retry delay; doubles on failures to one hour |
+| `PRIVATEERR_RECOVERY_COOLDOWN_SECONDS` | `300` | Initial retry delay for a tunnel outage, doubling on failures to one hour |
+| `PRIVATEERR_PORT_FORWARD_FAILURE_SECONDS` | `300` | Seconds without a port before [forwarding recovery](#recover-a-missing-forwarded-port) can try another server |
 | `PRIVATEERR_GENERATION_TIMEOUT_SECONDS` | `180` | Generation deadline, in seconds |
 
-Monitoring begins after the grace period. Continuous failure must then reach the threshold measured from an unhealthy check. Gluetun's detection and retries add delay, so recovery can take several minutes. Healthy checks reset the timer; a manually stopped VPN pauses recovery. Restarting Privateerr resets process timers but does not repair storage or force a fresh registration.
+Monitoring begins after the grace period. For a tunnel outage, Privateerr measures the threshold from the first unhealthy check. Gluetun's detection and retries add delay, so recovery can take several minutes. A healthy tunnel resets the outage timer. Manually stopping the VPN pauses both types of recovery. Restarting Privateerr resets process timers but does not repair storage or force a fresh registration.
 
 ## Compatibility and limits
 

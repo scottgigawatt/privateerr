@@ -236,8 +236,8 @@ class Store:
         """Validate a pair in a staging, pending, or interrupted-save directory."""
         return connection_settings(directory / "wg0.conf", directory / "privateerr.env")
 
-    def retain(self, source: Path, destination: Path) -> None:
-        """Mark a candidate ready only after copying and validating both files."""
+    def retain(self, source: Path, destination: Path) -> ConnectionSettings:
+        """Copy both files and return the validated settings covered by the ready marker."""
 
         with filesystem_operation("retain recovery candidate", destination):
             # Remove any old ready marker before replacing the candidate it described.
@@ -251,6 +251,7 @@ class Store:
             settings = self.candidate_settings(destination)
             (destination / "settings.json").write_text(json.dumps(settings))
             (destination / "ready").touch()
+            return settings
 
     def publish(self, source: Path) -> None:
         """Replace each complete file and retain source copies until both replacements finish.

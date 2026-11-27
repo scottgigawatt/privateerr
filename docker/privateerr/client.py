@@ -191,7 +191,15 @@ class Client:
             raise APIUnavailable("invalid response") from error
 
     def has_forwarded_port(self) -> bool:
-        """Read the pinned Gluetun lease response, rejecting incomplete or contradictory evidence."""
+        """Check whether Gluetun reports an assigned forwarded port.
+
+        Returns:
+            True for an assigned port, or False when Gluetun explicitly reports an empty lease.
+
+        Raises:
+            APIUnavailable: If the request fails or the lease fields are invalid or inconsistent.
+        """
+
         response = self.get("/v1/portforward")
         port = response.get("port")
         ports = response.get("ports")
@@ -203,7 +211,9 @@ class Client:
         if ports is None and port == 0:
             return False
 
-        if not is_list(ports) or any(type(p) is not int or not 1 <= p <= 65535 for p in ports):
+        if not is_list(ports) or any(
+            type(number) is not int or not 1 <= number <= 65535 for number in ports
+        ):
             raise APIUnavailable("invalid response")
 
         if port != (ports[0] if ports else 0):
