@@ -39,11 +39,13 @@ Long-running startup first installs the two scripts packaged under `${PRIVATEERR
 
 Startup then completes any interrupted VPN file publication. With recovery enabled, an existing valid configuration pair can be reused; otherwise Privateerr generates and saves one. A disposable create/write/replace/delete probe checks recovery storage. When a valid pair is reused, probe failure warns without preventing Gluetun startup; when generation is required, it fails with a specific diagnostic. Existing files and permissions are not changed by the probe. The startup marker, `/healthcheck/privateerr.ready` by default, then allows Gluetun to start. `PRIVATEERR_HEALTHCHECK_MARKER` can change its path. It confirms valid VPN files; long-running startup also guarantees installed scripts, even with recovery disabled. It does not prove tunnel health, avoiding a circular startup dependency.
 
-Recovery begins after the startup grace period. Every probe checks control API access, intentional stop state, pending updates, and tunnel health before considering another registration. A sustained failure must exceed the configured threshold and retry cooldown. Healthy probes reset the failure timer and retry delay.
+Recovery begins after the startup grace period. The supervisor checks Gluetun’s control API and VPN status before considering another registration. It reconciles pending updates before acting on tunnel health. A tunnel outage must last at least the configured threshold, and the retry cooldown must have elapsed. A healthy check resets the tunnel outage timer and retry delay.
+
+With [forwarding recovery enabled](../../automatic-recovery.md#recover-a-missing-forwarded-port), a running, healthy tunnel has a separate timer. It starts when Gluetun reports an empty lease and its active WireGuard settings match the saved registration. An unreadable response, VPN transition, or registration change starts a fresh wait. Before applying a replacement, Privateerr checks the VPN status, tunnel health, active settings, and lease again. Both recovery paths retain and confirm updates in the same way.
 
 ## Confirm updates before saving
 
-A settings update can succeed even if its HTTP response is lost. Privateerr therefore retains a complete candidate before submitting it, then reads back Gluetun's active settings. Matching connection fields and a healthy tunnel are both required before replacing saved configuration.
+A settings update can succeed even if its HTTP response is lost. Privateerr therefore retains a complete candidate before submitting it, then reads back Gluetun's active settings. Matching connection fields and a healthy tunnel are both required before replacing saved configuration. Privateerr saves that confirmed pair even if Gluetun is still obtaining a forwarded port.
 
 All paths below except the startup marker are relative to the shared configuration directory, `/gluetun/wireguard` in the example deployment.
 
@@ -91,6 +93,6 @@ Privateerr runs as UID 0 with a restrictive umask. Permission diagnosis does not
 
 ## Respect recovery limits
 
-Pinned deployments stay within the selected region. Automatic selection prefers untried endpoints in the saved region, then other eligible regions. Port-forwarding deployments require eligible regions; dedicated-IP selection stays with upstream PIA setup.
+For a tunnel outage, pinned deployments stay within their selected region. Automatic selection prefers untried endpoints in the saved region, then other eligible regions. When forwarding alone fails, the supervisor can try only distinct endpoints within the confirmed active region. It tracks attempted addresses in memory until Gluetun reports a port or Privateerr restarts. Dedicated IPs retain their assigned endpoint.
 
-An unavailable control API, intentionally stopped VPN, or forwarding-only failure does not trigger blind regeneration. Privateerr does not restart containers or repair Docker. Gluetun remains responsible for the port lease and qBittorrent update hooks. See the [recovery sequence and limitations](../../automatic-recovery.md#understand-the-recovery-sequence) for operator-facing behavior.
+If the control API is unavailable or the operator has stopped the VPN, Privateerr waits. Privateerr does not restart containers or repair Docker. Gluetun remains responsible for the port lease and qBittorrent update hooks. See the [recovery sequence and limitations](../../automatic-recovery.md#understand-the-recovery-sequence) for operator-facing behavior.

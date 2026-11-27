@@ -29,7 +29,7 @@ from pathlib import Path
 from typing import Protocol
 
 from privateerr.data import object_fields
-from privateerr.settings import ConnectionSettings
+from privateerr.settings import ConnectionSettings, connection_settings, contains_settings
 
 ROOT = Path(__file__).resolve().parents[2]
 IMAGE = os.environ.get("PRIVATEERR_TEST_IMAGE", "privateerr:local")
@@ -437,6 +437,23 @@ def main(env_file: Path | None = None, smoke: bool = False) -> None:
                 live_recovery(gluetun, probe, privateerr, qbittorrent, config, request)
                 validate_privateerr_isolation(privateerr)
                 return
+
+            # The pinned API reports an empty lease to an authorized caller and rejects an unauthenticated read.
+            code, payload = request("GET", "/v1/portforward")
+            assert code == "200"
+            lease = json.loads(payload)
+            assert type(lease["port"]) is int and lease["port"] == 0
+            assert lease["ports"] in (None, [])
+            assert request("GET", "/v1/portforward", authenticate=False)[0] == "401"
+
+            # Confirm the initial file-based registration can satisfy the supervisor's live identity check.
+            code, payload = request("GET", "/v1/vpn/settings")
+            assert code == "200"
+            saved = connection_settings(wireguard / "wg0.conf", wireguard / "privateerr.env")
+            assert contains_settings(json.loads(payload), saved)
+            print(
+                "PASS: pinned Gluetun exposes the saved registration and an explicit empty lease."
+            )
 
             # Exercise actual application preferences without needing a PIA account in CI.
             hook = "/gluetun/scripts/qbittorrent-port-forwarding.sh"

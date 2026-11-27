@@ -110,6 +110,40 @@ class ClientTests(unittest.TestCase):
             )
         )
 
+    def test_forwarded_port_requires_consistent_fields(self):
+        """Only the pinned API's explicit empty lease or a valid port list can drive recovery."""
+
+        valid: tuple[tuple[dict[str, object], bool], ...] = (
+            ({"port": 0, "ports": None}, False),
+            ({"port": 0, "ports": []}, False),
+            ({"port": 54321, "ports": [54321, 65535]}, True),
+        )
+
+        for response, expected in valid:
+            with (
+                self.subTest(response=response),
+                patch.object(self.client, "get", return_value=response),
+            ):
+                self.assertIs(self.client.has_forwarded_port(), expected)
+
+        invalid: tuple[dict[str, object], ...] = (
+            {},
+            {"port": 0},
+            {"port": False, "ports": []},
+            {"port": 0, "ports": [123]},
+            {"port": 1, "ports": [True]},
+            {"port": 0, "ports": "none"},
+            {"port": 65536, "ports": [65536]},
+        )
+
+        for response in invalid:
+            with (
+                self.subTest(response=response),
+                patch.object(self.client, "get", return_value=response),
+                self.assertRaises(APIUnavailable),
+            ):
+                self.client.has_forwarded_port()
+
     def test_json_and_authentication_stay_on_control_requests(self):
         """Check JSON transport and keep API credentials off health requests."""
 
