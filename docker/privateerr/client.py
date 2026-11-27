@@ -25,7 +25,7 @@ from urllib.error import HTTPError, URLError
 from urllib.request import HTTPRedirectHandler, ProxyHandler, Request, build_opener
 
 from .config import Config
-from .data import object_fields
+from .data import is_list, object_fields
 
 
 class APIUnavailable(Exception):
@@ -189,6 +189,27 @@ class Client:
             return object_fields(result)
         except (ValueError, UnicodeError) as error:
             raise APIUnavailable("invalid response") from error
+
+    def has_forwarded_port(self) -> bool:
+        """Read the pinned Gluetun lease response, rejecting incomplete or contradictory evidence."""
+        response = self.get("/v1/portforward")
+        port = response.get("port")
+        ports = response.get("ports")
+
+        # The pinned API includes both fields. Its empty slice can encode as null or [].
+        if type(port) is not int or "ports" not in response:
+            raise APIUnavailable("invalid response")
+
+        if ports is None and port == 0:
+            return False
+
+        if not is_list(ports) or any(type(p) is not int or not 1 <= p <= 65535 for p in ports):
+            raise APIUnavailable("invalid response")
+
+        if port != (ports[0] if ports else 0):
+            raise APIUnavailable("invalid response")
+
+        return bool(ports)
 
     def apply(self, settings: Mapping[str, object]) -> None:
         """Submit connection fields; the supervisor separately verifies settings and health.

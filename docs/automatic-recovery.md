@@ -27,7 +27,27 @@ After startup and a grace period, the Python supervisor inside the Privateerr co
 
 A generation failure leaves saved files unchanged. If an API result is uncertain, the supervisor checks Gluetun before generating more settings. Saved recovery state allows it to finish an interrupted update after Privateerr restarts. [Supervisor architecture](development/privateerr/architecture.md) explains that process.
 
-Gluetun manages the forwarded port and qBittorrent update hook. If the tunnel is healthy but Gluetun has no forwarded port, Privateerr keeps the current registration. [Issue #196 tracks recovery from a missing forwarded port](https://github.com/scottgigawatt/privateerr/issues/196). There is no extra supervisor container or production Docker socket.
+Gluetun manages the forwarded port and qBittorrent update hook. By default Privateerr keeps a healthy tunnel when its port is missing. Operators who depend on incoming connections can [enable forwarding recovery](#recover-a-missing-forwarded-port). There is no extra supervisor container or production Docker socket.
+
+## Recover a missing forwarded port
+
+Enable this option if restoring incoming connections is worth briefly interrupting all applications sharing Gluetun’s tunnel. It requires automatic recovery, a public PIA endpoint, and PIA forwarding enabled in Gluetun. Gluetun continues to obtain the lease and update qBittorrent.
+
+1. Set these values in your deployment’s `.env`. The example waits five minutes for a port on each registration.
+
+    ```dotenv
+    PRIVATEERR_AUTO_RECOVER=true
+    PIA_PF=true
+    PRIVATEERR_RECOVER_ON_PORT_FORWARD=true
+    PRIVATEERR_PORT_FORWARD_FAILURE_SECONDS=300
+    ```
+
+2. Apply the updated Compose configuration. Custom deployments must pass both new Privateerr settings into its container.
+3. Check Privateerr’s logs. A healthy, running tunnel must repeatedly report an empty lease on the same registration. An unreadable lease, VPN transition, or change of registration restarts the observation window. If the port returns during candidate generation, Privateerr keeps the active tunnel.
+
+Privateerr tries up to two distinct alternative addresses in the same forwarding-capable region. It counts a registration attempt even if generation fails. If the region cannot be confirmed, the catalog has no alternative, or the budget is exhausted, it keeps the current tunnel. Tunnel outages use the ordinary recovery path. A confirmed lease ends the incident; restarting Privateerr clears its in-memory attempt history.
+
+Look for `Gluetun reports a forwarded port again` and check that qBittorrent adopted it. If Gluetun has a port but qBittorrent missed the update, see [qBittorrent and the VPN connection](#qbittorrent-and-the-vpn-connection). [Issue #196](https://github.com/scottgigawatt/privateerr/issues/196) documents the original same-registration comparison.
 
 ## Restart a healthy stack
 

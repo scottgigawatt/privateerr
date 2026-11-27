@@ -150,7 +150,10 @@ class ComposeTests(unittest.TestCase):
                 "net.ipv6.conf.default.disable_ipv6": "1",
             },
         )
-        self.assertEqual(_mapping(privateerr["environment"])["PRIVATEERR_AUTO_RECOVER"], "true")
+        privateerr_env = _mapping(privateerr["environment"])
+        self.assertEqual(privateerr_env["PRIVATEERR_AUTO_RECOVER"], "true")
+        self.assertEqual(privateerr_env["PRIVATEERR_RECOVER_ON_PORT_FORWARD"], "false")
+        self.assertEqual(privateerr_env["PRIVATEERR_PORT_FORWARD_FAILURE_SECONDS"], "300")
         gluetun = services["gluetun"]
         self.assertEqual(_mapping(gluetun["environment"])["PRIVATEERR_AUTO_RECOVER"], "true")
         self.assertEqual(_mapping(gluetun["environment"])["QBITTORRENT_PORT_SYNC"], "true")

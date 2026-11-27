@@ -29,6 +29,7 @@ import signal
 import time
 from collections.abc import Callable
 from enum import Enum, auto
+from pathlib import Path
 from types import FrameType
 
 from .client import APIUnavailable, CatalogUnavailable, Client
@@ -38,9 +39,28 @@ from .diagnostics import FileOperationError, check_recovery_directory, filesyste
 from .generation import Endpoint, GenerationFailed, Generator, reap_children
 from .log import add_file_log, configure_logging
 from .scripts import install_gluetun_scripts
-from .settings import InvalidSettings, Store, assignments, contains_settings, region_description
+from .settings import (
+    ConnectionSettings,
+    InvalidSettings,
+    Store,
+    assignments,
+    contains_settings,
+    region_description,
+)
 
 LOG = logging.getLogger("privateerr")
+
+# Both recovery paths can retry these failures and report them through redacted diagnostics.
+RECOVERY_ERRORS = (
+    APIUnavailable,
+    GenerationFailed,
+    InvalidSettings,
+    OSError,
+    KeyError,
+    TypeError,
+    ValueError,
+)
+MAX_FORWARDING_ATTEMPTS = 2
 
 
 class Shutdown(BaseException):
@@ -60,32 +80,11 @@ class Pending(Enum):
     UNHEALTHY = auto()
 
 
-def select_endpoint(
-    catalog: dict[str, object],
-    region: str,
-    current: str,
-    failed: set[str],
-    *,
-    pinned: bool,
-    forwarding: bool,
-) -> Endpoint:
-    """Prefer untried eligible endpoints in the saved region, then the permitted current endpoint.
-
-    Args:
-        catalog: Validated outer PIA catalog object; individual regions are checked here.
-        region: Saved region to prefer, or the configured region when selection is pinned.
-        current: Active endpoint used only if no untried eligible server remains.
-        failed: Addresses already attempted during this outage.
-        pinned: Restrict selection to the requested region.
-        forwarding: Require a region that advertises port-forwarding support.
-
-    Returns:
-        The selected IPv4 address and its matching PIA server name.
-
-    Raises:
-        GenerationFailed: If no permitted endpoint is available.
-    """
-    eligible: list[tuple[bool, Endpoint]] = []
+def _eligible_endpoints(
+    catalog: dict[str, object], region: str, *, pinned: bool, forwarding: bool
+) -> list[Endpoint]:
+    """Validate advertised servers and order eligible endpoints by region preference."""
+    eligible: list[Endpoint] = []
     regions = catalog["regions"]
 
     if not is_list(regions):
@@ -132,18 +131,48 @@ def select_endpoint(
 
             catalog_region = item.get("id")
             endpoint = Endpoint(ip, name, catalog_region if isinstance(catalog_region, str) else "")
-            eligible.append((catalog_region != region, endpoint))
+            eligible.append(endpoint)
 
     # Stable sorting prefers the saved region without running another latency benchmark.
-    eligible.sort(key=lambda item: item[0])
+    eligible.sort(key=lambda endpoint: endpoint.region_id != region)
+
+    return eligible
+
+
+def select_endpoint(
+    catalog: dict[str, object],
+    region: str,
+    current: str,
+    failed: set[str],
+    *,
+    pinned: bool,
+    forwarding: bool,
+) -> Endpoint:
+    """Prefer untried eligible endpoints in the saved region, then the permitted current endpoint.
+
+    Args:
+        catalog: Validated outer PIA catalog object; individual regions are checked here.
+        region: Saved region to prefer, or the configured region when selection is pinned.
+        current: Active endpoint used only if no untried eligible server remains.
+        failed: Addresses already attempted during this outage.
+        pinned: Restrict selection to the requested region.
+        forwarding: Require a region that advertises port-forwarding support.
+
+    Returns:
+        The selected IPv4 address and its matching PIA server name.
+
+    Raises:
+        GenerationFailed: If no permitted endpoint is available.
+    """
+    eligible = _eligible_endpoints(catalog, region, pinned=pinned, forwarding=forwarding)
 
     # Try addresses not yet associated with this outage before reusing the current endpoint.
-    for _, endpoint in eligible:
+    for endpoint in eligible:
         if endpoint.ip not in failed:
             return endpoint
 
     # Fresh credentials can repair a stale registration even when no alternative server remains.
-    for _, endpoint in eligible:
+    for endpoint in eligible:
         if endpoint.ip == current:
             return endpoint
 
@@ -177,6 +206,11 @@ class Supervisor:
 
         # Forget failed endpoints only after a healthy tunnel is observed.
         self.failed_ips: set[str] = set()
+        # API gaps reset the observation window, but cannot replenish the switch budget.
+        self.missing_since: float | None = None
+        self.lease_registration: ConnectionSettings | None = None
+        self.forwarding_attempts = 0
+        self.forwarding_ips: set[str] = set()
         self.last_message = ""
 
     def failure(self, operation: str, error: Exception) -> None:
@@ -282,7 +316,7 @@ class Supervisor:
         )
 
         # Port leasing belongs to Gluetun; a missing lease does not invalidate a healthy tunnel.
-        if self.config.environment.get("PIA_PF") == "true":
+        if self.config.environment.get("PIA_PF") == "true" and not self.config.recover_forwarding:
             try:
                 port = self.client.get("/v1/portforward").get("port", 0)
                 assigned = isinstance(port, int) and port > 0
@@ -354,14 +388,142 @@ class Supervisor:
                 )
                 return
 
-            # Retain the candidate before PUT so startup can check an interrupted request.
-            self.store.retain(stage, self.store.pending)
+            self.submit(stage)
 
-            try:
-                self.client.apply(self.store.candidate_settings(stage))
-            except APIUnavailable as error:
-                self.failure("Settings update was not confirmed", error)
-                LOG.info("Retained the pending candidate; checking Gluetun before retrying.")
+    def submit(self, stage: Path) -> None:
+        """Retain a candidate before submission so an uncertain PUT can be reconciled."""
+        self.store.retain(stage, self.store.pending)
+
+        try:
+            self.client.apply(self.store.candidate_settings(stage))
+        except APIUnavailable as error:
+            self.failure("Settings update was not confirmed", error)
+            LOG.info("Retained the pending candidate; checking Gluetun before retrying.")
+
+    def forwarded(self) -> bool:
+        """End a forwarding incident only when Gluetun explicitly reports an assigned lease."""
+        if not self.client.has_forwarded_port():
+            return False
+
+        if self.lease_registration is not None:
+            LOG.info("Gluetun reports a forwarded port again.")
+
+        self.lease_registration = None
+        self.missing_since = None
+        self.forwarding_attempts = 0
+        self.forwarding_ips.clear()
+        self.status("Gluetun tunnel is healthy and a forwarded port is assigned.")
+        return True
+
+    def observe_forwarding(self) -> None:
+        """On a healthy running VPN, consider only continuous, confirmed absence of a PIA lease."""
+        active = self.client.get("/v1/vpn/settings")
+        provider = object_fields(active.get("provider"))
+        forwarding = object_fields(provider.get("port_forwarding"))
+
+        if (
+            active.get("type") != "wireguard"
+            or provider.get("name") != "custom"
+            or forwarding.get("enabled") is not True
+            or forwarding.get("provider") != "private internet access"
+        ):
+            self.missing_since = None
+            self.status(
+                "Forwarding recovery paused; Gluetun must use custom WireGuard and PIA forwarding."
+            )
+            return
+
+        if self.forwarded():
+            return
+
+        # Compare the live registration with the saved pair before trusting its region.
+        saved = self.store.saved_settings()
+
+        if not contains_settings(active, saved):
+            self.missing_since = None
+            self.status(
+                "Forwarding recovery paused; active VPN settings differ from the saved registration."
+            )
+            return
+
+        now = self.clock()
+
+        if self.missing_since is None or self.lease_registration != saved:
+            self.missing_since = now
+            self.lease_registration = saved
+
+        if self.forwarding_attempts >= MAX_FORWARDING_ATTEMPTS:
+            self.status(
+                f"Forwarding recovery reached the limit of {MAX_FORWARDING_ATTEMPTS} alternatives; keeping the current tunnel."
+            )
+            return
+
+        if now - self.missing_since < self.config.forwarding_failure_seconds:
+            self.status("Tunnel is healthy; waiting for Gluetun to obtain a forwarded port.")
+            return
+
+        # Allow another full acquisition window after a failed preparation or an exhausted catalog.
+        self.missing_since = None
+        self.try_forwarding_alternative(active, saved)
+
+    def try_forwarding_alternative(
+        self, active: dict[str, object], saved: ConnectionSettings
+    ) -> None:
+        """Attempt one distinct address after verifying the current region against the catalog."""
+        selection = saved["provider"]["server_selection"]
+        current = selection["wireguard"]["endpoint_ip"]
+        region = assignments(self.config.metadata_path).get("PIA_REGION_ID", "unknown")
+
+        if self.config.environment.get("AUTOCONNECT") == "false":
+            region = self.config.environment["PREFERRED_REGION"]
+
+        if region == "unknown" or not region:
+            self.status("Forwarding recovery paused; the active region is unknown.")
+            return
+
+        eligible = _eligible_endpoints(self.client.catalog(), region, pinned=True, forwarding=True)
+
+        if not any(
+            endpoint.ip == current and endpoint.name in selection["names"] for endpoint in eligible
+        ):
+            self.status(
+                "Forwarding recovery paused; the catalog cannot confirm the active endpoint in this region."
+            )
+            return
+
+        self.forwarding_ips.add(current)
+        alternative = next(
+            (endpoint for endpoint in eligible if endpoint.ip not in self.forwarding_ips), None
+        )
+
+        if alternative is None:
+            self.status(
+                "No untried forwarding endpoint in this region; keeping the current tunnel."
+            )
+            return
+
+        self.forwarding_ips.add(alternative.ip)
+        self.forwarding_attempts += 1
+        LOG.info(
+            "Forwarded port still missing; preparing same-region alternative %s of %s.",
+            self.forwarding_attempts,
+            MAX_FORWARDING_ATTEMPTS,
+        )
+
+        with self.generator.generate(alternative) as stage:
+            # The operator, tunnel or lease can change while registration is in progress.
+            if (
+                self.client.get("/v1/vpn/status").get("status") != "running"
+                or not self.client.healthy()
+                or self.client.get("/v1/vpn/settings") != active
+            ):
+                self.status(
+                    "Forwarding conditions changed during registration; keeping the active settings."
+                )
+                return
+
+            if not self.forwarded():
+                self.submit(stage)
 
     def step(self) -> None:
         """Observe once; API failures never trigger blind regeneration."""
@@ -372,11 +534,15 @@ class Supervisor:
         try:
             status = self.client.get("/v1/vpn/status").get("status")
         except APIUnavailable as error:
+            self.missing_since = None
             self.failure("Cannot access Gluetun control API", error)
             self.failed_since = None
             return
 
         # Respect intentional stops and let Gluetun finish transitions before intervening.
+        if status != "running":
+            self.missing_since = None
+
         if status == "stopped":
             self.status("Gluetun VPN is stopped; automatic recovery is paused.")
             return
@@ -394,16 +560,41 @@ class Supervisor:
             return
 
         # Defer new work if settings cannot be checked; a known unhealthy tunnel may need a retry.
-        if self.resolve_pending() is Pending.UNAVAILABLE:
+        pending = self.resolve_pending()
+
+        if pending is Pending.UNAVAILABLE:
+            self.missing_since = None
             return
 
         # Successful health probes reset the outage history and the growing retry delay.
         if self.client.healthy():
-            self.status("Gluetun tunnel is healthy.")
             self.failed_since = None
             self.delay = self.config.cooldown
             self.failed_ips.clear()
+
+            if (
+                self.config.recover_forwarding
+                and status == "running"
+                and pending is Pending.RESOLVED
+            ):
+                token = self.config.environment.get("DIP_TOKEN", "no")
+
+                if token and not token.startswith(("n", "N")):
+                    self.status("Forwarding recovery paused for the dedicated IP.")
+                    return
+
+                try:
+                    self.observe_forwarding()
+                except RECOVERY_ERRORS as error:
+                    self.missing_since = None
+                    self.failure("Forwarding recovery deferred", error)
+            else:
+                self.missing_since = None
+                self.status("Gluetun tunnel is healthy.")
+
             return
+
+        self.missing_since = None
 
         # Require a sustained outage and an expired cooldown before requesting another registration.
         now = self.clock()
@@ -420,15 +611,7 @@ class Supervisor:
 
         try:
             self.recover()
-        except (
-            APIUnavailable,
-            GenerationFailed,
-            InvalidSettings,
-            OSError,
-            KeyError,
-            TypeError,
-            ValueError,
-        ) as error:
+        except RECOVERY_ERRORS as error:
             self.failure("Recovery preparation failed", error)
             LOG.warning(
                 "Saved configuration retained; next recovery attempt in %s seconds.", self.delay

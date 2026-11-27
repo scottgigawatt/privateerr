@@ -29,6 +29,8 @@ class RecoveryOptions(TypedDict, total=False):
     interval: int
     failure_seconds: int
     cooldown: int
+    recover_forwarding: bool
+    forwarding_failure_seconds: int
 
 
 class ConfigurationError(ValueError):
@@ -58,6 +60,8 @@ class Config:
     health_url: str = "http://gluetun:9999"
     api_key: str = field(default="", repr=False)
     catalog_url: str = "https://serverlist.piaservers.net/vpninfo/servers/v6"
+    recover_forwarding: bool = False
+    forwarding_failure_seconds: int = 300
 
     @property
     def one_shot(self) -> bool:
@@ -156,6 +160,22 @@ class Config:
             if config_path.parent.resolve() != metadata_path.parent.resolve():
                 raise ConfigurationError(
                     "Recovery requires the configuration and metadata in the same mounted directory."
+                )
+
+            forwarding = value("PRIVATEERR_RECOVER_ON_PORT_FORWARD", "false")
+
+            if forwarding not in ("true", "false"):
+                raise ConfigurationError(
+                    "PRIVATEERR_RECOVER_ON_PORT_FORWARD must be true or false."
+                )
+
+            if forwarding == "true":
+                if env.get("PIA_PF") != "true":
+                    raise ConfigurationError("Forwarding recovery requires PIA_PF=true.")
+
+                options["recover_forwarding"] = True
+                options["forwarding_failure_seconds"] = seconds(
+                    "PRIVATEERR_PORT_FORWARD_FAILURE_SECONDS", "300"
                 )
 
             options["api_key"] = key

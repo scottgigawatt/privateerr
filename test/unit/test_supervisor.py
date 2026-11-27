@@ -122,6 +122,27 @@ class ConfigTests(unittest.TestCase):
             ).one_shot
         )
 
+    def test_forwarding_recovery_requires_explicit_settings(self):
+        """Unused forwarding timing remains compatible with existing deployments."""
+        env = {
+            "PRIVATEERR_AUTO_RECOVER": "true",
+            "PRIVATEERR_GLUETUN_API_KEY": "a" * 32,
+            "PRIVATEERR_PORT_FORWARD_FAILURE_SECONDS": "bad",
+        }
+        self.assertFalse(Config.from_environment(env).recover_forwarding)
+        env["PRIVATEERR_RECOVER_ON_PORT_FORWARD"] = "true"
+
+        with self.assertRaisesRegex(ConfigurationError, "PIA_PF"):
+            Config.from_environment(env)
+
+        env["PIA_PF"] = "true"
+
+        with self.assertRaisesRegex(ConfigurationError, "SECONDS"):
+            Config.from_environment(env)
+
+        del env["PRIVATEERR_PORT_FORWARD_FAILURE_SECONDS"]
+        self.assertEqual(Config.from_environment(env).forwarding_failure_seconds, 300)
+
     def test_generation_validation_preserves_literal_credentials(self):
         """Accept upstream username case and literal password characters without normalization."""
 
@@ -587,6 +608,174 @@ class RecoveryTests(unittest.TestCase):
             select_endpoint(
                 catalog(), "missing", "198.51.100.10", failed, pinned=True, forwarding=True
             )
+
+    def enable_forwarding_recovery(self, alternatives: tuple[int, ...] = (11, 12, 13)) -> None:
+        """Expose distinct addresses with shared names in a single eligible region."""
+        self.supervisor.config = replace(
+            self.config, recover_forwarding=True, forwarding_failure_seconds=5
+        )
+        self.provider["port_forwarding"] = {"enabled": True, "provider": "private internet access"}
+        self.client.healthy.return_value = True
+        self.client.has_forwarded_port.return_value = False
+        self.client.catalog.return_value = {
+            "regions": [
+                {
+                    "id": region,
+                    "port_forward": True,
+                    "servers": {
+                        "wg": [
+                            {
+                                "ip": f"198.51.100.{n}",
+                                "cn": "example-one" if n == 10 else "example-two",
+                            }
+                            for n in addresses
+                        ]
+                    },
+                }
+                for region, addresses in (("elsewhere", (20,)), ("ca", (10, *alternatives)))
+            ]
+        }
+
+    def test_forwarding_switch_and_uncertain_update(self):
+        """A healthy tunnel with a sustained empty lease can switch once and reconcile a lost reply."""
+        self.enable_forwarding_recovery()
+        self.client.apply.side_effect = APIUnavailable("request timed out")
+        self.supervisor.step()
+        self.now = 4
+        self.supervisor.step()
+        self.generator.generate.assert_not_called()
+        self.now = 5
+        self.supervisor.step()
+        self.generator.generate.assert_called_once_with(
+            Endpoint("198.51.100.11", "example-two", "ca")
+        )
+        self.client.apply.assert_called_once_with(self.candidate)
+        self.assertEqual(self.store.saved_settings(), self.original)
+        self.assertTrue(self.store.pending.exists())
+
+        # Matching readback publishes the applied registration before its new lease arrives.
+        self.active = {
+            **self.active,
+            **self.candidate,
+            "provider": {**self.provider, **self.candidate["provider"]},
+        }
+        self.now = 20
+        self.supervisor.step()
+        self.assertFalse(self.store.pending.exists())
+        self.assertEqual(self.store.saved_settings(), self.candidate)
+        self.client.has_forwarded_port.return_value = True
+        self.now = 25
+        with self.assertLogs("privateerr", level="INFO") as captured:
+            self.supervisor.step()
+        self.assertIn("forwarded port again", " ".join(captured.output))
+        self.assertEqual(self.supervisor.forwarding_attempts, 0)
+        self.client.apply.assert_called_once()
+
+    def test_forwarding_rechecks_before_submit(self):
+        """A lease arriving during generation cancels the switch and clears the incident."""
+        self.enable_forwarding_recovery()
+        self.client.has_forwarded_port.side_effect = [False, False, True]
+        self.supervisor.step()
+        self.now = 5
+        self.supervisor.step()
+        self.generator.generate.assert_called_once()
+        self.client.apply.assert_not_called()
+        self.assertFalse(self.store.pending.exists())
+        self.assertEqual(self.supervisor.forwarding_attempts, 0)
+
+    def test_operator_change_during_generation_cancels_forwarding_switch(self):
+        """An independently changed Gluetun configuration wins over a prepared replacement."""
+        self.enable_forwarding_recovery()
+        self.supervisor.step()
+        self.now = 5
+        self.client.get.side_effect = [
+            {"status": "running"},
+            self.active,
+            {"status": "running"},
+            {**self.active, "provider": {"name": "other"}},
+        ]
+        self.supervisor.step()
+        self.generator.generate.assert_called_once()
+        self.client.apply.assert_not_called()
+        self.assertFalse(self.store.pending.exists())
+
+    def test_forwarding_opt_in_preserves_tunnel_outage_recovery(self):
+        """An unhealthy tunnel uses the original recovery threshold without waiting for a lease."""
+        self.enable_forwarding_recovery()
+        self.client.healthy.return_value = False
+        self.supervisor.step()
+        self.now = self.config.failure_seconds
+        self.supervisor.step()
+        self.client.has_forwarded_port.assert_not_called()
+        self.client.apply.assert_called_once_with(self.candidate)
+
+    def test_forwarding_requires_continuous_observations(self):
+        """A denied lease read, operator stop, and unhealthy tunnel each break the observation window."""
+        self.enable_forwarding_recovery()
+        self.supervisor.step()
+        self.now = 5
+        self.client.has_forwarded_port.side_effect = APIUnavailable("HTTP response rejected", 403)
+        self.supervisor.step()
+        self.client.has_forwarded_port.side_effect = None
+        self.now = 10
+        self.supervisor.step()
+        self.now = 15
+        self.api_status = "stopped"
+        self.supervisor.step()
+        self.now = 25
+        self.api_status = "running"
+        self.supervisor.step()
+        self.now = 26
+        self.client.healthy.return_value = False
+        self.supervisor.step()
+        self.now = 36
+        self.client.healthy.return_value = True
+        self.supervisor.step()
+        self.generator.generate.assert_not_called()
+        self.now = 41
+        self.supervisor.step()
+        self.client.apply.assert_called_once()
+
+    def test_forwarding_attempt_budget_survives_preparation_failure(self):
+        """Charge failed generations to the incident and skip every previously attempted address."""
+        self.enable_forwarding_recovery()
+        self.generator.generate.side_effect = GenerationFailed(
+            "PIA generation exceeded its deadline."
+        )
+        for self.now in (0, 5, 10, 15, 20, 25, 100):
+            self.supervisor.step()
+
+        self.assertEqual(
+            [c.args[0].ip for c in self.generator.generate.call_args_list],
+            ["198.51.100.11", "198.51.100.12"],
+        )
+        self.client.apply.assert_not_called()
+
+    def test_forwarding_never_reuses_current_or_crosses_region(self):
+        """A healthy tunnel in an exhausted region stays on its current address, even in automatic mode."""
+        self.enable_forwarding_recovery(alternatives=())
+        self.config.environment["AUTOCONNECT"] = "true"
+        self.supervisor.step()
+        self.now = 10
+        self.supervisor.step()
+        self.client.catalog.assert_called_once()
+        self.generator.generate.assert_not_called()
+
+    def test_forwarding_respects_dedicated_ip_and_effective_provider(self):
+        """Dedicated-IP and disabled forwarding configurations cannot trigger a switch."""
+        self.enable_forwarding_recovery()
+        self.config.environment["DIP_TOKEN"] = "dedicated-example"
+        self.supervisor.step()
+        self.now = 10
+        self.supervisor.step()
+        self.client.has_forwarded_port.assert_not_called()
+        self.config.environment["DIP_TOKEN"] = "no"
+        self.provider["port_forwarding"] = {"enabled": False, "provider": "private internet access"}
+        self.supervisor.step()
+        self.now = 20
+        self.supervisor.step()
+        self.client.has_forwarded_port.assert_not_called()
+        self.generator.generate.assert_not_called()
 
     def test_dedicated_ip_delegates_selection_to_upstream(self):
         """Leave dedicated-IP endpoint selection with the upstream PIA setup scripts."""
